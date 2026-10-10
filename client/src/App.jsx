@@ -47,12 +47,12 @@ export function App() {
     let device = getDeviceInfo();
     setSelfInfo(device);
 
-    // 3. Connect to backend signaling server (via proxy or direct)
+    // 3. Connect to backend signaling server
     const backendHost = window.location.hostname || 'localhost';
-    const serverUrl = window.location.port === '5173' ? window.location.origin : `http://${backendHost}:3001`;
+    const serverUrl = `http://${backendHost}:3001`;
 
     // Fetch network information (for accurate Hostname & QR Code generation)
-    fetch('/api/network-info')
+    fetch(`${serverUrl}/api/network-info`)
       .then((res) => res.json())
       .then((data) => {
         if (data.localIps && data.localIps.length > 0) {
