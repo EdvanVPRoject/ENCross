@@ -8,6 +8,7 @@ import { TextSyncDrawer } from './components/TextSyncDrawer';
 import { ScreenViewModal } from './components/ScreenViewModal';
 import { RenameModal } from './components/RenameModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
+import { ShareSourceModal } from './components/ShareSourceModal';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -22,6 +23,8 @@ export function App() {
   // Modals & Drawers
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
+  const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [pendingTargetPeerId, setPendingTargetPeerId] = useState(null);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
   const [textTargetPeer, setTextTargetPeer] = useState(null);
@@ -212,6 +215,19 @@ export function App() {
     ]);
   };
 
+  const executeStream = async (peerId, mode = 'screen') => {
+    if (!webrtcManagerRef.current) return;
+    try {
+      await webrtcManagerRef.current.startScreenShare(peerId, mode);
+      setActiveSharingPeerId(peerId);
+    } catch (err) {
+      setActiveSharingPeerId(null);
+      if (err.name !== 'NotAllowedError') {
+        alert('Info Siaran: ' + err.message);
+      }
+    }
+  };
+
   // Screen Share Handler (Toggle start/stop)
   const handleStartScreenShare = async (peerId) => {
     if (!webrtcManagerRef.current) return;
@@ -222,14 +238,12 @@ export function App() {
       return;
     }
 
-    try {
-      await webrtcManagerRef.current.startScreenShare(peerId);
-      setActiveSharingPeerId(peerId);
-    } catch (err) {
-      setActiveSharingPeerId(null);
-      if (err.name !== 'NotAllowedError') {
-        alert('Gagal memulai bagi layar: ' + err.message);
-      }
+    // On mobile devices, prompt user to choose Screen or Camera
+    if (selfInfo?.deviceType === 'mobile') {
+      setPendingTargetPeerId(peerId);
+      setIsSourceModalOpen(true);
+    } else {
+      executeStream(peerId, 'screen');
     }
   };
 
@@ -264,6 +278,17 @@ export function App() {
           onOpenQR={() => setIsQrOpen(true)}
         />
       </main>
+
+      {/* Stream Source Selector for Mobile */}
+      <ShareSourceModal
+        isOpen={isSourceModalOpen}
+        onClose={() => setIsSourceModalOpen(false)}
+        onSelect={(mode) => {
+          if (pendingTargetPeerId) {
+            executeStream(pendingTargetPeerId, mode);
+          }
+        }}
+      />
 
       {/* Rename Device Modal */}
       <RenameModal

@@ -383,44 +383,85 @@ export class WebRTCManager {
     }
   }
 
-  // Phase 4: Screen Sharing / Screen Monitor
-  async startScreenShare(peerId) {
+  // Phase 4: Screen Sharing / Live Video Stream
+  async startScreenShare(peerId, mode = 'screen') {
     const pc = this.getOrCreatePeerConnection(peerId);
     const peerObj = this.peers.get(peerId);
 
-    try {
-      const stream = await navigator.mediaDevices.getDisplayMedia({
-        video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } },
-        audio: false
-      });
-
-      peerObj.localStream = stream;
-
-      // Add track to PeerConnection
-      stream.getTracks().forEach((track) => {
-        pc.addTrack(track, stream);
-      });
-
-      // Handle user clicking "Stop Sharing" on browser banner
-      stream.getVideoTracks()[0].onended = () => {
-        this.stopScreenShare(peerId);
-      };
-
-      // Renegotiate offer
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-      this.socket.emit('signal-offer', {
-        targetId: peerId,
-        offer,
-        metadata: { isScreenShare: true }
-      });
-
-      this.socket.emit('screen-share-status', { targetId: peerId, isSharing: true });
-      return stream;
-    } catch (err) {
-      console.error('[ScreenShare Error]', err);
-      throw err;
+    if (!navigator.mediaDevices) {
+      throw new Error('Fitur media tidak didukung di browser ini.');
     }
+
+    const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
+    let stream;
+
+    // Check if getDisplayMedia is supported or if camera mode is requested
+    if (mode === 'camera' || (!navigator.mediaDevices.getDisplayMedia && navigator.mediaDevices.getUserMedia)) {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: isMobile ? 'environment' : 'user',
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (camErr) {
+        throw new Error('Gagal mengakses kamera HP: ' + camErr.message);
+      }
+    } else {
+      try {
+        // Mobile Android cannot accept desktop-only constraint 'cursor: always'
+        const constraints = isMobile
+          ? { video: true, audio: false }
+          : { video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } }, audio: false };
+
+        stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      } catch (dispErr) {
+        // If mobile Chrome blocks getDisplayMedia on plain HTTP, suggest camera fallback
+        if (isMobile && navigator.mediaDevices.getUserMedia) {
+          console.warn('[ScreenShare] getDisplayMedia failed, falling back to camera', dispErr);
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: 'environment' },
+            audio: false
+          });
+        } else {
+          throw dispErr;
+        }
+      }
+    }
+
+    peerObj.localStream = stream;
+
+    // Remove old video senders if any
+    const existingSenders = pc.getSenders();
+    existingSenders.forEach((sender) => {
+      if (sender.track && sender.track.kind === 'video') {
+        try { pc.removeTrack(sender); } catch(e) {}
+      }
+    });
+
+    // Add track to PeerConnection
+    stream.getTracks().forEach((track) => {
+      pc.addTrack(track, stream);
+    });
+
+    // Handle user clicking "Stop Sharing" on browser banner
+    stream.getVideoTracks()[0].onended = () => {
+      this.stopScreenShare(peerId);
+    };
+
+    // Renegotiate offer
+    const offer = await pc.createOffer();
+    await pc.setLocalDescription(offer);
+    this.socket.emit('signal-offer', {
+      targetId: peerId,
+      offer,
+      metadata: { isScreenShare: true, mode }
+    });
+
+    this.socket.emit('screen-share-status', { targetId: peerId, isSharing: true });
+    return stream;
   }
 
   stopScreenShare(peerId) {
