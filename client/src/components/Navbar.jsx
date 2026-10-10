@@ -1,52 +1,64 @@
 import React from 'react';
-import { QrCode, Laptop, Smartphone, Tablet, Radio } from 'lucide-react';
+import { QrCode, Laptop, Smartphone, Tablet, Radio, Edit2 } from 'lucide-react';
+import { triggerHaptic } from '../utils/feedback';
 
-export function Navbar({ selfInfo, localIp, roomId, onOpenQR }) {
+export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename }) {
   const getDeviceIcon = () => {
-    if (selfInfo?.deviceType === 'mobile') return <Smartphone className="w-4 h-4 text-zinc-400" />;
-    if (selfInfo?.deviceType === 'tablet') return <Tablet className="w-4 h-4 text-zinc-400" />;
-    return <Laptop className="w-4 h-4 text-zinc-400" />;
+    if (selfInfo?.deviceType === 'mobile') return <Smartphone className="w-3.5 h-3.5 text-zinc-400" />;
+    if (selfInfo?.deviceType === 'tablet') return <Tablet className="w-3.5 h-3.5 text-zinc-400" />;
+    return <Laptop className="w-3.5 h-3.5 text-zinc-400" />;
+  };
+
+  const handleRenameClick = () => {
+    triggerHaptic([30]);
+    onOpenRename();
   };
 
   return (
-    <header className="border-b border-zinc-800 bg-zinc-950/80 backdrop-blur-md sticky top-0 z-40 px-4 py-3 sm:px-6">
-      <div className="max-w-6xl mx-auto flex items-center justify-between">
+    <header className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 sm:px-6 sm:py-3 w-full max-w-full overflow-hidden">
+      <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
         {/* Brand */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-zinc-200">
-            <Radio className="w-4 h-4 text-zinc-300" />
+        <div className="flex items-center gap-2 shrink-0">
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-zinc-200">
+            <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-300" />
           </div>
-          <div className="flex items-baseline gap-2.5">
-            <span className="text-base font-semibold tracking-tight text-white">
+          <div className="flex items-baseline gap-1.5">
+            <span className="text-sm sm:text-base font-semibold tracking-tight text-white">
               VanCross
             </span>
-            <span className="text-[11px] font-mono text-zinc-500 px-1.5 py-0.5 rounded bg-zinc-900 border border-zinc-800">
-              P2P LAN
-            </span>
-            <span className="text-xs text-zinc-400 hidden md:inline">
-              Local File & Stream
+            <span className="text-[10px] font-mono text-zinc-500 px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800">
+              LAN
             </span>
           </div>
         </div>
 
-        {/* Right Actions */}
-        <div className="flex items-center gap-2.5">
-          {/* Self Device Badge */}
-          <div className="flex items-center gap-2 bg-zinc-900 border border-zinc-800 rounded-lg px-3 py-1.5 text-xs text-zinc-300">
-            <span className="w-2 h-2 rounded-full bg-emerald-500" />
+        {/* Right Actions: Compact & Never Overflowing */}
+        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* Self Device Badge (Click to Rename) */}
+          <button
+            onClick={handleRenameClick}
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800/80 active:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs text-zinc-300 transition cursor-pointer max-w-[130px] xs:max-w-[160px] sm:max-w-[200px]"
+            title="Klik untuk mengubah nama perangkat Anda"
+          >
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
             {getDeviceIcon()}
-            <span className="font-medium truncate max-w-[130px] sm:max-w-[180px]">
+            <span className="font-medium truncate text-[11px] sm:text-xs">
               {selfInfo?.name || 'Perangkat Ini'}
             </span>
-          </div>
+            <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden xs:inline" />
+          </button>
 
           {/* QR Button */}
           <button
-            onClick={onOpenQR}
-            className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 rounded-lg px-3 py-1.5 text-xs font-medium transition-colors cursor-pointer"
+            onClick={() => {
+              triggerHaptic([30]);
+              onOpenQR();
+            }}
+            className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 rounded-lg h-7 px-2 sm:px-3 text-xs font-semibold transition cursor-pointer shrink-0"
+            title="Hubungkan HP (Scan QR)"
           >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>Hubungkan HP</span>
+            <QrCode className="w-3.5 h-3.5 shrink-0" />
+            <span className="hidden sm:inline">Hubungkan HP</span>
           </button>
         </div>
       </div>

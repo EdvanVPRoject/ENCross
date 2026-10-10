@@ -46,6 +46,7 @@ app.get('/api/network-info', (req, res) => {
   res.json({
     localIps,
     port: PORT,
+    serverHostname: os.hostname(),
     timestamp: Date.now()
   });
 });
@@ -56,6 +57,20 @@ io.on('connection', (socket) => {
   let peerData = null;
 
   console.log(`[Socket Connected] ID: ${socket.id}`);
+
+  // Rename device live
+  socket.on('rename-device', ({ name }) => {
+    if (peerData) {
+      peerData.name = name;
+      if (currentRoom && rooms.has(currentRoom)) {
+        const roomPeers = rooms.get(currentRoom);
+        if (roomPeers.has(socket.id)) {
+          roomPeers.get(socket.id).name = name;
+        }
+        socket.to(currentRoom).emit('peer-renamed', { id: socket.id, name });
+      }
+    }
+  });
 
   // Register device in a room
   socket.on('join-room', ({ roomId, device }) => {

@@ -1,30 +1,60 @@
-// Helper to inspect client device info and generate friendly identities
+// Helper to inspect client device info and generate accurate, friendly identities
 
-export function getDeviceInfo() {
+export function detectDeviceModel() {
   const ua = navigator.userAgent;
 
   // OS detection
-  let os = 'Unknown OS';
-  if (/Windows/i.test(ua)) os = 'Windows';
-  else if (/Android/i.test(ua)) os = 'Android';
-  else if (/iPhone|iPad|iPod/i.test(ua)) os = 'iOS';
-  else if (/Macintosh|Mac OS X/i.test(ua)) os = 'macOS';
-  else if (/Linux/i.test(ua)) os = 'Linux';
-
-  // Device type detection
+  let os = 'Windows';
   let deviceType = 'desktop';
-  if (/Mobile|Android|iP(hone|od)/i.test(ua)) {
-    deviceType = 'mobile';
-  } else if (/iPad|Tablet/i.test(ua)) {
-    deviceType = 'tablet';
-  }
 
-  // Browser detection
-  let browser = 'Browser';
-  if (/Chrome|CriOS/i.test(ua) && !/Edg/i.test(ua)) browser = 'Chrome';
-  else if (/Edg/i.test(ua)) browser = 'Edge';
-  else if (/Safari/i.test(ua) && !/Chrome/i.test(ua)) browser = 'Safari';
-  else if (/Firefox|FxiOS/i.test(ua)) browser = 'Firefox';
+  if (/iPhone/i.test(ua)) {
+    os = 'iOS';
+    deviceType = 'mobile';
+    return { name: 'iPhone', os, deviceType, browser: getBrowserName(ua) };
+  } else if (/iPad/i.test(ua)) {
+    os = 'iPadOS';
+    deviceType = 'tablet';
+    return { name: 'iPad', os, deviceType, browser: getBrowserName(ua) };
+  } else if (/Android/i.test(ua)) {
+    os = 'Android';
+    deviceType = 'mobile';
+
+    // Try detecting Android manufacturer / model
+    let model = 'Android Phone';
+    if (/Samsung|SM-[A-Z0-9]+/i.test(ua)) {
+      model = 'Samsung Galaxy';
+    } else if (/Xiaomi|Redmi|POCO|Mi /i.test(ua)) {
+      model = 'Xiaomi Phone';
+    } else if (/Pixel/i.test(ua)) {
+      model = 'Google Pixel';
+    } else if (/Oppo|CPH[0-9]+/i.test(ua)) {
+      model = 'OPPO Phone';
+    } else if (/Vivo|V[0-9]+/i.test(ua)) {
+      model = 'Vivo Phone';
+    }
+    return { name: model, os, deviceType, browser: getBrowserName(ua) };
+  } else if (/Macintosh|Mac OS X/i.test(ua)) {
+    os = 'macOS';
+    return { name: 'MacBook', os, deviceType: 'desktop', browser: getBrowserName(ua) };
+  } else if (/Linux/i.test(ua)) {
+    os = 'Linux';
+    return { name: 'Linux PC', os, deviceType: 'desktop', browser: getBrowserName(ua) };
+  } else {
+    // Default Windows
+    return { name: 'Windows PC', os: 'Windows', deviceType: 'desktop', browser: getBrowserName(ua) };
+  }
+}
+
+function getBrowserName(ua) {
+  if (/Edg/i.test(ua)) return 'Edge';
+  if (/Chrome|CriOS/i.test(ua)) return 'Chrome';
+  if (/Safari/i.test(ua)) return 'Safari';
+  if (/Firefox|FxiOS/i.test(ua)) return 'Firefox';
+  return 'Browser';
+}
+
+export function getDeviceInfo(serverHostname) {
+  const detected = detectDeviceModel();
 
   // Persistent Device ID
   let deviceId = localStorage.getItem('vancross_device_id');
@@ -33,22 +63,34 @@ export function getDeviceInfo() {
     localStorage.setItem('vancross_device_id', deviceId);
   }
 
-  // Persistent / Friendly Name
+  // Persistent Device Name (user-defined or default accurate name)
   let name = localStorage.getItem('vancross_device_name');
   if (!name) {
-    const adjectives = ['Swift', 'Hyper', 'Nova', 'Cyber', 'Apex', 'Solar', 'Echo', 'Neon'];
-    const adj = adjectives[Math.floor(Math.random() * adjectives.length)];
-    name = `${adj} ${os} ${deviceType === 'desktop' ? 'PC' : 'Phone'}`;
+    // If desktop and serverHostname is available, use hostname
+    if (detected.deviceType === 'desktop' && serverHostname) {
+      name = `${serverHostname} (PC)`;
+    } else {
+      name = detected.name;
+    }
     localStorage.setItem('vancross_device_name', name);
   }
 
   return {
     deviceId,
     name,
-    deviceType,
-    os,
-    browser
+    deviceType: detected.deviceType,
+    os: detected.os,
+    browser: detected.browser
   };
+}
+
+export function setCustomDeviceName(newName) {
+  if (newName && newName.trim()) {
+    const cleaned = newName.trim();
+    localStorage.setItem('vancross_device_name', cleaned);
+    return cleaned;
+  }
+  return null;
 }
 
 export function formatBytes(bytes, decimals = 2) {
