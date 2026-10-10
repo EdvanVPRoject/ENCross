@@ -178,7 +178,7 @@ export function App() {
   const joinUrl = `http://${resolvedIp}:5173/?room=${roomId}`;
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 flex flex-col font-sans selection:bg-indigo-500 selection:text-white">
+    <div className="min-h-screen bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-zinc-700 selection:text-white">
       {/* Top Navbar */}
       <Navbar
         selfInfo={selfInfo}
@@ -235,7 +235,7 @@ export function App() {
       )}
 
       {/* Footer Info */}
-      <footer className="py-4 text-center text-xs text-slate-600 border-t border-slate-900">
+      <footer className="py-4 text-center text-xs text-zinc-500 border-t border-zinc-900">
         <p>
           VanCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
         </p>

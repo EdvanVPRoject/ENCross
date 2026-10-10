@@ -25,26 +25,28 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/80 backdrop-blur-xs">
       <div
         ref={containerRef}
-        className="bg-slate-950 border border-slate-800 rounded-2xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden relative"
+        className="bg-zinc-950 border border-zinc-800 rounded-xl w-full max-w-5xl h-[85vh] flex flex-col shadow-2xl overflow-hidden relative"
       >
         {/* Top bar */}
-        <div className="p-3.5 bg-slate-900/90 border-b border-slate-800 flex items-center justify-between z-10">
-          <div className="flex items-center gap-2">
-            <div className="p-1.5 rounded-lg bg-pink-500/10 text-pink-400">
-              <MonitorPlay className="w-4 h-4 animate-pulse" />
+        <div className="p-3 bg-zinc-900 border-b border-zinc-800 flex items-center justify-between z-10">
+          <div className="flex items-center gap-2.5">
+            <div className="p-1.5 rounded-md bg-zinc-800 text-zinc-300">
+              <MonitorPlay className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-white flex items-center gap-2">
-                <span>Monitoring Layar Langsung</span>
-                <span className="text-[10px] bg-red-500/20 text-red-400 border border-red-500/30 px-2 py-0.5 rounded-full font-mono uppercase">
+              <div className="flex items-center gap-2">
+                <h3 className="text-xs font-semibold text-white">
+                  Monitoring Layar
+                </h3>
+                <span className="text-[10px] bg-red-500/10 text-red-400 border border-red-500/20 px-1.5 py-0.2 rounded font-mono uppercase">
                   LIVE
                 </span>
-              </h3>
-              <p className="text-xs text-slate-400">
-                Dari: <span className="text-slate-200 font-medium">{senderName || 'Peer Device'}</span>
+              </div>
+              <p className="text-[11px] text-zinc-400 font-mono">
+                Sumber: {senderName || 'Peer Device'}
               </p>
             </div>
           </div>
@@ -52,17 +54,17 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
           <div className="flex items-center gap-2">
             <button
               onClick={toggleFullscreen}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
               title="Fullscreen"
             >
               {isFullscreen ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
             </button>
             <button
               onClick={onClose}
-              className="p-1.5 rounded-lg text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
+              className="p-1.5 rounded text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
               title="Tutup"
             >
-              <X className="w-5 h-5" />
+              <X className="w-4 h-4" />
             </button>
           </div>
         </div>
