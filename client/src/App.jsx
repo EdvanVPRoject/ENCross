@@ -231,8 +231,8 @@ export function App() {
 
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col justify-center py-2">
-        {/* Android PWA Install Banner */}
-        <PwaInstallBanner />
+        {/* Android PWA Install Banner (Only rendered on mobile) */}
+        <PwaInstallBanner selfInfo={selfInfo} />
 
         <PeersRadar
           peers={peers}

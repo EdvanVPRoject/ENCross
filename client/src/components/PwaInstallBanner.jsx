@@ -2,11 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { Download, Smartphone, X, Check, HelpCircle } from 'lucide-react';
 import { triggerHaptic, playSound } from '../utils/feedback';
 
-export function PwaInstallBanner() {
+export function PwaInstallBanner({ selfInfo }) {
   const [deferredPrompt, setDeferredPrompt] = useState(null);
   const [isInstalled, setIsInstalled] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   const [showGuide, setShowGuide] = useState(false);
+
+  // ONLY show this banner on Mobile (HP Android), NEVER on PC/Laptop
+  const isMobile = selfInfo?.deviceType === 'mobile' || /Android|iPhone/i.test(navigator.userAgent);
 
   useEffect(() => {
     // Check if already running standalone (as installed app)
@@ -46,7 +49,8 @@ export function PwaInstallBanner() {
     }
   };
 
-  if (isInstalled || dismissed) return null;
+  // If on laptop/PC desktop, or already installed, do not render
+  if (!isMobile || isInstalled || dismissed) return null;
 
   return (
     <>
@@ -61,7 +65,7 @@ export function PwaInstallBanner() {
                 Pasang Aplikasi di HP Android
               </h4>
               <p className="text-[11px] text-zinc-400 truncate">
-                Jalankan seperti aplikasi mandiri tanpa URL bar browser
+                Akses cepat dari Home Screen tanpa URL bar browser
               </p>
             </div>
           </div>
