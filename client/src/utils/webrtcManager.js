@@ -411,22 +411,30 @@ export class WebRTCManager {
       }
     } else {
       try {
-        // Mobile Android cannot accept desktop-only constraint 'cursor: always'
         const constraints = isMobile
           ? { video: true, audio: false }
-          : { video: { cursor: 'always', frameRate: { ideal: 30, max: 60 } }, audio: false };
+          : { video: true, audio: false };
 
         stream = await navigator.mediaDevices.getDisplayMedia(constraints);
       } catch (dispErr) {
-        // If mobile Chrome blocks getDisplayMedia on plain HTTP, suggest camera fallback
-        if (isMobile && navigator.mediaDevices.getUserMedia) {
-          console.warn('[ScreenShare] getDisplayMedia failed, falling back to camera', dispErr);
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: 'environment' },
-            audio: false
-          });
-        } else {
+        if (dispErr.name === 'NotAllowedError') {
           throw dispErr;
+        }
+
+        // Retry with pure video constraint
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
+        } catch (retryErr) {
+          // If mobile Chrome blocks getDisplayMedia on plain HTTP, suggest camera fallback
+          if (isMobile && navigator.mediaDevices.getUserMedia) {
+            console.warn('[ScreenShare] getDisplayMedia failed, falling back to camera', retryErr);
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: { facingMode: 'environment' },
+              audio: false
+            });
+          } else {
+            throw retryErr;
+          }
         }
       }
     }

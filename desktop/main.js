@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer } = require('electron');
 const path = require('path');
 const http = require('http');
 const { fork } = require('child_process');
@@ -213,6 +213,34 @@ if (!gotTheLock) {
   });
 
   app.whenReady().then(async () => {
+    // 1. Grant media & display permissions automatically
+    session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
+      callback(true);
+    });
+    session.defaultSession.setPermissionCheckHandler(() => true);
+
+    // 2. Handle screen sharing (getDisplayMedia) in Electron
+    session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
+      desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
+        // Choose primary screen or first available display source
+        const primaryScreen =
+          sources.find((s) => s.id.startsWith('screen:0')) ||
+          sources.find((s) => s.id.startsWith('screen')) ||
+          sources[0];
+
+        if (primaryScreen) {
+          console.log('[Electron] Display capture selected source:', primaryScreen.name);
+          callback({ video: primaryScreen });
+        } else {
+          console.warn('[Electron] No screen source available for capture');
+          callback({});
+        }
+      }).catch((err) => {
+        console.error('[Electron] desktopCapturer error:', err);
+        callback({});
+      });
+    });
+
     await ensureServerRunning();
     createMainWindow();
     createSystemTray();
