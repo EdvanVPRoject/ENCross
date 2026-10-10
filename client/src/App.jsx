@@ -90,6 +90,9 @@ export function App() {
       if (progressData.completed) {
         playSound('complete');
         triggerHaptic([60, 40, 60]);
+        if (window.electronAPI) {
+          window.electronAPI.showNotification('Transfer Selesai', `File ${progressData.fileName || ''} berhasil diterima!`);
+        }
       }
     };
 
@@ -183,6 +186,9 @@ export function App() {
       playSound('message');
       triggerHaptic([40]);
       setTextMessages((prev) => [...prev, { ...msg, isSelf: false }]);
+      if (window.electronAPI) {
+        window.electronAPI.showNotification(`Pesan dari ${msg.senderName || 'Perangkat'}`, msg.text || '');
+      }
     });
 
     return () => {
@@ -281,7 +287,8 @@ export function App() {
 
   const protocol = window.location.protocol || 'http:';
   const resolvedIp = localIp || window.location.hostname || 'localhost';
-  const joinUrl = `${protocol}//${resolvedIp}:5173/?room=${roomId}`;
+  const currentPort = window.location.port ? `:${window.location.port}` : ':3001';
+  const joinUrl = `${protocol}//${resolvedIp}${currentPort}/?room=${roomId}`;
 
   return (
     <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">

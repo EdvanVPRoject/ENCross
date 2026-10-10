@@ -3,10 +3,22 @@ import http from 'http';
 import { Server } from 'socket.io';
 import cors from 'cors';
 import os from 'os';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const distPath = path.join(__dirname, '../client/dist');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
+
+// Serve static frontend assets if built
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+}
 
 const server = http.createServer(app);
 const io = new Server(server, {
@@ -49,6 +61,18 @@ app.get('/api/network-info', (req, res) => {
     serverHostname: os.hostname(),
     timestamp: Date.now()
   });
+});
+
+// SPA fallback for direct web browser navigation
+app.get('*', (req, res, next) => {
+  if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+    return next();
+  }
+  const indexPath = path.join(distPath, 'index.html');
+  if (fs.existsSync(indexPath)) {
+    return res.sendFile(indexPath);
+  }
+  next();
 });
 
 // Helper to normalize client IP address from socket
