@@ -47,12 +47,12 @@ export function App() {
     let device = getDeviceInfo();
     setSelfInfo(device);
 
-    // 3. Connect to backend signaling server
+    // 3. Connect to backend signaling server (via proxy or direct)
     const backendHost = window.location.hostname || 'localhost';
-    const serverUrl = `http://${backendHost}:3001`;
+    const serverUrl = window.location.port === '5173' ? window.location.origin : `http://${backendHost}:3001`;
 
     // Fetch network information (for accurate Hostname & QR Code generation)
-    fetch(`${serverUrl}/api/network-info`)
+    fetch('/api/network-info')
       .then((res) => res.json())
       .then((data) => {
         if (data.localIps && data.localIps.length > 0) {
@@ -247,8 +247,9 @@ export function App() {
     }
   };
 
+  const protocol = window.location.protocol || 'http:';
   const resolvedIp = localIp || window.location.hostname || 'localhost';
-  const joinUrl = `http://${resolvedIp}:5173/?room=${roomId}`;
+  const joinUrl = `${protocol}//${resolvedIp}:5173/?room=${roomId}`;
 
   return (
     <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">

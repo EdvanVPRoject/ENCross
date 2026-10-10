@@ -389,7 +389,7 @@ export class WebRTCManager {
     const peerObj = this.peers.get(peerId);
 
     if (!navigator.mediaDevices) {
-      throw new Error('Fitur media tidak didukung di browser ini.');
+      throw new Error('Akses kamera/layar di HP dibatasi oleh Chrome jika bukan HTTPS. Buka web menggunakan alamat https:// (koneksi aman).');
     }
 
     const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
