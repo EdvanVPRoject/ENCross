@@ -5,7 +5,8 @@
   "scripts": {
     "server": "cd server && npm start",
     "client": "cd client && npm run dev",
-    "build": "cd client && npm run build"
+    "build": "cd client && npm run build",
+    "build:android": "cd client && npm run build:android"
   },
   "keywords": [
     "webrtc",

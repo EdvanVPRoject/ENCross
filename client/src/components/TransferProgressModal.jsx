@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Upload, Download, CheckCircle2, X, ArrowDownToLine } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
 
@@ -19,9 +19,16 @@ export function TransferProgressModal({ transfer, onClose }) {
     }
   };
 
+  // Auto-download file upon completion on both mobile and desktop
+  useEffect(() => {
+    if (transfer.completed && transfer.direction === 'download' && transfer.blobUrl) {
+      handleDownloadBlob();
+    }
+  }, [transfer.completed, transfer.direction, transfer.blobUrl]);
+
   return (
-    <div className="fixed bottom-6 right-6 z-50 w-full max-w-sm">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-xl relative">
+    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-2xl relative">
         {/* Close button if finished */}
         {isDone && (
           <button
@@ -69,7 +76,7 @@ export function TransferProgressModal({ transfer, onClose }) {
         <div className="flex items-center justify-between text-xs">
           <span className="text-zinc-400 text-[11px]">
             {isDone
-              ? 'Transfer Selesai'
+              ? 'Transfer Selesai (Tersimpan)'
               : isUpload
               ? `Mengirim (${transfer.progress}%)`
               : `Menerima (${transfer.progress}%)`}
@@ -81,7 +88,7 @@ export function TransferProgressModal({ transfer, onClose }) {
               className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-medium px-2.5 py-1 rounded text-xs transition cursor-pointer"
             >
               <ArrowDownToLine className="w-3.5 h-3.5" />
-              <span>Simpan File</span>
+              <span>Simpan Ulang</span>
             </button>
           )}
 

@@ -115,5 +115,28 @@ npm run dev
 
 ---
 
+## 📱 Build Aplikasi Native Android (Capacitor & CI/CD)
+
+Proyek ini telah dikonfigurasi dengan **Capacitor Android** sehingga dapat menghasilkan aplikasi Android asli (.apk).
+
+### Opsi 1: Build Otomatis di Cloud (GitHub Actions CI/CD)
+Tidak perlu menginstal Android Studio di laptop:
+1. Push repositori ini ke GitHub.
+2. Tab **Actions** di GitHub akan secara otomatis meng-compile file APK via workflow [build-apk.yml](.github/workflows/build-apk.yml).
+3. Unduh file `VanCross-Android-APK` langsung dari GitHub Artifacts dan pasang di HP Anda!
+
+### Opsi 2: Build di Lokal (Jika memiliki Android Studio)
+```bash
+# 1. Build frontend & sinkronisasi ke project Android
+npm run build:android
+
+# 2. Buka project di Android Studio
+cd client
+npx cap open android
+```
+Di Android Studio, pilih menu **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+
+---
+
 ## 👨‍💻 Author & Portofolio
 Dibuat sebagai proyek rekayasa fullstack & networking modern untuk demonstrasi arsitektur sistem real-time terdistribusi.
