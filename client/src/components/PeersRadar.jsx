@@ -4,6 +4,7 @@ import { triggerHaptic } from '../utils/feedback';
 
 export function PeersRadar({
   peers,
+  activeSharingPeerId,
   onSendFile,
   onOpenTextSync,
   onStartScreenShare,
@@ -155,16 +156,20 @@ export function PeersRadar({
                       <span>Kirim Teks</span>
                     </button>
 
-                    {/* Screen Share */}
+                    {/* Screen Share / Stop Share */}
                     <button
                       onClick={() => {
                         triggerHaptic([30]);
                         onStartScreenShare(peer.id);
                       }}
-                      className="flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 border border-zinc-700/60 py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer"
+                      className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        activeSharingPeerId === peer.id
+                          ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                      }`}
                     >
-                      <MonitorPlay className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Bagi Layar</span>
+                      <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id ? 'text-red-400 animate-pulse' : 'text-zinc-400'}`} />
+                      <span>{activeSharingPeerId === peer.id ? 'Stop Layar' : 'Bagi Layar'}</span>
                     </button>
                   </div>
                 </div>

@@ -30,6 +30,7 @@ export function App() {
   // Screen Monitoring
   const [incomingStream, setIncomingStream] = useState(null);
   const [screenSenderName, setScreenSenderName] = useState('');
+  const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
 
   const webrtcManagerRef = useRef(null);
 
@@ -101,8 +102,16 @@ export function App() {
     };
 
     rtcManager.onScreenShareEnded = () => {
+      setActiveSharingPeerId(null);
       setIncomingStream(null);
     };
+
+    // Socket Event: Peer started or stopped screen sharing
+    newSocket.on('peer-screen-share-status', ({ senderId, isSharing }) => {
+      if (!isSharing) {
+        setIncomingStream(null);
+      }
+    });
 
     // Socket Event: Connected
     newSocket.on('connect', () => {
@@ -203,12 +212,21 @@ export function App() {
     ]);
   };
 
-  // Screen Share Handler
+  // Screen Share Handler (Toggle start/stop)
   const handleStartScreenShare = async (peerId) => {
     if (!webrtcManagerRef.current) return;
+
+    if (activeSharingPeerId === peerId) {
+      webrtcManagerRef.current.stopScreenShare(peerId);
+      setActiveSharingPeerId(null);
+      return;
+    }
+
     try {
       await webrtcManagerRef.current.startScreenShare(peerId);
+      setActiveSharingPeerId(peerId);
     } catch (err) {
+      setActiveSharingPeerId(null);
       if (err.name !== 'NotAllowedError') {
         alert('Gagal memulai bagi layar: ' + err.message);
       }
@@ -236,6 +254,7 @@ export function App() {
 
         <PeersRadar
           peers={peers}
+          activeSharingPeerId={activeSharingPeerId}
           onSendFile={handleSendFile}
           onOpenTextSync={(peer) => {
             setTextTargetPeer(peer);

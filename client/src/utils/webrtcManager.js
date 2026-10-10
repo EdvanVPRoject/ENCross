@@ -28,9 +28,20 @@ export class WebRTCManager {
 
   setupSocketListeners() {
     this.socket.on('signal-offer', async ({ senderId, offer, metadata }) => {
-      console.log(`[WebRTC] Received offer from ${senderId}`);
+      console.log(`[WebRTC] Received offer from ${senderId}`, metadata);
       const pc = this.getOrCreatePeerConnection(senderId);
+      const peerObj = this.peers.get(senderId);
+
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
+
+      // Process queued candidates
+      if (peerObj.pendingCandidates && peerObj.pendingCandidates.length > 0) {
+        for (const cand of peerObj.pendingCandidates) {
+          await pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.warn(e));
+        }
+        peerObj.pendingCandidates = [];
+      }
+
       const answer = await pc.createAnswer();
       await pc.setLocalDescription(answer);
 
@@ -42,19 +53,31 @@ export class WebRTCManager {
 
     this.socket.on('signal-answer', async ({ senderId, answer }) => {
       console.log(`[WebRTC] Received answer from ${senderId}`);
-      const peer = this.peers.get(senderId);
-      if (peer && peer.pc) {
-        await peer.pc.setRemoteDescription(new RTCSessionDescription(answer));
+      const peerObj = this.peers.get(senderId);
+      if (peerObj && peerObj.pc) {
+        await peerObj.pc.setRemoteDescription(new RTCSessionDescription(answer));
+
+        // Process queued candidates
+        if (peerObj.pendingCandidates && peerObj.pendingCandidates.length > 0) {
+          for (const cand of peerObj.pendingCandidates) {
+            await peerObj.pc.addIceCandidate(new RTCIceCandidate(cand)).catch(e => console.warn(e));
+          }
+          peerObj.pendingCandidates = [];
+        }
       }
     });
 
     this.socket.on('signal-ice-candidate', async ({ senderId, candidate }) => {
-      const peer = this.peers.get(senderId);
-      if (peer && peer.pc && candidate) {
-        try {
-          await peer.pc.addIceCandidate(new RTCIceCandidate(candidate));
-        } catch (err) {
-          console.warn('[WebRTC] Failed to add ICE candidate', err);
+      const peerObj = this.peers.get(senderId);
+      if (peerObj && peerObj.pc && candidate) {
+        if (!peerObj.pc.remoteDescription || !peerObj.pc.remoteDescription.type) {
+          peerObj.pendingCandidates.push(candidate);
+        } else {
+          try {
+            await peerObj.pc.addIceCandidate(new RTCIceCandidate(candidate));
+          } catch (err) {
+            console.warn('[WebRTC] Failed to add ICE candidate', err);
+          }
         }
       }
     });
@@ -70,7 +93,8 @@ export class WebRTCManager {
       pc,
       dataChannel: null,
       localStream: null,
-      remoteStream: null
+      remoteStream: null,
+      pendingCandidates: []
     };
     this.peers.set(peerId, peerObj);
 
@@ -93,12 +117,11 @@ export class WebRTCManager {
 
     // Receiver: Inbound Screen / Media Stream
     pc.ontrack = (event) => {
-      console.log(`[WebRTC] Remote stream track received from ${peerId}`, event.streams);
-      if (event.streams && event.streams[0]) {
-        peerObj.remoteStream = event.streams[0];
-        if (this.onRemoteStream) {
-          this.onRemoteStream(peerId, event.streams[0]);
-        }
+      console.log(`[WebRTC] Remote stream track received from ${peerId}`, event);
+      const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
+      peerObj.remoteStream = stream;
+      if (this.onRemoteStream) {
+        this.onRemoteStream(peerId, stream);
       }
     };
 
