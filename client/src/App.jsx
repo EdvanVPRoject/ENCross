@@ -113,17 +113,21 @@ export function App() {
       });
     });
 
-    // Socket Event: Room Peers received
+    // Socket Event: Room Peers received (filter out own device)
     newSocket.on('room-peers', ({ peers: initialPeers }) => {
-      setPeers(initialPeers);
+      const unique = initialPeers.filter((p) => p.deviceId !== device.deviceId);
+      setPeers(unique);
     });
 
     // Socket Event: Another peer joined
     newSocket.on('peer-joined', (newPeer) => {
+      // Ignore if this is another tab of the same device
+      if (newPeer.deviceId === device.deviceId) return;
+
       playSound('connect');
       triggerHaptic([30]);
       setPeers((prev) => {
-        const filtered = prev.filter((p) => p.id !== newPeer.id);
+        const filtered = prev.filter((p) => p.deviceId !== newPeer.deviceId);
         return [...filtered, newPeer];
       });
     });
@@ -136,8 +140,8 @@ export function App() {
     });
 
     // Socket Event: Peer left
-    newSocket.on('peer-left', ({ id }) => {
-      setPeers((prev) => prev.filter((p) => p.id !== id));
+    newSocket.on('peer-left', ({ id, deviceId }) => {
+      setPeers((prev) => prev.filter((p) => p.id !== id && (deviceId ? p.deviceId !== deviceId : true)));
       rtcManager.closePeer(id);
     });
 

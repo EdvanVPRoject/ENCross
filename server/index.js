@@ -75,9 +75,11 @@ io.on('connection', (socket) => {
   // Register device in a room
   socket.on('join-room', ({ roomId, device }) => {
     currentRoom = roomId || 'default-room';
+    const deviceId = device?.deviceId || socket.id;
+
     peerData = {
       id: socket.id,
-      deviceId: device?.deviceId || socket.id,
+      deviceId,
       name: device?.name || 'Unknown Device',
       deviceType: device?.deviceType || 'desktop',
       os: device?.os || 'Unknown OS',
@@ -88,19 +90,28 @@ io.on('connection', (socket) => {
     socket.join(currentRoom);
 
     if (!rooms.has(currentRoom)) {
-      rooms.set(currentRoom, new Map());
+      rooms.set(currentRoom, new Map()); // deviceId -> peerData
     }
 
     const roomPeers = rooms.get(currentRoom);
-    roomPeers.set(socket.id, peerData);
 
-    console.log(`[Room: ${currentRoom}] ${peerData.name} (${socket.id}) joined. Total peers: ${roomPeers.size}`);
+    // If this device was already connected (e.g. older tab), notify or update
+    const existingPeer = roomPeers.get(deviceId);
+    if (existingPeer && existingPeer.id !== socket.id) {
+      console.log(`[Device Reconnected] ${peerData.name} replaced old tab ${existingPeer.id}`);
+      // Notify old tab that a newer tab took over
+      io.to(existingPeer.id).emit('tab-superseded');
+    }
 
-    // Notify others in the room
+    roomPeers.set(deviceId, peerData);
+
+    console.log(`[Room: ${currentRoom}] ${peerData.name} (${deviceId}) active. Total unique devices: ${roomPeers.size}`);
+
+    // Notify other devices in the room (skip self device)
     socket.to(currentRoom).emit('peer-joined', peerData);
 
-    // Send current list of peers in room to the newly joined peer
-    const peersList = Array.from(roomPeers.values()).filter(p => p.id !== socket.id);
+    // Send unique peers list (excluding self deviceId)
+    const peersList = Array.from(roomPeers.values()).filter(p => p.deviceId !== deviceId);
     socket.emit('room-peers', {
       self: peerData,
       peers: peersList,
@@ -172,13 +183,16 @@ io.on('connection', (socket) => {
   // Disconnect handler
   socket.on('disconnect', () => {
     console.log(`[Socket Disconnected] ID: ${socket.id}`);
-    if (currentRoom && rooms.has(currentRoom)) {
+    if (currentRoom && rooms.has(currentRoom) && peerData) {
       const roomPeers = rooms.get(currentRoom);
-      roomPeers.delete(socket.id);
-      if (roomPeers.size === 0) {
-        rooms.delete(currentRoom);
-      } else {
-        socket.to(currentRoom).emit('peer-left', { id: socket.id });
+      const active = roomPeers.get(peerData.deviceId);
+      if (active && active.id === socket.id) {
+        roomPeers.delete(peerData.deviceId);
+        if (roomPeers.size === 0) {
+          rooms.delete(currentRoom);
+        } else {
+          socket.to(currentRoom).emit('peer-left', { id: socket.id, deviceId: peerData.deviceId });
+        }
       }
     }
   });
