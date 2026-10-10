@@ -29,6 +29,7 @@ export function App() {
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
   const [textTargetPeer, setTextTargetPeer] = useState(null);
   const [textMessages, setTextMessages] = useState([]);
+  const [isSuperseded, setIsSuperseded] = useState(false);
 
   // Screen Monitoring
   const [incomingStream, setIncomingStream] = useState(null);
@@ -126,28 +127,42 @@ export function App() {
     });
 
     // Socket Event: Room Peers received (filter out own device)
-    newSocket.on('room-peers', ({ peers: initialPeers }) => {
-      const unique = initialPeers.filter((p) => p.deviceId !== device.deviceId);
+    newSocket.on('room-peers', ({ self: assignedSelf, peers: initialPeers }) => {
+      if (assignedSelf) {
+        device.deviceId = assignedSelf.deviceId;
+        setSelfInfo(assignedSelf);
+        if (webrtcManagerRef.current) {
+          webrtcManagerRef.current.selfInfo = assignedSelf;
+        }
+      }
+      setIsSuperseded(false);
+      const myDeviceId = assignedSelf?.deviceId || device.deviceId;
+      const unique = (initialPeers || []).filter((p) => p.deviceId !== myDeviceId);
       setPeers(unique);
     });
 
     // Socket Event: Another peer joined
     newSocket.on('peer-joined', (newPeer) => {
-      // Ignore if this is another tab of the same device
+      // Ignore if this is another tab/browser of the same physical device
       if (newPeer.deviceId === device.deviceId) return;
 
       playSound('connect');
       triggerHaptic([30]);
       setPeers((prev) => {
+        // If there was an existing socket for this physical device, clean up WebRTC
+        const existing = prev.find((p) => p.deviceId === newPeer.deviceId);
+        if (existing && existing.id !== newPeer.id) {
+          rtcManager.closePeer(existing.id);
+        }
         const filtered = prev.filter((p) => p.deviceId !== newPeer.deviceId);
         return [...filtered, newPeer];
       });
     });
 
     // Socket Event: Peer was renamed
-    newSocket.on('peer-renamed', ({ id, name }) => {
+    newSocket.on('peer-renamed', ({ id, deviceId, name }) => {
       setPeers((prev) =>
-        prev.map((p) => (p.id === id ? { ...p, name } : p))
+        prev.map((p) => ((p.id === id || (deviceId && p.deviceId === deviceId)) ? { ...p, name } : p))
       );
     });
 
@@ -155,6 +170,12 @@ export function App() {
     newSocket.on('peer-left', ({ id, deviceId }) => {
       setPeers((prev) => prev.filter((p) => p.id !== id && (deviceId ? p.deviceId !== deviceId : true)));
       rtcManager.closePeer(id);
+    });
+
+    // Socket Event: This tab was superseded by another tab/browser on this device
+    newSocket.on('tab-superseded', () => {
+      console.warn('Sesi dialihkan ke tab/browser lain pada perangkat ini.');
+      setIsSuperseded(true);
     });
 
     // Socket Event: Instant Text Message received
@@ -169,6 +190,17 @@ export function App() {
       rtcManager.cleanup();
     };
   }, []);
+
+  // Reactivate session if superseded by another tab/browser
+  const handleReactivateSession = () => {
+    if (socket && socket.connected) {
+      socket.emit('join-room', {
+        roomId,
+        device: selfInfo || getDeviceInfo()
+      });
+      setIsSuperseded(false);
+    }
+  };
 
   // Rename Device Handler
   const handleSaveRename = (newName) => {
@@ -261,6 +293,22 @@ export function App() {
         onOpenQR={() => setIsQrOpen(true)}
         onOpenRename={() => setIsRenameOpen(true)}
       />
+
+      {/* Tab Superseded Notice Banner */}
+      {isSuperseded && (
+        <div className="bg-amber-950/80 border-b border-amber-500/30 px-4 py-2.5 text-amber-200 text-xs sm:text-sm flex items-center justify-between gap-3 z-40 backdrop-blur-sm animate-fadeIn">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-amber-400 animate-pulse"></span>
+            <span>Sesi aktif di browser/tab lain pada perangkat ini.</span>
+          </div>
+          <button
+            onClick={handleReactivateSession}
+            className="px-3 py-1 bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-500/40 rounded-lg text-xs font-medium transition cursor-pointer"
+          >
+            Aktifkan di Sini
+          </button>
+        </div>
+      )}
 
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col justify-center py-2">

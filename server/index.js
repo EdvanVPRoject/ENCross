@@ -51,12 +51,29 @@ app.get('/api/network-info', (req, res) => {
   });
 });
 
+// Helper to normalize client IP address from socket
+function getSocketClientIp(socket) {
+  let ip = socket.handshake.address || socket.conn?.remoteAddress || '';
+  if (ip.startsWith('::ffff:')) {
+    ip = ip.substring(7);
+  }
+  if (ip === '::1' || ip === '127.0.0.1') {
+    return '127.0.0.1';
+  }
+  return ip;
+}
+
 // Socket.IO signaling & presence logic
 io.on('connection', (socket) => {
   let currentRoom = null;
   let peerData = null;
+  let deviceKey = null;
 
-  console.log(`[Socket Connected] ID: ${socket.id}`);
+  const clientIp = getSocketClientIp(socket);
+  const serverIps = getLocalIpAddresses().map(item => item.address);
+  const isHost = clientIp === '127.0.0.1' || serverIps.includes(clientIp);
+
+  console.log(`[Socket Connected] ID: ${socket.id} from IP: ${clientIp} (isHost: ${isHost})`);
 
   // Rename device live
   socket.on('rename-device', ({ name }) => {
@@ -64,10 +81,10 @@ io.on('connection', (socket) => {
       peerData.name = name;
       if (currentRoom && rooms.has(currentRoom)) {
         const roomPeers = rooms.get(currentRoom);
-        if (roomPeers.has(socket.id)) {
-          roomPeers.get(socket.id).name = name;
+        if (roomPeers.has(deviceKey)) {
+          roomPeers.get(deviceKey).name = name;
         }
-        socket.to(currentRoom).emit('peer-renamed', { id: socket.id, name });
+        socket.to(currentRoom).emit('peer-renamed', { id: socket.id, deviceId: deviceKey, name });
       }
     }
   });
@@ -75,13 +92,18 @@ io.on('connection', (socket) => {
   // Register device in a room
   socket.on('join-room', ({ roomId, device }) => {
     currentRoom = roomId || 'default-room';
-    const deviceId = device?.deviceId || socket.id;
+
+    // Unique physical hardware key on LAN:
+    // All browsers on the same phone share the same client LAN IP.
+    // All browsers on the laptop share the host identity.
+    deviceKey = isHost ? 'host_pc' : `client_${clientIp}`;
 
     peerData = {
       id: socket.id,
-      deviceId,
-      name: device?.name || 'Unknown Device',
-      deviceType: device?.deviceType || 'desktop',
+      deviceId: deviceKey,
+      clientIp,
+      name: device?.name || (isHost ? 'PC' : 'Smartphone'),
+      deviceType: device?.deviceType || (isHost ? 'desktop' : 'mobile'),
       os: device?.os || 'Unknown OS',
       browser: device?.browser || 'Browser',
       joinedAt: Date.now()
@@ -90,28 +112,32 @@ io.on('connection', (socket) => {
     socket.join(currentRoom);
 
     if (!rooms.has(currentRoom)) {
-      rooms.set(currentRoom, new Map()); // deviceId -> peerData
+      rooms.set(currentRoom, new Map()); // deviceKey -> peerData
     }
 
     const roomPeers = rooms.get(currentRoom);
 
-    // If this device was already connected (e.g. older tab), notify or update
-    const existingPeer = roomPeers.get(deviceId);
-    if (existingPeer && existingPeer.id !== socket.id) {
-      console.log(`[Device Reconnected] ${peerData.name} replaced old tab ${existingPeer.id}`);
-      // Notify old tab that a newer tab took over
-      io.to(existingPeer.id).emit('tab-superseded');
+    // If another browser on the same physical phone/PC was connected, replace it
+    const existing = roomPeers.get(deviceKey);
+    if (existing && existing.id !== socket.id) {
+      console.log(`[Device Handover] ${peerData.name} on ${clientIp} switched from socket ${existing.id} to ${socket.id}`);
+      io.to(existing.id).emit('tab-superseded');
+
+      // Preserve existing custom name if the new connecting tab uses a generic default name
+      if (existing.name && (!device?.name || device.name === 'PC' || device.name === 'Smartphone' || device.name.includes('Windows PC') || device.name.includes('Android Phone'))) {
+        peerData.name = existing.name;
+      }
     }
 
-    roomPeers.set(deviceId, peerData);
+    roomPeers.set(deviceKey, peerData);
 
-    console.log(`[Room: ${currentRoom}] ${peerData.name} (${deviceId}) active. Total unique devices: ${roomPeers.size}`);
+    console.log(`[Room: ${currentRoom}] ${peerData.name} (${deviceKey}) online. Total physical devices: ${roomPeers.size}`);
 
-    // Notify other devices in the room (skip self device)
+    // Notify other physical devices in the room (skip self deviceKey)
     socket.to(currentRoom).emit('peer-joined', peerData);
 
-    // Send unique peers list (excluding self deviceId)
-    const peersList = Array.from(roomPeers.values()).filter(p => p.deviceId !== deviceId);
+    // Send unique peers list (excluding self deviceKey)
+    const peersList = Array.from(roomPeers.values()).filter(p => p.deviceId !== deviceKey);
     socket.emit('room-peers', {
       self: peerData,
       peers: peersList,
