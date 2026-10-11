@@ -241,6 +241,36 @@ Proyek ini dirancang dan dikembangkan secara mandiri oleh:
 
 ---
 
+## Panduan Pengembangan Lanjutan & Kontribusi
+
+Proyek ini terbuka bagi siapa saja yang ingin mempelajari, menambahkan fitur baru, atau mengembangkannya lebih jauh.
+
+### Alur Kontribusi
+1. **Fork** repositori ini ke akun GitHub Anda.
+2. Buat branch baru untuk fitur atau perbaikan Anda:
+   ```bash
+   git checkout -b feature/nama-fitur
+   ```
+3. Lakukan commit perubahan Anda dengan pesan yang deskriptif:
+   ```bash
+   git commit -m "feat: deskripsi perubahan fitur"
+   ```
+4. Push branch ke repositori hasil fork:
+   ```bash
+   git push origin feature/nama-fitur
+   ```
+5. Buka **Pull Request (PR)** ke branch `main` repositori ini.
+
+### Peluang & Ide Pengembangan (Roadmap)
+Berikut beberapa ide fitur yang dapat dieksplorasi lebih lanjut:
+- **Enkripsi End-to-End (E2EE):** Mengimplementasikan enkripsi tingkat aplikasi menggunakan WebCrypto API (AES-256-GCM) di atas WebRTC DataChannel untuk privasi ekstra.
+- **Transfer Folder & Multi-File:** Menambahkan kemampuan membaca dan merekonstruksi struktur direktori utuh saat pengiriman file.
+- **Auto-Discovery Jaringan (mDNS / UDP):** Menambahkan deteksi otomatis host di jaringan LAN sehingga smartphone dapat langsung terhubung tanpa memasukkan IP manual.
+- **Dukungan Multi-Platform Tambahan:** Menambahkan skrip build Electron untuk platform Linux (`.deb` / `.AppImage`) dan macOS (`.dmg`).
+- **Intercom Audio P2P:** Mengembangkan komunikasi suara langsung antar-perangkat menggunakan WebRTC AudioStream.
+
+---
+
 ## Bug Reports & Feedback
 
 If you encounter any bugs, unexpected behavior, or have suggestions for improvements, please feel free to open an issue on the [GitHub Issues](https://github.com/EdvanVPRoject/ENCross/issues) page. Your feedback is greatly appreciated!
