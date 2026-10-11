@@ -1,7 +1,6 @@
-# ⚡ ENCross: High-Performance Cross-Device P2P File Transfer & Screen Hub
+# ENCross
 
-> **Zero-Cloud, High-Speed P2P File Transfer & Real-Time Screen Hub over Local Area Network (WebRTC + WebSockets)**  
-> Bagian dari inisiatif pengembangan proyek mandiri **EN Ecosystem** oleh [Edvan Nuriana Putra Septia](https://github.com/EdvanVPRoject).
+> Projek yang saya buat sendiri untuk membantu sehari-hari.
 
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.x-646CFF.svg?logo=vite)](https://vitejs.dev/)
@@ -14,9 +13,9 @@
 
 ---
 
-## 📌 Latar Belakang & Masalah
+## Latar Belakang
 
-Berbagi file berukuran besar (video 4K, arsip ZIP, foto resolusi tinggi, dokumen) atau berbagi layar antar perangkat dengan sistem operasi berbeda (**Windows** $\leftrightarrow$ **Android / iOS / macOS**) umumnya menghadapi kendala:
+Berbagi file berukuran besar (video, arsip ZIP, foto resolusi tinggi, dokumen) atau berbagi layar antar perangkat dengan sistem operasi berbeda (**Windows** $\leftrightarrow$ **Android / iOS / macOS**) umumnya menghadapi kendala:
 1. **Layanan Cloud Drive (Google Drive, Telegram, WhatsApp):** Menghabiskan kuota internet dua kali (*upload* lalu *download*), memakan waktu lama, memiliki batasan ukuran file, dan menimbulkan kekhawatiran privasi data.
 2. **Kabel Data & Flashdisk:** Kurang fleksibel dan memerlukan adaptor OTG atau kabel fisik.
 3. **Ekosistem Tertutup (AirDrop / Quick Share):** Terbatas hanya pada vendor atau ekosistem perangkat tertentu.
@@ -24,45 +23,45 @@ Berbagi file berukuran besar (video 4K, arsip ZIP, foto resolusi tinggi, dokumen
 **ENCross** memecahkan masalah ini dengan menghadirkan solusi transfer lokal berkecepatan tinggi:
 - **Zero Cloud Storage:** File dialirkan langsung dari memori perangkat pengirim ke perangkat penerima (**Peer-to-Peer**) melalui protokol **WebRTC DataChannel**.
 - **Tanpa Akun & Tanpa Login:** Cukup buka aplikasi atau scan QR Code di jaringan Wi-Fi/LAN yang sama.
-- **Cross-Platform Sejati:** Tersedia sebagai aplikasi desktop **Windows** (Electron), aplikasi mobile **Android** (Capacitor APK), serta web browser murni (**PWA**).
+- **Cross-Platform:** Tersedia sebagai aplikasi desktop **Windows** (Electron), aplikasi mobile **Android** (Capacitor APK), serta web browser (**PWA**).
 
 ---
 
-## 🚀 Fitur Unggulan
+## Fitur Utama
 
-### 1. ⚡ Transfer File P2P Berkecepatan Tinggi
+### 1. Transfer File P2P Berkecepatan Tinggi
 - Memanfaatkan **WebRTC RTCDataChannel** dengan chunking memori 64KB dan mekanisme *backpressure flow control* (`bufferedAmountLow`).
-- Kecepatan transfer memanfaatkan throughput penuh Wi-Fi LAN lokal (mencapai 50–100 MB/s tanpa terpengaruh kecepatan internet).
+- Kecepatan transfer memanfaatkan throughput penuh Wi-Fi LAN lokal tanpa terpengaruh kecepatan internet.
 - Mendukung pengiriman file berukuran besar tanpa risiko kehabisan memori (*out of memory*).
 
-### 2. 📱 Pairing Cepat via QR Code & Auto-Close
+### 2. Pairing Cepat via QR Code & Auto-Close
 - Laptop menampilkan QR Code yang memuat alamat IP lokal.
-- Cukup scan menggunakan kamera smartphone; begitu koneksi tersambung, modal QR Code di laptop **otomatis tertutup** (*auto-close*).
-- Opsi langsung untuk **mengunduh file APK Android** langsung dari laptop via LAN atau melalui **GitHub**.
+- Cukup scan menggunakan kamera smartphone; begitu koneksi tersambung, modal QR Code di laptop otomatis tertutup (*auto-close*).
+- Opsi langsung untuk mengunduh file APK Android langsung dari laptop via LAN atau melalui GitHub.
 
-### 3. 💬 Sinkronisasi Teks & Clipboard Interaktif (Pop-up Toast)
-- Mengirim catatan, nomor telepon, atau tautan web seketika antar perangkat.
-- Dilengkapi **Pop-up Notifikasi Mengambang** yang tidak mengganggu: tidak langsung membuka paksa drawer chat, melainkan memunculkan opsi interaktif:
-  - Tombol **"Buka"** untuk melihat riwayat percakapan.
-  - Tombol **"Salin"** untuk menyalin teks langsung ke clipboard dalam 1 ketukan.
-  - Deteksi URL otomatis (`http://`, `https://`, `www.`) dengan tombol langsung **"Buka Link"**.
+### 3. Sinkronisasi Teks & Clipboard Interaktif
+- Mengirim catatan atau tautan web seketika antar perangkat.
+- Dilengkapi pop-up notifikasi yang tidak mengganggu:
+  - Tombol **"Buka"** untuk melihat riwayat pesan.
+  - Tombol **"Salin"** untuk menyalin teks langsung ke clipboard.
+  - Deteksi URL otomatis dengan tombol langsung **"Buka Link"**.
 
-### 4. 🖥️ Berbagi Layar Real-Time (Live Screen Share)
+### 4. Berbagi Layar Real-Time (Screen Share)
 - Berbagi layar laptop ke layar smartphone (atau sebaliknya) secara langsung dengan latensi ultra-rendah melalui **WebRTC MediaStream**.
-- Terintegrasi dengan Electron `desktopCapturer` untuk performa tangkapan layar desktop yang mulus.
+- Terintegrasi dengan Electron `desktopCapturer` untuk tangkapan layar desktop yang mulus.
 
-### 5. 💻 Aplikasi Desktop Windows Lengkap
+### 5. Aplikasi Desktop Windows
 - Dibangun dengan **Electron**, dilengkapi embedded in-process server Express & Socket.IO.
-- Berjalan di latar belakang (**System Tray**) tanpa mengganggu kerja Anda.
-- **Pembuatan Shortcut Desktop Otomatis:** Saat instalasi installer NSIS maupun saat aplikasi portable dijalankan pertama kali, shortcut `ENCross.lnk` otomatis dibuat di Desktop.
+- Berjalan di latar belakang (**System Tray**) tanpa mengganggu kerja.
+- Shortcut `ENCross.lnk` otomatis dibuat di Desktop.
 
-### 6. 📱 Aplikasi Android Native & PWA
+### 6. Aplikasi Android Native & PWA
 - Dapat diinstal sebagai aplikasi native Android (`ENCross.apk`) melalui Capacitor.
 - Dapat juga diakses langsung dari browser smartphone mana pun tanpa instalasi (PWA).
 
 ---
 
-## 🏗️ Arsitektur & Alur Kerja Sistem
+## Arsitektur & Alur Kerja Sistem
 
 ### 1. Diagram Alur Koneksi & Transfer Data (Sequence Diagram)
 
@@ -101,7 +100,7 @@ sequenceDiagram
 
 ```mermaid
 graph TD
-    subgraph Host["💻 Laptop / PC (Host Windows App)"]
+    subgraph Host["Laptop / PC (Host Windows App)"]
         UI_PC["Frontend (React 19 + Tailwind v4)"]
         Server_Embedded["Embedded Server (Express + Socket.IO :3001)"]
         Electron_Core["Electron Main Process + System Tray"]
@@ -109,11 +108,11 @@ graph TD
         Electron_Core --> UI_PC
     end
 
-    subgraph Mobile["📱 Smartphone (Android APK / Browser)"]
+    subgraph Mobile["Smartphone (Android APK / Browser)"]
         UI_Mobile["Client UI (Capacitor / PWA)"]
     end
 
-    subgraph Network["🌐 Jaringan Wi-Fi / LAN Lokal"]
+    subgraph Network["Jaringan Wi-Fi / LAN Lokal"]
         Signaling["Signaling & Discovery (WebSockets)"]
         P2P_Tunnel["Direct Peer-to-Peer Tunnel (WebRTC DataChannel / MediaStream)"]
     end
@@ -125,7 +124,7 @@ graph TD
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 | Komponen | Teknologi | Penjelasan Teknis |
 | :--- | :--- | :--- |
@@ -138,7 +137,7 @@ graph TD
 
 ---
 
-## 📂 Struktur Direktori Proyek
+## Struktur Direktori Proyek
 
 ```text
 encross/
@@ -166,7 +165,7 @@ encross/
 
 ---
 
-## 🚀 Panduan Penggunaan & Instalasi
+## Panduan Penggunaan & Instalasi
 
 ### Opsi 1: Menjalankan Aplikasi Siap Pakai (Recommended)
 
@@ -200,7 +199,7 @@ npm run desktop:dev
 
 ---
 
-### 🔨 Cara Melakukan Build Mandiri
+### Cara Build Mandiri
 
 #### 1. Build Executable & Installer Windows (.exe)
 ```bash
@@ -222,14 +221,14 @@ cd android
 
 ---
 
-## 🔄 CI/CD Automation (GitHub Actions)
+## CI/CD Automation (GitHub Actions)
 
 Proyek ini telah dilengkapi pipeline otomatisasi GitHub Actions:
 - Setiap kali Anda melakukan `git push` ke branch `main` atau `master`, workflow [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml) akan secara otomatis mengompilasi file **ENCross Android APK** di cloud dan menyediakannya di tab **GitHub Actions Artifacts**.
 
 ---
 
-## 👨‍💻 Pengembang (Author)
+## Pengembang
 
 Proyek ini dirancang dan dikembangkan secara mandiri oleh:
 
@@ -237,11 +236,11 @@ Proyek ini dirancang dan dikembangkan secara mandiri oleh:
 *Lulusan S1 Sistem Komputer — Universitas Komputer Indonesia (UNIKOM)*  
 *Spesialisasi: IoT, Computer Vision, Embedded Systems, & Fullstack Networking.*
 
-- 🌐 **GitHub:** [https://github.com/EdvanVPRoject](https://github.com/EdvanVPRoject)
-- 💼 **LinkedIn:** [https://linkedin.com/in/edvannuriana](https://linkedin.com/in/edvannuriana)
+- **GitHub:** [https://github.com/EdvanVPRoject](https://github.com/EdvanVPRoject)
+- **LinkedIn:** [https://linkedin.com/in/edvannuriana](https://linkedin.com/in/edvannuriana)
 
 ---
 
-## 📄 Lisensi
+## Lisensi
 
 Didistribusikan di bawah lisensi **MIT License**. Lihat file `LICENSE` untuk informasi lebih lanjut.
