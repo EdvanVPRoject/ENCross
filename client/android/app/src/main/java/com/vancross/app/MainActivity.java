@@ -77,5 +77,23 @@ public class MainActivity extends BridgeActivity {
             }
         }, "AndroidDownloader");
     }
+
+    @Override
+    public void onBackPressed() {
+        if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().evaluateJavascript(
+                "(function() { return (window.__handleAndroidBack && window.__handleAndroidBack()) ? 'true' : 'false'; })()",
+                value -> {
+                    if (value != null && value.contains("true")) {
+                        // Back press was consumed by active modal, drawer, or stream
+                        return;
+                    }
+                    runOnUiThread(() -> MainActivity.super.onBackPressed());
+                }
+            );
+            return;
+        }
+        super.onBackPressed();
+    }
 }
 

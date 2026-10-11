@@ -359,17 +359,19 @@ export function App() {
 
     setupMobileSystem();
 
-    // 3. Mobile Browser Popstate handler (physical/virtual back button in Chrome / PWA)
+    // 3. Mobile Browser Popstate handler & Native Android bridge
     const handlePopState = () => {
       handleBackStep();
     };
     window.addEventListener('popstate', handlePopState);
+    window.__handleAndroidBack = () => handleBackStep();
 
     return () => {
       if (backListener && typeof backListener.remove === 'function') {
         backListener.remove();
       }
       window.removeEventListener('popstate', handlePopState);
+      delete window.__handleAndroidBack;
     };
   }, []);
 
