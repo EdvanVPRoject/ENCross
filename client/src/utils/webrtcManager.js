@@ -10,6 +10,80 @@ const ICE_SERVERS = {
 const CHUNK_SIZE = 64 * 1024; // 64 KB chunks for fast WebRTC throughput
 const BUFFER_THRESHOLD = 8 * 1024 * 1024; // 8 MB backpressure limit
 
+// Native Android MediaProjection Screen Mirroring helper
+function startNativeAndroidScreenCapture() {
+  return new Promise((resolve, reject) => {
+    if (!window.AndroidScreenShare?.startScreenCapture) {
+      return reject(new Error('Modul Native Screen Share tidak terdeteksi di aplikasi ini.'));
+    }
+
+    let canvas = document.getElementById('__nativeScreenMirrorCanvas');
+    if (!canvas) {
+      canvas = document.createElement('canvas');
+      canvas.id = '__nativeScreenMirrorCanvas';
+      canvas.width = 540;
+      canvas.height = 960;
+      canvas.style.display = 'none';
+      canvas.style.position = 'fixed';
+      canvas.style.left = '-9999px';
+      document.body.appendChild(canvas);
+    }
+
+    const ctx = canvas.getContext('2d');
+    let streamResolved = false;
+
+    const timeout = setTimeout(() => {
+      if (!streamResolved) {
+        window.__onNativeScreenError = null;
+        window.__onNativeScreenStarted = null;
+        window.__onNativeScreenFrame = null;
+        reject(new Error('Waktu permintaan izin siaran layar habis.'));
+      }
+    }, 60000);
+
+    window.__onNativeScreenError = (msg) => {
+      clearTimeout(timeout);
+      window.__onNativeScreenFrame = null;
+      window.__onNativeScreenStarted = null;
+      window.__onNativeScreenError = null;
+      reject(new Error(msg || 'Izin siaran layar ditolak.'));
+    };
+
+    window.__onNativeScreenStarted = (w, h) => {
+      if (w && h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+      if (!streamResolved) {
+        streamResolved = true;
+        clearTimeout(timeout);
+        if (ctx) {
+          ctx.fillStyle = '#09090b';
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
+        }
+        const stream = canvas.captureStream ? canvas.captureStream(22) : null;
+        if (!stream) {
+          return reject(new Error('WebView Android tidak mendukung captureStream.'));
+        }
+        resolve(stream);
+      }
+    };
+
+    window.__onNativeScreenFrame = (base64) => {
+      const img = new Image();
+      img.onload = () => {
+        if (ctx) {
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        }
+      };
+      img.src = 'data:image/jpeg;base64,' + base64;
+    };
+
+    // Trigger Android MediaProjection system popup
+    window.AndroidScreenShare.startScreenCapture();
+  });
+}
+
 export class WebRTCManager {
   constructor(socket, selfInfo) {
     this.socket = socket;
@@ -396,7 +470,7 @@ export class WebRTCManager {
     const pc = this.getOrCreatePeerConnection(peerId);
     const peerObj = this.peers.get(peerId);
 
-    if (!navigator.mediaDevices) {
+    if (!navigator.mediaDevices && !window.AndroidScreenShare?.isScreenCaptureAvailable?.()) {
       throw new Error('Akses kamera/layar di HP dibatasi oleh Chrome jika bukan HTTPS. Buka web menggunakan alamat https:// (koneksi aman).');
     }
 
@@ -435,21 +509,25 @@ export class WebRTCManager {
         }
       } catch (_) {}
     } else {
-      // Screen mirror mode
-      if (!navigator.mediaDevices.getDisplayMedia) {
-        throw new Error('Mirroring Layar dari HP dibatasi oleh sistem Android WebView (memerlukan izin MediaProjection). Silakan gunakan mode Kamera HP (Wireless Cam) dari HP, atau lakukan Mirroring Layar dari Laptop ke HP.');
-      }
+      // Screen mirror mode: Prioritize Native MediaProjection on Android APK
+      const hasNativeCapture = typeof window !== 'undefined' && Boolean(window.AndroidScreenShare?.isScreenCaptureAvailable?.());
 
-      try {
-        stream = await navigator.mediaDevices.getDisplayMedia({
-          video: true,
-          audio: false
-        });
-      } catch (dispErr) {
-        if (dispErr.name === 'NotAllowedError') {
-          throw new Error('Izin berbagi layar dibatalkan.');
+      if (hasNativeCapture) {
+        stream = await startNativeAndroidScreenCapture();
+      } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        try {
+          stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true,
+            audio: false
+          });
+        } catch (dispErr) {
+          if (dispErr.name === 'NotAllowedError') {
+            throw new Error('Izin berbagi layar dibatalkan.');
+          }
+          throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
         }
-        throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
+      } else {
+        throw new Error('Mirroring Layar dari HP dibatasi oleh sistem Android WebView. Gunakan aplikasi ENCross APK untuk siaran layar via MediaProjection.');
       }
     }
 
@@ -631,6 +709,11 @@ export class WebRTCManager {
   }
 
   stopScreenShare(peerId) {
+    if (typeof window !== 'undefined' && window.AndroidScreenShare?.stopScreenCapture) {
+      try {
+        window.AndroidScreenShare.stopScreenCapture();
+      } catch (_) {}
+    }
     const peerObj = this.peers.get(peerId);
     if (peerObj && peerObj.localStream) {
       peerObj.localStream.getTracks().forEach((track) => track.stop());

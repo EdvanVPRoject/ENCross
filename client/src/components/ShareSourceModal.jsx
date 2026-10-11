@@ -5,7 +5,8 @@ import { triggerHaptic } from '../utils/feedback';
 export function ShareSourceModal({ isOpen, onClose, onSelect }) {
   if (!isOpen) return null;
 
-  const canShareScreen = typeof navigator !== 'undefined' && navigator.mediaDevices && Boolean(navigator.mediaDevices.getDisplayMedia);
+  const hasNativeCapture = typeof window !== 'undefined' && Boolean(window.AndroidScreenShare?.isScreenCaptureAvailable?.());
+  const canShareScreen = (typeof navigator !== 'undefined' && navigator.mediaDevices && Boolean(navigator.mediaDevices.getDisplayMedia)) || hasNativeCapture;
 
   return (
     <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
@@ -63,11 +64,16 @@ export function ShareSourceModal({ isOpen, onClose, onSelect }) {
               <Smartphone className="w-5 h-5" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-white">Layar HP (Screen Mirror)</h4>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-white">Layar HP (Screen Mirror)</h4>
+                {hasNativeCapture && (
+                  <span className="text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-1 rounded font-medium">Native</span>
+                )}
+              </div>
               <p className="text-[10px] text-zinc-400 leading-tight">
                 {canShareScreen
-                  ? 'Bagikan tampilan layar ponsel Anda'
-                  : 'Dibatasi OS Android (Buka Bagi Layar dari Laptop untuk lihat ke HP)'}
+                  ? 'Bagikan tampilan layar ponsel Anda ke laptop'
+                  : 'Buka Bagi Layar dari Laptop untuk melihat ke HP'}
               </p>
             </div>
           </button>
