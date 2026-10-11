@@ -1,5 +1,5 @@
 import React, { useRef } from 'react';
-import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, QrCode, Wifi, Activity, SwitchCamera, Plus } from 'lucide-react';
+import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, Camera, QrCode, Wifi, Activity, SwitchCamera, Plus } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import logoImg from '../assets/logo.png';
 
@@ -15,6 +15,8 @@ export function PeersRadar({
   onSendFile,
   onOpenTextSync,
   onStartScreenShare,
+  onRequestRemoteScreen,
+  onRequestRemoteCamera,
   onOpenQR,
   isMobile,
   onOpenConnect
@@ -206,53 +208,156 @@ export function PeersRadar({
                     <span>Kirim File / Foto</span>
                   </button>
 
-                  <div className="grid grid-cols-2 gap-2">
-                    {/* Send Text */}
-                    <button
-                      onClick={() => {
-                        triggerHaptic([30]);
-                        onOpenTextSync(peer);
-                      }}
-                      className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                        unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
-                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                      }`}
-                    >
-                      <MessageSquare
-                        className={`w-3.5 h-3.5 ${
-                          unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                            ? 'text-emerald-400 animate-bounce'
-                            : 'text-zinc-400'
-                        }`}
-                      />
-                      <span>
-                        {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                          ? 'Pesan Baru'
-                          : 'Kirim Teks'}
-                      </span>
-                    </button>
+                  {isMobile ? (
+                    /* MOBILE PEER ACTIONS */
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Send Text */}
+                        <button
+                          onClick={() => {
+                            triggerHaptic([30]);
+                            onOpenTextSync(peer);
+                          }}
+                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                            unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                          }`}
+                        >
+                          <MessageSquare
+                            className={`w-3.5 h-3.5 ${
+                              unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                                ? 'text-emerald-400 animate-bounce'
+                                : 'text-zinc-400'
+                            }`}
+                          />
+                          <span>
+                            {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                              ? 'Pesan Baru'
+                              : 'Kirim Teks'}
+                          </span>
+                        </button>
 
-                    {/* Screen Share / Stop Share */}
-                    <button
-                      onClick={() => {
-                        triggerHaptic([30]);
-                        onStartScreenShare(peer.id);
-                      }}
-                      className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                        activeSharingPeerId === peer.id
-                          ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
-                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                      }`}
-                    >
-                      <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id ? 'text-red-400 animate-pulse' : 'text-zinc-400'}`} />
-                      <span>
-                        {activeSharingPeerId === peer.id
-                          ? (activeSharingMode === 'camera' ? 'Stop Kamera' : 'Stop Layar')
-                          : (isMobile ? 'Kamera / Layar' : 'Bagi Layar')}
-                      </span>
-                    </button>
-                  </div>
+                        {/* Screen Mirror Button (Direct, NEVER camera) */}
+                        <button
+                          onClick={() => {
+                            triggerHaptic([30]);
+                            onStartScreenShare(peer.id, 'screen');
+                          }}
+                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                            activeSharingPeerId === peer.id && activeSharingMode === 'screen'
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                              : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
+                          }`}
+                        >
+                          <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id && activeSharingMode === 'screen' ? 'text-red-400 animate-pulse' : 'text-sky-400'}`} />
+                          <span>
+                            {activeSharingPeerId === peer.id && activeSharingMode === 'screen'
+                              ? 'Stop Layar'
+                              : 'Mirror Layar'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* Webcam HP Button */}
+                      <button
+                        onClick={() => {
+                          triggerHaptic([30]);
+                          onStartScreenShare(peer.id, 'camera');
+                        }}
+                        className={`w-full flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                          activeSharingPeerId === peer.id && activeSharingMode === 'camera'
+                            ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                        }`}
+                      >
+                        <Camera className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id && activeSharingMode === 'camera' ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`} />
+                        <span>
+                          {activeSharingPeerId === peer.id && activeSharingMode === 'camera'
+                            ? 'Stop Webcam'
+                            : 'Webcam HP (Wireless Cam)'}
+                        </span>
+                      </button>
+                    </div>
+                  ) : (
+                    /* DESKTOP / LAPTOP PEER ACTIONS */
+                    <div className="space-y-2">
+                      <div className="grid grid-cols-2 gap-2">
+                        {/* Send Text */}
+                        <button
+                          onClick={() => {
+                            triggerHaptic([30]);
+                            onOpenTextSync(peer);
+                          }}
+                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                            unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                          }`}
+                        >
+                          <MessageSquare
+                            className={`w-3.5 h-3.5 ${
+                              unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                                ? 'text-emerald-400 animate-bounce'
+                                : 'text-zinc-400'
+                            }`}
+                          />
+                          <span>
+                            {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                              ? 'Pesan Baru'
+                              : 'Kirim Teks'}
+                          </span>
+                        </button>
+
+                        {/* Share PC Screen */}
+                        <button
+                          onClick={() => {
+                            triggerHaptic([30]);
+                            onStartScreenShare(peer.id, 'screen');
+                          }}
+                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                            activeSharingPeerId === peer.id
+                              ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                          }`}
+                        >
+                          <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id ? 'text-red-400 animate-pulse' : 'text-zinc-400'}`} />
+                          <span>
+                            {activeSharingPeerId === peer.id ? 'Stop Layar' : 'Bagi Layar PC'}
+                          </span>
+                        </button>
+                      </div>
+
+                      {/* If peer is a mobile phone: Show "Minta Layar HP" & "Minta Webcam HP" */}
+                      {(peer.deviceType === 'mobile' || /Android|iPhone|iPad/i.test(peer.os)) && (
+                        <div className="grid grid-cols-2 gap-2">
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              if (onRequestRemoteScreen) onRequestRemoteScreen(peer.id);
+                            }}
+                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 transition cursor-pointer active:scale-95"
+                            title="Minta siaran layar ponsel ini ditampilkan di layar laptop"
+                          >
+                            <Smartphone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                            <span className="truncate">Minta Layar HP</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
+                            }}
+                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-95"
+                            title="Jadikan kamera ponsel ini sebagai webcam nirkabel"
+                          >
+                            <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                            <span className="truncate">Webcam HP</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Quick Switch Camera Button on Peer Card when Camera Streaming */}
                   {activeSharingPeerId === peer.id && activeSharingMode === 'camera' && onSwitchCamera && (

@@ -191,6 +191,24 @@ export function App() {
       }
     });
 
+    // Socket Event: Remote peer requested screen mirror (e.g. laptop requesting HP screen)
+    newSocket.on('remote-screen-requested', ({ requesterId }) => {
+      if (requesterId) {
+        playSound('connect');
+        triggerHaptic([40]);
+        executeStream(requesterId, 'screen');
+      }
+    });
+
+    // Socket Event: Remote peer requested camera stream (e.g. laptop requesting HP webcam)
+    newSocket.on('remote-camera-requested', ({ requesterId }) => {
+      if (requesterId) {
+        playSound('connect');
+        triggerHaptic([40]);
+        executeStream(requesterId, 'camera');
+      }
+    });
+
     newSocket.on('camera-facing-changed', ({ facingMode }) => {
       if (facingMode) {
         setCameraFacingMode(facingMode);
@@ -508,7 +526,7 @@ export function App() {
   };
 
   // Screen / Camera Share Handler (Toggle start/stop)
-  const handleStartScreenShare = async (peerId) => {
+  const handleStartScreenShare = async (peerId, explicitMode = null) => {
     if (!webrtcManagerRef.current) return;
 
     if (activeSharingPeerId === peerId) {
@@ -519,7 +537,12 @@ export function App() {
       return;
     }
 
-    // On mobile devices, prompt user to choose Screen or Camera
+    if (explicitMode) {
+      executeStream(peerId, explicitMode);
+      return;
+    }
+
+    // On mobile devices, prompt user to choose Screen or Camera if not explicitly selected
     if (selfInfo?.deviceType === 'mobile') {
       setPendingTargetPeerId(peerId);
       setIsSourceModalOpen(true);
@@ -548,6 +571,20 @@ export function App() {
     if (!socket || !targetId) return;
     triggerHaptic([30]);
     socket.emit('request-camera-switch', { targetId });
+  };
+
+  // Remote viewer request peer to start screen mirror (e.g. laptop requesting HP screen)
+  const handleRequestRemoteScreen = (targetId) => {
+    if (!socket || !targetId) return;
+    triggerHaptic([30]);
+    socket.emit('request-remote-screen', { targetId });
+  };
+
+  // Remote viewer request peer to start camera stream (e.g. laptop requesting HP webcam)
+  const handleRequestRemoteCamera = (targetId) => {
+    if (!socket || !targetId) return;
+    triggerHaptic([30]);
+    socket.emit('request-remote-camera', { targetId });
   };
 
   // Open Chat Drawer from Floating Notification Pop-up
@@ -687,6 +724,8 @@ export function App() {
             }
           }}
           onStartScreenShare={handleStartScreenShare}
+          onRequestRemoteScreen={handleRequestRemoteScreen}
+          onRequestRemoteCamera={handleRequestRemoteCamera}
           onOpenQR={() => setIsQrOpen(true)}
           isMobile={isMobileDevice}
           onOpenConnect={() => setIsServerIpModalOpen(true)}

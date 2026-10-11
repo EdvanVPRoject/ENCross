@@ -23,9 +23,14 @@ function startNativeAndroidScreenCapture() {
       canvas.id = '__nativeScreenMirrorCanvas';
       canvas.width = 540;
       canvas.height = 960;
-      canvas.style.display = 'none';
       canvas.style.position = 'fixed';
+      canvas.style.top = '0px';
       canvas.style.left = '-9999px';
+      canvas.style.width = '1px';
+      canvas.style.height = '1px';
+      canvas.style.opacity = '0.01';
+      canvas.style.pointerEvents = 'none';
+      canvas.style.zIndex = '-9999';
       document.body.appendChild(canvas);
     }
 
@@ -69,12 +74,19 @@ function startNativeAndroidScreenCapture() {
       }
     };
 
+    let isDrawing = false;
     window.__onNativeScreenFrame = (base64) => {
+      if (isDrawing) return; // Drop frame if previous is still drawing to maintain 0-latency live stream
+      isDrawing = true;
       const img = new Image();
       img.onload = () => {
         if (ctx) {
           ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
         }
+        isDrawing = false;
+      };
+      img.onerror = () => {
+        isDrawing = false;
       };
       img.src = 'data:image/jpeg;base64,' + base64;
     };

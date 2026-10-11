@@ -26,14 +26,46 @@ export function ShareSourceModal({ isOpen, onClose, onSelect }) {
         </p>
 
         <div className="space-y-2.5">
-          {/* Kamera HP (Wireless Cam) - Top Option */}
+          {/* Layar HP (Screen Mirror) - Primary Option */}
+          <button
+            onClick={() => {
+              triggerHaptic([30]);
+              onSelect('screen');
+              onClose();
+            }}
+            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition active:scale-95 cursor-pointer shadow-xs ${
+              canShareScreen
+                ? 'bg-sky-500/10 hover:bg-sky-500/20 border-sky-500/30'
+                : 'bg-zinc-800/60 hover:bg-zinc-800 border-zinc-700/40 text-zinc-400'
+            }`}
+          >
+            <div className="p-2 rounded-lg bg-sky-500/20 text-sky-400 shrink-0">
+              <Smartphone className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-white">Layar HP (Screen Mirror)</h4>
+                <span className="text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-1 rounded font-medium">Utama</span>
+                {hasNativeCapture && (
+                  <span className="text-[9px] bg-zinc-800 text-sky-300 border border-zinc-700 px-1 rounded font-mono">Native</span>
+                )}
+              </div>
+              <p className="text-[10px] text-zinc-400 leading-tight">
+                {canShareScreen
+                  ? 'Bagikan tampilan layar HP secara live ke Laptop'
+                  : 'Unduh versi APK untuk siaran layar via MediaProjection'}
+              </p>
+            </div>
+          </button>
+
+          {/* Kamera HP (Wireless Cam) */}
           <button
             onClick={() => {
               triggerHaptic([30]);
               onSelect('camera');
               onClose();
             }}
-            className="w-full flex items-center gap-3 p-3 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/30 text-left transition active:scale-95 cursor-pointer shadow-xs"
+            className="w-full flex items-center gap-3 p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700/80 border border-zinc-700/60 text-left transition active:scale-95 cursor-pointer shadow-xs"
           >
             <div className="p-2 rounded-lg bg-emerald-500/20 text-emerald-400 shrink-0">
               <Camera className="w-5 h-5" />
@@ -41,40 +73,9 @@ export function ShareSourceModal({ isOpen, onClose, onSelect }) {
             <div>
               <div className="flex items-center gap-1.5">
                 <h4 className="text-xs font-semibold text-white">Kamera HP (Wireless Cam)</h4>
-                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-medium">Utama</span>
+                <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-medium">Webcam</span>
               </div>
-              <p className="text-[11px] text-zinc-400">Jadikan webcam laptop (Depan & Belakang)</p>
-            </div>
-          </button>
-
-          {/* Layar HP (Screen Mirror) */}
-          <button
-            onClick={() => {
-              triggerHaptic([30]);
-              onSelect('screen');
-              onClose();
-            }}
-            className={`w-full flex items-center gap-3 p-3 rounded-xl border text-left transition active:scale-95 cursor-pointer ${
-              canShareScreen
-                ? 'bg-zinc-800 hover:bg-zinc-700/80 border-zinc-700/60'
-                : 'bg-zinc-800/60 hover:bg-zinc-800 border-zinc-700/40 text-zinc-400'
-            }`}
-          >
-            <div className="p-2 rounded-lg bg-zinc-900 text-sky-400 shrink-0">
-              <Smartphone className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="flex items-center gap-1.5">
-                <h4 className="text-xs font-semibold text-white">Layar HP (Screen Mirror)</h4>
-                {hasNativeCapture && (
-                  <span className="text-[9px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-1 rounded font-medium">Native</span>
-                )}
-              </div>
-              <p className="text-[10px] text-zinc-400 leading-tight">
-                {canShareScreen
-                  ? 'Bagikan tampilan layar ponsel Anda ke laptop'
-                  : 'Buka Bagi Layar dari Laptop untuk melihat ke HP'}
-              </p>
+              <p className="text-[11px] text-zinc-400">Jadikan kamera ponsel sebagai webcam (Depan & Belakang)</p>
             </div>
           </button>
         </div>

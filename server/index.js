@@ -297,6 +297,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Request remote peer to start screen mirror (e.g. Laptop requesting HP screen)
+  socket.on('request-remote-screen', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-screen-requested', {
+        requesterId: socket.id
+      });
+    }
+  });
+
+  // Request remote peer to start camera stream (e.g. Laptop requesting HP webcam)
+  socket.on('request-remote-camera', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-camera-requested', {
+        requesterId: socket.id
+      });
+    }
+  });
+
   socket.on('camera-facing-changed', ({ targetId, facingMode }) => {
     if (targetId) {
       io.to(targetId).emit('camera-facing-changed', {

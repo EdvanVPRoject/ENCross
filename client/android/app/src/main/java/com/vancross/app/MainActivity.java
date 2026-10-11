@@ -38,6 +38,7 @@ public class MainActivity extends BridgeActivity {
     private HandlerThread captureThread;
     private Handler captureHandler;
     private volatile boolean isCapturingScreen = false;
+    private volatile boolean isDispatchingFrame = false;
     private long lastFrameTime = 0;
 
     @Override
@@ -220,6 +221,11 @@ public class MainActivity extends BridgeActivity {
                         return;
                     }
 
+                    if (isDispatchingFrame) {
+                        image.close();
+                        return;
+                    }
+
                     long now = System.currentTimeMillis();
                     if (now - lastFrameTime < 45) { // ~22 FPS cap
                         image.close();
@@ -253,17 +259,26 @@ public class MainActivity extends BridgeActivity {
                     baos.close();
 
                     final String base64 = Base64.encodeToString(jpegBytes, Base64.NO_WRAP);
+                    isDispatchingFrame = true;
 
                     runOnUiThread(() -> {
-                        if (getBridge() != null && getBridge().getWebView() != null && isCapturingScreen) {
-                            getBridge().getWebView().evaluateJavascript(
-                                "window.__onNativeScreenFrame && window.__onNativeScreenFrame('" + base64 + "')",
-                                null
-                            );
+                        try {
+                            if (getBridge() != null && getBridge().getWebView() != null && isCapturingScreen) {
+                                getBridge().getWebView().evaluateJavascript(
+                                    "window.__onNativeScreenFrame && window.__onNativeScreenFrame('" + base64 + "')",
+                                    val -> {
+                                        isDispatchingFrame = false;
+                                    }
+                                );
+                            } else {
+                                isDispatchingFrame = false;
+                            }
+                        } catch (Exception ex) {
+                            isDispatchingFrame = false;
                         }
                     });
                 } catch (Exception ex) {
-                    // Frame drop or conversion note
+                    isDispatchingFrame = false;
                 } finally {
                     if (image != null) {
                         image.close();
@@ -288,6 +303,7 @@ public class MainActivity extends BridgeActivity {
 
     private void stopScreenCaptureInternal() {
         isCapturingScreen = false;
+        isDispatchingFrame = false;
         try {
             if (virtualDisplay != null) {
                 virtualDisplay.release();
@@ -329,6 +345,15 @@ public class MainActivity extends BridgeActivity {
                 );
             }
         });
+    }
+
+    @Override
+    public void onPause() {
+        if (isCapturingScreen) {
+            // Keep WebView rendering active during background screen mirroring
+            return;
+        }
+        super.onPause();
     }
 
     @Override
