@@ -10,5 +10,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   minimizeToTray: () => {
     ipcRenderer.send('minimize-to-tray');
   },
-  createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut')
+  createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),
+  saveFileToEncross: (data) => ipcRenderer.invoke('save-file-to-encross', data)
 });

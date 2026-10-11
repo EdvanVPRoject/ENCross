@@ -1,14 +1,53 @@
 import React, { useEffect } from 'react';
-import { Upload, Download, CheckCircle2, X, ArrowDownToLine } from 'lucide-react';
+import { Upload, Download, CheckCircle2, X, ArrowDownToLine, FolderCheck } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
+import { getEncrossSubfolder } from '../utils/fileCategorizer';
 
 export function TransferProgressModal({ transfer, onClose }) {
   if (!transfer) return null;
 
   const isUpload = transfer.direction === 'upload';
   const isDone = transfer.completed;
+  const subfolder = getEncrossSubfolder(transfer.fileName, transfer.mimeType || transfer.blob?.type);
+  const targetFolderDisplay = `Downloads/ENCross${subfolder ? '/' + subfolder : ''}`;
 
   const handleDownloadBlob = () => {
+    const fileName = transfer.fileName || 'file';
+
+    // 1. Desktop (Electron) Direct Save to Downloads/ENCross/{subfolder}
+    if (window.electronAPI?.saveFileToEncross && transfer.blob) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        window.electronAPI.saveFileToEncross({
+          fileName,
+          base64Data,
+          mimeType: transfer.mimeType || transfer.blob?.type
+        });
+      };
+      reader.readAsDataURL(transfer.blob);
+      return;
+    }
+
+    // 2. Android Native App Direct Save to Downloads/ENCross/{subfolder}
+    if (window.AndroidDownloader?.saveToEncross && transfer.blob) {
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        const base64Data = reader.result.split(',')[1];
+        const success = window.AndroidDownloader.saveToEncross(fileName, base64Data, subfolder);
+        if (!success) {
+          triggerBrowserDownload();
+        }
+      };
+      reader.readAsDataURL(transfer.blob);
+      return;
+    }
+
+    // 3. Web Browser Fallback Download
+    triggerBrowserDownload();
+  };
+
+  const triggerBrowserDownload = () => {
     if (transfer.blobUrl) {
       const a = document.createElement('a');
       a.href = transfer.blobUrl;
@@ -21,10 +60,10 @@ export function TransferProgressModal({ transfer, onClose }) {
 
   // Auto-download file upon completion on both mobile and desktop
   useEffect(() => {
-    if (transfer.completed && transfer.direction === 'download' && transfer.blobUrl) {
+    if (transfer.completed && transfer.direction === 'download') {
       handleDownloadBlob();
     }
-  }, [transfer.completed, transfer.direction, transfer.blobUrl]);
+  }, [transfer.completed, transfer.direction]);
 
   return (
     <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200">
@@ -74,13 +113,17 @@ export function TransferProgressModal({ transfer, onClose }) {
 
         {/* Status Text & Action */}
         <div className="flex items-center justify-between text-xs">
-          <span className="text-zinc-400 text-[11px]">
-            {isDone
-              ? 'Transfer Selesai (Tersimpan)'
-              : isUpload
-              ? `Mengirim (${transfer.progress}%)`
-              : `Menerima (${transfer.progress}%)`}
-          </span>
+          <div className="min-w-0 pr-2">
+            <span className="text-zinc-400 text-[11px] block truncate">
+              {isDone
+                ? isUpload
+                  ? 'File Berhasil Terkirim'
+                  : `Tersimpan di ${targetFolderDisplay}`
+                : isUpload
+                ? `Mengirim (${transfer.progress}%)`
+                : `Menerima (${transfer.progress}%)`}
+            </span>
+          </div>
 
           {isDone && !isUpload && transfer.blobUrl && (
             <button

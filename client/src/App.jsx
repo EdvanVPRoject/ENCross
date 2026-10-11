@@ -192,8 +192,6 @@ export function App() {
 
       playSound('connect');
       triggerHaptic([30]);
-      // Auto-close QR Code modal when phone joins
-      setIsQrOpen(false);
 
       setPeers((prev) => {
         // If there was an existing socket for this physical device, clean up WebRTC

@@ -267,6 +267,84 @@ ipcMain.handle('create-desktop-shortcut', () => {
   return createDesktopShortcut(true);
 });
 
+function getEncrossSubfolder(fileName = '', mimeType = '') {
+  const ext = (fileName || '').split('.').pop().toLowerCase();
+  const mime = (mimeType || '').toLowerCase();
+
+  // 1. Image -> /ENCross/Image
+  if (
+    mime.startsWith('image/') ||
+    ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp', 'ico', 'tiff', 'tif', 'heic', 'raw'].includes(ext)
+  ) {
+    return 'Image';
+  }
+
+  // 2. Video -> /ENCross/Video
+  if (
+    mime.startsWith('video/') ||
+    ['mp4', 'mkv', 'webm', 'avi', 'mov', 'wmv', 'flv', '3gp', 'm4v', 'ts'].includes(ext)
+  ) {
+    return 'Video';
+  }
+
+  // 3. Audio -> /ENCross/Audio
+  if (
+    mime.startsWith('audio/') ||
+    ['mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'wma', 'opus', 'mid'].includes(ext)
+  ) {
+    return 'Audio';
+  }
+
+  // 4. Document -> /ENCross/Document
+  if (
+    mime.includes('pdf') ||
+    mime.includes('word') ||
+    mime.includes('officedocument') ||
+    mime.includes('text') ||
+    mime.includes('excel') ||
+    mime.includes('powerpoint') ||
+    ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'txt', 'csv', 'md', 'epub', 'rtf'].includes(ext)
+  ) {
+    return 'Document';
+  }
+
+  // 5. Acak / Other files -> directly in Downloads/ENCross
+  return '';
+}
+
+ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeType }) => {
+  try {
+    const subfolder = getEncrossSubfolder(fileName, mimeType);
+    const downloadsDir = app.getPath('downloads');
+    const targetDir = subfolder
+      ? path.join(downloadsDir, 'ENCross', subfolder)
+      : path.join(downloadsDir, 'ENCross');
+
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+
+    const filePath = path.join(targetDir, fileName);
+    const buffer = Buffer.from(base64Data, 'base64');
+    fs.writeFileSync(filePath, buffer);
+
+    const relFolder = subfolder ? `Downloads/ENCross/${subfolder}` : 'Downloads/ENCross';
+    if (Notification.isSupported()) {
+      const iconPath = path.join(__dirname, 'assets/icon.png');
+      new Notification({
+        title: 'File Diterima',
+        body: `Disimpan di ${relFolder}/${fileName}`,
+        icon: nativeImage.createFromPath(iconPath)
+      }).show();
+    }
+
+    return { success: true, path: filePath, relFolder };
+  } catch (err) {
+    console.error('[Electron] Error saving file to ENCross folder:', err);
+    return { success: false, error: err.message };
+  }
+});
+
 // Single Instance Lock (prevents multiple desktop windows)
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -308,7 +386,25 @@ if (!gotTheLock) {
       });
     });
 
-    // 3. Start embedded in-process server
+    // 3. Auto-route all downloads into Downloads/ENCross/{subfolder}
+    session.defaultSession.on('will-download', (event, item) => {
+      const fileName = item.getFilename();
+      const mimeType = item.getMimeType();
+      const subfolder = getEncrossSubfolder(fileName, mimeType);
+      const downloadsDir = app.getPath('downloads');
+      const targetDir = subfolder
+        ? path.join(downloadsDir, 'ENCross', subfolder)
+        : path.join(downloadsDir, 'ENCross');
+
+      if (!fs.existsSync(targetDir)) {
+        fs.mkdirSync(targetDir, { recursive: true });
+      }
+
+      const filePath = path.join(targetDir, fileName);
+      item.setSavePath(filePath);
+    });
+
+    // 4. Start embedded in-process server
     await ensureServerRunning();
 
     // 4. Create Window & Tray
