@@ -1,73 +1,47 @@
 const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer } = require('electron');
 const path = require('path');
 const http = require('http');
-const { fork } = require('child_process');
+const fs = require('fs');
+const { startServer, getLocalIpAddresses } = require('./server');
 
 let mainWindow = null;
 let tray = null;
-let serverProcess = null;
 let hasShownTrayTip = false;
 let serverLocalIp = '127.0.0.1';
 
 const isDev = process.env.NODE_ENV === 'development';
 
-// 1. Helper to probe if server is alive on port 3001
-function probeServer(port = 3001) {
-  return new Promise((resolve) => {
-    const req = http.get(`http://127.0.0.1:${port}/api/network-info`, (res) => {
-      let data = '';
-      res.on('data', (chunk) => { data += chunk; });
-      res.on('end', () => {
-        try {
-          const parsed = JSON.parse(data);
-          if (parsed.localIps && parsed.localIps.length > 0) {
-            serverLocalIp = parsed.localIps[0].address;
-          }
-        } catch (_) {}
-        resolve(true);
-      });
-    });
-    req.on('error', () => resolve(false));
-    req.setTimeout(1000, () => {
-      req.abort();
-      resolve(false);
-    });
-  });
+// 1. Resolve distPath correctly in both dev and packaged environments
+function getDistPath() {
+  const candidates = [
+    path.join(__dirname, '../client/dist'),
+    path.join(app.getAppPath(), 'client/dist'),
+    path.join(process.resourcesPath || '', 'app.asar/client/dist'),
+    path.join(__dirname, 'client/dist')
+  ];
+  for (const candidate of candidates) {
+    if (fs.existsSync(candidate) && fs.existsSync(path.join(candidate, 'index.html'))) {
+      return candidate;
+    }
+  }
+  return candidates[0];
 }
 
-// 2. Start background Express & Socket.io server if not already running
+// 2. Start integrated in-process Express & Socket.io server
 async function ensureServerRunning() {
-  const isRunning = await probeServer(3001);
-  if (isRunning) {
-    console.log('[Electron] Server already running on port 3001.');
-    return;
+  const distPath = getDistPath();
+  console.log('[Electron] Initializing embedded server with distPath:', distPath);
+
+  try {
+    const result = await startServer(3001, distPath);
+    console.log(`[Electron] Server is running on port 3001 (isExisting: ${result.isExisting})`);
+  } catch (err) {
+    console.error('[Electron] Server initialization warning:', err);
   }
 
-  const serverScript = path.join(__dirname, '../server/index.js');
-  console.log('[Electron] Spawning server process:', serverScript);
-
-  serverProcess = fork(serverScript, [], {
-    cwd: path.join(__dirname, '../server'),
-    stdio: 'inherit',
-    env: { ...process.env, PORT: '3001' }
-  });
-
-  serverProcess.on('error', (err) => {
-    console.error('[Electron] Failed to start backend server:', err);
-  });
-
-  serverProcess.on('exit', (code) => {
-    console.log(`[Electron] Backend server exited with code ${code}`);
-  });
-
-  // Wait until server starts responding
-  for (let i = 0; i < 25; i++) {
-    await new Promise((r) => setTimeout(r, 200));
-    const ready = await probeServer(3001);
-    if (ready) {
-      console.log('[Electron] Backend server is ready.');
-      return;
-    }
+  const localIps = getLocalIpAddresses();
+  if (localIps.length > 0) {
+    serverLocalIp = localIps[0].address;
   }
 }
 
@@ -93,13 +67,22 @@ function createMainWindow() {
     }
   });
 
-  // Load URL: in dev, check 5173, otherwise load 3001
   const targetUrl = isDev ? 'http://localhost:5173' : 'http://localhost:3001';
   console.log(`[Electron] Loading UI from: ${targetUrl}`);
 
-  mainWindow.loadURL(targetUrl).catch(() => {
-    // Fallback to port 3001 if dev server isn't running
+  mainWindow.loadURL(targetUrl).catch((err) => {
+    console.warn(`[Electron] Failed to load ${targetUrl}, fallback to http://localhost:3001`, err);
     mainWindow.loadURL('http://localhost:3001');
+  });
+
+  // Handle load failure and retry gracefully
+  mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
+    console.error(`[Electron] Load failed: ${validatedURL} (${errorCode}: ${errorDescription})`);
+    setTimeout(() => {
+      if (mainWindow) {
+        mainWindow.loadURL('http://localhost:3001');
+      }
+    }, 600);
   });
 
   mainWindow.once('ready-to-show', () => {
@@ -117,7 +100,7 @@ function createMainWindow() {
         hasShownTrayTip = true;
         new Notification({
           title: 'VanCross Hub',
-          body: 'Aplikasi tetap aktif di latar belakang untuk menerima file dan teks dari perangkat lain.',
+          body: 'Aplikasi tetap aktif di latar belakang (System Tray) untuk menerima file dan teks.',
           icon: appIcon
         }).show();
       }
@@ -222,17 +205,16 @@ if (!gotTheLock) {
     // 2. Handle screen sharing (getDisplayMedia) in Electron
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
       desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-        // Choose primary screen or first available display source
         const primaryScreen =
           sources.find((s) => s.id.startsWith('screen:0')) ||
           sources.find((s) => s.id.startsWith('screen')) ||
           sources[0];
 
         if (primaryScreen) {
-          console.log('[Electron] Display capture selected source:', primaryScreen.name);
+          console.log('[Electron] Display capture source:', primaryScreen.name);
           callback({ video: primaryScreen });
         } else {
-          console.warn('[Electron] No screen source available for capture');
+          console.warn('[Electron] No screen source available');
           callback({});
         }
       }).catch((err) => {
@@ -241,7 +223,10 @@ if (!gotTheLock) {
       });
     });
 
+    // 3. Start embedded in-process server
     await ensureServerRunning();
+
+    // 4. Create Window & Tray
     createMainWindow();
     createSystemTray();
 
@@ -253,26 +238,11 @@ if (!gotTheLock) {
   });
 }
 
-// Cleanup server child process on app termination
-function cleanupProcesses() {
-  if (serverProcess) {
-    console.log('[Electron] Terminating background server process...');
-    serverProcess.kill('SIGINT');
-    serverProcess = null;
-  }
-}
-
 app.on('before-quit', () => {
   app.isQuitting = true;
-  cleanupProcesses();
-});
-
-app.on('will-quit', () => {
-  cleanupProcesses();
 });
 
 app.on('window-all-closed', () => {
-  // Keep alive in tray on Windows unless user explicitly clicks "Keluar"
   if (process.platform !== 'win32' && app.isQuitting) {
     app.quit();
   }

@@ -1,0 +1,211 @@
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+const cors = require('cors');
+const os = require('os');
+const path = require('path');
+const fs = require('fs');
+
+function getLocalIpAddresses() {
+  const interfaces = os.networkInterfaces();
+  const addresses = [];
+  for (const name of Object.keys(interfaces)) {
+    for (const iface of interfaces[name]) {
+      if (iface.family === 'IPv4' && !iface.internal) {
+        addresses.push({ interface: name, address: iface.address });
+      }
+    }
+  }
+  return addresses;
+}
+
+function startServer(port = 3001, customDistPath = null) {
+  const app = express();
+  app.use(cors());
+  app.use(express.json());
+
+  const distPath = customDistPath || path.join(__dirname, '../client/dist');
+  console.log(`[Embedded Server] Serving static files from: ${distPath}`);
+
+  if (fs.existsSync(distPath)) {
+    app.use(express.static(distPath));
+  }
+
+  const server = http.createServer(app);
+  const io = new Server(server, {
+    cors: { origin: '*', methods: ['GET', 'POST'] },
+    maxHttpBufferSize: 1e8
+  });
+
+  const rooms = new Map();
+
+  app.get('/api/network-info', (req, res) => {
+    const localIps = getLocalIpAddresses();
+    res.json({
+      localIps,
+      port,
+      serverHostname: os.hostname(),
+      timestamp: Date.now()
+    });
+  });
+
+  // SPA fallback: Return index.html for any client navigation
+  app.use((req, res, next) => {
+    if (req.method !== 'GET') return next();
+    if (req.path.startsWith('/api') || req.path.startsWith('/socket.io')) {
+      return next();
+    }
+    const indexPath = path.join(distPath, 'index.html');
+    if (fs.existsSync(indexPath)) {
+      return res.sendFile(indexPath);
+    }
+    next();
+  });
+
+  function getSocketClientIp(socket) {
+    let ip = socket.handshake.address || socket.conn?.remoteAddress || '';
+    if (ip.startsWith('::ffff:')) ip = ip.substring(7);
+    if (ip === '::1' || ip === '127.0.0.1') return '127.0.0.1';
+    return ip;
+  }
+
+  io.on('connection', (socket) => {
+    let currentRoom = null;
+    let peerData = null;
+    let deviceKey = null;
+
+    const clientIp = getSocketClientIp(socket);
+    const serverIps = getLocalIpAddresses().map((item) => item.address);
+    const isHost = clientIp === '127.0.0.1' || serverIps.includes(clientIp);
+
+    console.log(`[Socket Connected] ID: ${socket.id} from IP: ${clientIp} (isHost: ${isHost})`);
+
+    socket.on('rename-device', ({ name }) => {
+      if (peerData) {
+        peerData.name = name;
+        if (currentRoom && rooms.has(currentRoom)) {
+          const roomPeers = rooms.get(currentRoom);
+          if (roomPeers.has(deviceKey)) {
+            roomPeers.get(deviceKey).name = name;
+          }
+          socket.to(currentRoom).emit('peer-renamed', { id: socket.id, deviceId: deviceKey, name });
+        }
+      }
+    });
+
+    socket.on('join-room', ({ roomId, device }) => {
+      currentRoom = roomId || 'default-room';
+      deviceKey = isHost ? 'host_pc' : `client_${clientIp}`;
+
+      peerData = {
+        id: socket.id,
+        deviceId: deviceKey,
+        clientIp,
+        name: device?.name || (isHost ? 'PC' : 'Smartphone'),
+        deviceType: device?.deviceType || (isHost ? 'desktop' : 'mobile'),
+        os: device?.os || 'Unknown OS',
+        browser: device?.browser || 'Browser',
+        joinedAt: Date.now()
+      };
+
+      socket.join(currentRoom);
+
+      if (!rooms.has(currentRoom)) {
+        rooms.set(currentRoom, new Map());
+      }
+
+      const roomPeers = rooms.get(currentRoom);
+      const existing = roomPeers.get(deviceKey);
+      if (existing && existing.id !== socket.id) {
+        console.log(`[Device Handover] ${peerData.name} on ${clientIp} switched from socket ${existing.id} to ${socket.id}`);
+        io.to(existing.id).emit('tab-superseded');
+
+        if (existing.name && (!device?.name || device.name === 'PC' || device.name === 'Smartphone' || device.name.includes('Windows PC') || device.name.includes('Android Phone'))) {
+          peerData.name = existing.name;
+        }
+      }
+
+      roomPeers.set(deviceKey, peerData);
+      socket.to(currentRoom).emit('peer-joined', peerData);
+
+      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey);
+      socket.emit('room-peers', {
+        self: peerData,
+        peers: peersList,
+        roomId: currentRoom
+      });
+    });
+
+    socket.on('signal-offer', ({ targetId, offer, metadata }) => {
+      io.to(targetId).emit('signal-offer', { senderId: socket.id, offer, metadata });
+    });
+
+    socket.on('signal-answer', ({ targetId, answer }) => {
+      io.to(targetId).emit('signal-answer', { senderId: socket.id, answer });
+    });
+
+    socket.on('signal-ice-candidate', ({ targetId, candidate }) => {
+      io.to(targetId).emit('signal-ice-candidate', { senderId: socket.id, candidate });
+    });
+
+    socket.on('send-text-message', ({ targetId, text, timestamp }) => {
+      if (targetId) {
+        io.to(targetId).emit('receive-text-message', {
+          senderId: socket.id,
+          senderName: peerData?.name || 'Peer',
+          text,
+          timestamp: timestamp || Date.now()
+        });
+      } else if (currentRoom) {
+        socket.to(currentRoom).emit('receive-text-message', {
+          senderId: socket.id,
+          senderName: peerData?.name || 'Peer',
+          text,
+          timestamp: timestamp || Date.now()
+        });
+      }
+    });
+
+    socket.on('screen-share-status', ({ targetId, isSharing }) => {
+      if (targetId) {
+        io.to(targetId).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
+      } else if (currentRoom) {
+        socket.to(currentRoom).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
+      }
+    });
+
+    socket.on('disconnect', () => {
+      console.log(`[Socket Disconnected] ID: ${socket.id}`);
+      if (currentRoom && rooms.has(currentRoom) && peerData) {
+        const roomPeers = rooms.get(currentRoom);
+        const active = roomPeers.get(peerData.deviceId);
+        if (active && active.id === socket.id) {
+          roomPeers.delete(peerData.deviceId);
+          if (roomPeers.size === 0) {
+            rooms.delete(currentRoom);
+          } else {
+            socket.to(currentRoom).emit('peer-left', { id: socket.id, deviceId: peerData.deviceId });
+          }
+        }
+      }
+    });
+  });
+
+  return new Promise((resolve, reject) => {
+    server.on('error', (err) => {
+      if (err.code === 'EADDRINUSE') {
+        console.warn(`[Embedded Server] Port ${port} is already in use. Assuming server is active.`);
+        resolve({ server: null, port, isExisting: true });
+      } else {
+        reject(err);
+      }
+    });
+
+    server.listen(port, '0.0.0.0', () => {
+      console.log(`[Embedded Server] Successfully listening on port ${port}`);
+      resolve({ server, port, isExisting: false });
+    });
+  });
+}
+
+module.exports = { startServer, getLocalIpAddresses };
