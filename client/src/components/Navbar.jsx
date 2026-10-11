@@ -22,8 +22,9 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
         {/* Brand & Laptop IP Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-zinc-900 border border-zinc-700/80 flex items-center justify-center text-zinc-200">
-              <Radio className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-zinc-300" />
+            <div className="w-8 h-8 rounded-lg bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-xs">
+              <span className="text-[9px] font-black tracking-tight text-white leading-[10px]">EN</span>
+              <span className="text-[9px] font-black tracking-tight text-white leading-[10px]">CS</span>
             </div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm sm:text-base font-semibold tracking-tight text-white">
