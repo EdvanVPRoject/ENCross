@@ -62,6 +62,11 @@ export function App() {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
+    // Auto-prompt 2 connection options on mobile app startup if no server IP is configured yet
+    if (isMobileDevice && isLocalhost && !savedServerIp) {
+      setIsServerIpModalOpen(true);
+    }
+
     let backendHost = window.location.hostname || 'localhost';
     if (isMobileDevice && isLocalhost && savedServerIp) {
       backendHost = savedServerIp;
@@ -379,6 +384,7 @@ export function App() {
         roomId={roomId}
         onOpenQR={() => setIsQrOpen(true)}
         onOpenRename={() => setIsRenameOpen(true)}
+        onOpenConnect={() => setIsServerIpModalOpen(true)}
       />
 
       {/* Floating Incoming Text Pop-up Notification */}
@@ -467,6 +473,7 @@ export function App() {
 
         <PeersRadar
           peers={peers}
+          localIp={resolvedIp}
           activeSharingPeerId={activeSharingPeerId}
           unreadPeerId={incomingToast?.senderId || incomingToast?.senderDeviceId}
           onSendFile={handleSendFile}

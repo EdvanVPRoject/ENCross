@@ -4,6 +4,7 @@ import { triggerHaptic } from '../utils/feedback';
 
 export function PeersRadar({
   peers,
+  localIp,
   activeSharingPeerId,
   unreadPeerId,
   onSendFile,
@@ -68,16 +69,26 @@ export function PeersRadar({
             Pastikan kedua perangkat di Wi-Fi yang sama, lalu scan QR Code di bawah menggunakan smartphone.
           </p>
 
-          <button
-            onClick={() => {
-              triggerHaptic([30]);
-              onOpenQR();
-            }}
-            className="flex items-center gap-2 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 font-medium px-4 py-2.5 rounded-lg text-xs transition cursor-pointer"
-          >
-            <QrCode className="w-4 h-4" />
-            <span>Tampilkan QR Code</span>
-          </button>
+          <div className="flex flex-col items-center gap-2.5">
+            <button
+              onClick={() => {
+                triggerHaptic([30]);
+                onOpenQR();
+              }}
+              className="flex items-center gap-2 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 font-medium px-4 py-2.5 rounded-lg text-xs transition cursor-pointer"
+            >
+              <QrCode className="w-4 h-4" />
+              <span>Tampilkan QR Code</span>
+            </button>
+
+            {localIp && localIp !== '127.0.0.1' && (
+              <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 mt-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="text-zinc-500 font-sans text-[11px]">IP Laptop:</span>
+                <span className="text-emerald-400 font-semibold">{localIp}</span>
+              </div>
+            )}
+          </div>
         </div>
       ) : (
         /* Connected Peers Grid */
