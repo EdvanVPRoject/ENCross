@@ -133,6 +133,13 @@ function createSystemTray() {
       },
       { type: 'separator' },
       {
+        label: 'Buat Shortcut di Desktop',
+        click: () => {
+          createDesktopShortcut(true);
+        }
+      },
+      { type: 'separator' },
+      {
         label: 'Keluar',
         click: () => {
           app.isQuitting = true;
@@ -164,7 +171,66 @@ function createSystemTray() {
   });
 }
 
-// 5. IPC Handlers
+// 5. Automatic Desktop Shortcut Creation on Windows
+function createDesktopShortcut(force = false) {
+  if (process.platform !== 'win32') return false;
+  try {
+    const desktopPath = app.getPath('desktop');
+    const shortcutPath = path.join(desktopPath, 'VanCross.lnk');
+
+    // If shortcut already exists and not explicitly forced, skip
+    if (fs.existsSync(shortcutPath) && !force) {
+      return true;
+    }
+
+    const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+    // Skip if in development mode running electron.exe
+    if (path.basename(targetExe).toLowerCase().includes('electron.exe')) {
+      return false;
+    }
+
+    const workDir = path.dirname(targetExe);
+    const vbsPath = path.join(app.getPath('temp'), `vancross_sc_${Date.now()}.vbs`);
+    const script = [
+      'Set ws = CreateObject("WScript.Shell")',
+      `Set lnk = ws.CreateShortcut("${shortcutPath.replace(/\\/g, '\\\\')}")`,
+      `lnk.TargetPath = "${targetExe.replace(/\\/g, '\\\\')}"`,
+      `lnk.WorkingDirectory = "${workDir.replace(/\\/g, '\\\\')}"`,
+      'lnk.Description = "VanCross LAN Hub - P2P File Transfer & Screen Hub"',
+      'lnk.Save'
+    ].join('\r\n');
+
+    fs.writeFileSync(vbsPath, script, 'utf8');
+
+    const { exec } = require('child_process');
+    exec(`cscript //nologo "${vbsPath}"`, (err) => {
+      try {
+        fs.unlinkSync(vbsPath);
+      } catch (_) {}
+
+      if (err) {
+        console.warn('[Shortcut] Warning creating desktop shortcut:', err.message);
+      } else {
+        console.log('[Shortcut] Desktop shortcut ensured at:', shortcutPath);
+        if (force && Notification.isSupported()) {
+          const iconPath = path.join(__dirname, 'assets/icon.png');
+          new Notification({
+            title: 'VanCross Hub',
+            body: 'Shortcut VanCross berhasil dibuat di Desktop Anda!',
+            icon: nativeImage.createFromPath(iconPath)
+          }).show();
+        }
+      }
+    });
+
+    return true;
+  } catch (err) {
+    console.error('[Shortcut] Error in createDesktopShortcut:', err);
+    return false;
+  }
+}
+
+// 6. IPC Handlers
 ipcMain.on('show-notification', (_, { title, body }) => {
   if (Notification.isSupported()) {
     const iconPath = path.join(__dirname, 'assets/icon.png');
@@ -180,6 +246,10 @@ ipcMain.on('minimize-to-tray', () => {
   if (mainWindow) {
     mainWindow.hide();
   }
+});
+
+ipcMain.handle('create-desktop-shortcut', () => {
+  return createDesktopShortcut(true);
 });
 
 // Single Instance Lock (prevents multiple desktop windows)
@@ -229,6 +299,9 @@ if (!gotTheLock) {
     // 4. Create Window & Tray
     createMainWindow();
     createSystemTray();
+
+    // 5. Automatically ensure Desktop Shortcut exists on launch
+    createDesktopShortcut(false);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

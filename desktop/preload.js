@@ -9,5 +9,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   minimizeToTray: () => {
     ipcRenderer.send('minimize-to-tray');
-  }
+  },
+  createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut')
 });
