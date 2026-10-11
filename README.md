@@ -241,6 +241,12 @@ Proyek ini dirancang dan dikembangkan secara mandiri oleh:
 
 ---
 
+## Bug Reports & Feedback
+
+If you encounter any bugs, unexpected behavior, or have suggestions for improvements, please feel free to open an issue on the [GitHub Issues](https://github.com/EdvanVPRoject/ENCross/issues) page. Your feedback is greatly appreciated!
+
+---
+
 ## Lisensi
 
 Didistribusikan di bawah lisensi **MIT License**. Lihat file `LICENSE` untuk informasi lebih lanjut.

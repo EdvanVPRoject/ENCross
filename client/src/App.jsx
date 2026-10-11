@@ -17,7 +17,7 @@ import { playSound, triggerHaptic } from './utils/feedback';
 
 export function App() {
   const [selfInfo, setSelfInfo] = useState(null);
-  const [roomId, setRoomId] = useState('vancross-lan');
+  const [roomId, setRoomId] = useState('encross-lan');
   const [localIp, setLocalIp] = useState('');
   const [peers, setPeers] = useState([]);
   const [socket, setSocket] = useState(null);
@@ -50,7 +50,7 @@ export function App() {
   useEffect(() => {
     // 1. Parse or assign room ID from URL query
     const params = new URLSearchParams(window.location.search);
-    const roomParam = params.get('room') || 'vancross-lan';
+    const roomParam = params.get('room') || 'encross-lan';
     setRoomId(roomParam);
 
     // 2. Initialize self device profile
@@ -60,7 +60,7 @@ export function App() {
     // 3. Connect to backend signaling server
     const isMobileDevice = /Android|iPhone|iPad/i.test(navigator.userAgent);
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const savedServerIp = localStorage.getItem('vancross_server_ip');
+    const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
     let backendHost = window.location.hostname || 'localhost';
     if (isMobileDevice && isLocalhost && savedServerIp) {
@@ -77,7 +77,8 @@ export function App() {
           setLocalIp(data.localIps[0].address);
         }
         // If device hasn't customized name and is host PC, assign real hostname
-        if (data.serverHostname && (!localStorage.getItem('vancross_device_name') || localStorage.getItem('vancross_device_name').includes('Nova') || localStorage.getItem('vancross_device_name').includes('Hyper'))) {
+        const storedName = localStorage.getItem('encross_device_name') || localStorage.getItem('vancross_device_name');
+        if (data.serverHostname && (!storedName || storedName.includes('Nova') || storedName.includes('Hyper'))) {
           if (device.deviceType === 'desktop') {
             const accurateName = `${data.serverHostname} (PC)`;
             setCustomDeviceName(accurateName);
@@ -146,7 +147,7 @@ export function App() {
 
     // Socket Event: Connected
     newSocket.on('connect', () => {
-      console.log('Connected to VanCross signaling server');
+      console.log('Connected to ENCross signaling server');
       setIsServerIpModalOpen(false);
       newSocket.emit('join-room', {
         roomId: roomParam,
@@ -265,7 +266,7 @@ export function App() {
 
   // Save Server IP (for mobile APK)
   const handleSaveServerIp = (newIp) => {
-    localStorage.setItem('vancross_server_ip', newIp);
+    localStorage.setItem('encross_server_ip', newIp);
     window.location.reload();
   };
 
@@ -497,7 +498,7 @@ export function App() {
         isOpen={isServerIpModalOpen}
         onClose={() => setIsServerIpModalOpen(false)}
         onSave={handleSaveServerIp}
-        currentIp={localStorage.getItem('vancross_server_ip') || ''}
+        currentIp={localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip') || ''}
       />
 
       {/* Rename Device Modal */}
