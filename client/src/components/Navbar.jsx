@@ -1,6 +1,7 @@
 import React from 'react';
-import { QrCode, Laptop, Smartphone, Tablet, Radio, Edit2, Wifi } from 'lucide-react';
+import { QrCode, Laptop, Smartphone, Tablet, Radio, Edit2, Wifi, Plus } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
+import logoImg from '../assets/logo.png';
 
 export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOpenConnect }) {
   const getDeviceIcon = () => {
@@ -26,7 +27,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
             <img
-              src="/logo.png"
+              src={logoImg}
               alt="ENCross"
               className="w-8 h-8 object-contain shrink-0 select-none filter drop-shadow-xs"
             />
@@ -81,18 +82,19 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
             <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden sm:inline" />
           </button>
 
-          {/* QR Button */}
+          {/* Add Device Button (Laptop, Phone, Tablet) */}
           {onOpenQR && (
             <button
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenQR();
               }}
-              className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 rounded-lg h-7 px-2 sm:px-3 text-xs font-semibold transition cursor-pointer shrink-0"
-              title="Hubungkan HP (Tampilkan QR Code)"
+              className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 rounded-lg h-7 px-2.5 sm:px-3 text-xs font-bold transition cursor-pointer shrink-0 shadow-xs"
+              title="Tambahkan Perangkat (Laptop, HP, Tablet via QR atau IP LAN)"
             >
-              <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span className="hidden sm:inline">Hubungkan HP</span>
+              <Plus className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
+              <span className="hidden sm:inline">Tambahkan Perangkat</span>
+              <span className="sm:hidden">Tambah</span>
             </button>
           )}
         </div>

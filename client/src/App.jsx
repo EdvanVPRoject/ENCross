@@ -783,9 +783,12 @@ export function App() {
       )}
 
       {/* Footer Info */}
-      <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4">
+      <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">
         <p>
           ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
+        </p>
+        <p className="text-[10px] text-zinc-400">
+          Dibuat & Dikembangkan oleh <span className="text-emerald-400 font-semibold">Edvan</span> (<a href="https://github.com/EdvanVPRoject/ENCross" target="_blank" rel="noreferrer" className="hover:text-emerald-300 underline underline-offset-2">EdvanVPRoject</a>)
         </p>
       </footer>
     </div>

@@ -116,13 +116,19 @@ function startServer(port = 3001, customDistPath = null) {
 
     socket.on('join-room', ({ roomId, device }) => {
       currentRoom = roomId || 'default-room';
-      deviceKey = isHost ? 'host_pc' : `client_${clientIp}`;
+
+      // Unique physical hardware key:
+      // Prioritize client-generated persistent deviceId (unique per browser/app profile)
+      // to allow multiple devices (phones, laptops, tablets) to connect simultaneously.
+      deviceKey = (device?.deviceId && typeof device.deviceId === 'string' && device.deviceId.length > 3)
+        ? device.deviceId
+        : (isHost ? `host_${socket.id.substring(0, 5)}` : `client_${clientIp}_${socket.id.substring(0, 5)}`);
 
       peerData = {
         id: socket.id,
         deviceId: deviceKey,
         clientIp,
-        name: device?.name || (isHost ? 'PC' : 'Smartphone'),
+        name: device?.name || (isHost ? 'PC' : 'Perangkat'),
         deviceType: device?.deviceType || (isHost ? 'desktop' : 'mobile'),
         os: device?.os || 'Unknown OS',
         browser: device?.browser || 'Browser',
@@ -138,7 +144,7 @@ function startServer(port = 3001, customDistPath = null) {
       const roomPeers = rooms.get(currentRoom);
       const existing = roomPeers.get(deviceKey);
       if (existing && existing.id !== socket.id) {
-        console.log(`[Device Handover] ${peerData.name} on ${clientIp} switched from socket ${existing.id} to ${socket.id}`);
+        console.log(`[Device Handover] ${peerData.name} on ${clientIp} updated socket from ${existing.id} to ${socket.id}`);
         io.to(existing.id).emit('tab-superseded');
 
         if (existing.name && (!device?.name || device.name === 'PC' || device.name === 'Smartphone' || device.name.includes('Windows PC') || device.name.includes('Android Phone'))) {
@@ -229,6 +235,12 @@ function startServer(port = 3001, customDistPath = null) {
         io.to(targetId).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
       } else if (currentRoom) {
         socket.to(currentRoom).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
+      }
+    });
+
+    socket.on('request-camera-switch', ({ targetId }) => {
+      if (targetId) {
+        io.to(targetId).emit('camera-switch-requested', { requesterId: socket.id });
       }
     });
 

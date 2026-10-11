@@ -1,6 +1,7 @@
 import React, { useRef } from 'react';
-import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, QrCode, Wifi, Activity, SwitchCamera } from 'lucide-react';
+import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, QrCode, Wifi, Activity, SwitchCamera, Plus } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
+import logoImg from '../assets/logo.png';
 
 export function PeersRadar({
   peers,
@@ -62,7 +63,7 @@ export function PeersRadar({
         <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
           <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 relative flex items-center justify-center">
             <img
-              src="/logo.png"
+              src={logoImg}
               alt="ENCross"
               className="w-full h-full object-contain filter drop-shadow-md select-none"
             />
@@ -139,11 +140,11 @@ export function PeersRadar({
                   triggerHaptic([30]);
                   onOpenQR();
                 }}
-                className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 shadow-xs"
-                title="Tampilkan QR Code untuk menambah atau menghubungkan perangkat lain"
+                className="flex items-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 active:bg-emerald-500/35 border border-emerald-500/40 text-emerald-300 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
+                title="Tampilkan QR Code atau tautan LAN untuk menghubungkan perangkat lain"
               >
-                <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span>QR Code</span>
+                <Plus className="w-3.5 h-3.5 text-emerald-400 shrink-0 stroke-[2.5]" />
+                <span>Tambahkan Perangkat</span>
               </button>
             )}
           </div>

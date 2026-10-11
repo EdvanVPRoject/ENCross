@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Wifi, ArrowRight, QrCode, Camera, AlertCircle, X, Check } from 'lucide-react';
 import { triggerHaptic, playSound } from '../utils/feedback';
+import logoImg from '../assets/logo.png';
 
 export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
   const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'ip'
@@ -130,7 +131,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
         <div className="text-center mb-4">
           <div className="w-14 h-14 mx-auto mb-2 flex items-center justify-center">
             <img
-              src="/logo.png"
+              src={logoImg}
               alt="ENCross"
               className="w-full h-full object-contain filter drop-shadow-sm select-none"
             />
