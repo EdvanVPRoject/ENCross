@@ -1,5 +1,5 @@
 {
-  "name": "vancross",
+  "name": "encross",
   "version": "1.0.0",
   "description": "High-Performance Cross-Device P2P File Transfer & Screen Hub over WebRTC",
   "main": "desktop/main.js",
@@ -14,8 +14,8 @@
     "desktop:dist": "npm run build && electron-builder --win"
   },
   "build": {
-    "appId": "com.edvan.vncross",
-    "productName": "VNCross",
+    "appId": "com.edvan.encross",
+    "productName": "ENCross",
     "directories": {
       "output": "release"
     },
@@ -36,7 +36,7 @@
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": "always",
       "createStartMenuShortcut": true,
-      "shortcutName": "VNCross"
+      "shortcutName": "ENCross"
     }
   },
   "keywords": [

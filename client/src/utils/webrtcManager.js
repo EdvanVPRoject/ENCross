@@ -1,4 +1,4 @@
-// WebRTC PeerConnection & DataChannel Manager for VanCross
+// WebRTC PeerConnection & DataChannel Manager for ENCross
 
 const ICE_SERVERS = {
   iceServers: [
@@ -141,7 +141,7 @@ export class WebRTCManager {
 
     // Create Data Channel for sending files/messages
     if (!peerObj.dataChannel || peerObj.dataChannel.readyState !== 'open') {
-      const channel = pc.createDataChannel('vancross-channel', {
+      const channel = pc.createDataChannel('encross-channel', {
         ordered: true
       });
       peerObj.dataChannel = channel;

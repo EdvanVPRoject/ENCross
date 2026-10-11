@@ -24,7 +24,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename }) {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm sm:text-base font-semibold tracking-tight text-white">
-              VNCross
+              ENCross
             </span>
             <span className="text-[10px] font-mono text-zinc-500 px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800">
               LAN

@@ -1,6 +1,6 @@
 {
-  "appId": "com.vancross.app",
-  "appName": "VanCross",
+  "appId": "com.encross.app",
+  "appName": "ENCross",
   "webDir": "dist",
   "server": {
     "androidScheme": "http",

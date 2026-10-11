@@ -57,14 +57,14 @@ export function getDeviceInfo(serverHostname) {
   const detected = detectDeviceModel();
 
   // Persistent Device ID
-  let deviceId = localStorage.getItem('vancross_device_id');
+  let deviceId = localStorage.getItem('encross_device_id') || localStorage.getItem('vancross_device_id');
   if (!deviceId) {
     deviceId = 'dev_' + Math.random().toString(36).substring(2, 10);
-    localStorage.setItem('vancross_device_id', deviceId);
+    localStorage.setItem('encross_device_id', deviceId);
   }
 
   // Persistent Device Name (user-defined or default accurate name)
-  let name = localStorage.getItem('vancross_device_name');
+  let name = localStorage.getItem('encross_device_name') || localStorage.getItem('vancross_device_name');
   if (!name) {
     // If desktop and serverHostname is available, use hostname
     if (detected.deviceType === 'desktop' && serverHostname) {
@@ -72,7 +72,7 @@ export function getDeviceInfo(serverHostname) {
     } else {
       name = detected.name;
     }
-    localStorage.setItem('vancross_device_name', name);
+    localStorage.setItem('encross_device_name', name);
   }
 
   return {
@@ -87,7 +87,7 @@ export function getDeviceInfo(serverHostname) {
 export function setCustomDeviceName(newName) {
   if (newName && newName.trim()) {
     const cleaned = newName.trim();
-    localStorage.setItem('vancross_device_name', cleaned);
+    localStorage.setItem('encross_device_name', cleaned);
     return cleaned;
   }
   return null;

@@ -32,7 +32,7 @@ export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp }) {
           </h3>
         </div>
         <p className="text-[11px] text-zinc-400 mb-3.5 leading-relaxed">
-          Scan QR Code untuk membuka VNCross langsung di HP Anda.
+          Scan QR Code untuk membuka ENCross langsung di HP Anda.
         </p>
 
         {/* QR Code */}
@@ -56,7 +56,7 @@ export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp }) {
           {/* Direct APK Download via LAN */}
           <a
             href="/api/download-apk"
-            download="VNCross.apk"
+            download="ENCross.apk"
             className="flex items-center justify-center gap-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-medium py-2 px-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-95"
           >
             <Download className="w-3.5 h-3.5" />
@@ -65,7 +65,7 @@ export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp }) {
 
           {/* GitHub Releases Link */}
           <a
-            href="https://github.com/EdvanVPRoject/VNCross"
+            href="https://github.com/EdvanVPRoject/ENCross"
             target="_blank"
             rel="noreferrer"
             className="flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-medium py-2 px-2.5 rounded-xl text-xs transition cursor-pointer active:scale-95"

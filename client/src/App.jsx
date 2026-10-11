@@ -544,7 +544,7 @@ export function App() {
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4">
         <p>
-          VNCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
+          ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
         </p>
       </footer>
     </div>

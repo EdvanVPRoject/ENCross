@@ -1,8 +1,8 @@
 {
-  "name": "vancross-server",
+  "name": "encross-server",
   "version": "1.0.0",
   "type": "module",
-  "description": "Signaling and local network bridge server for VanCross",
+  "description": "Signaling and local network bridge server for ENCross",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",

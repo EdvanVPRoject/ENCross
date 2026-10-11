@@ -52,17 +52,19 @@ function startServer(port = 3001, customDistPath = null) {
   // Serve Android APK directly for local LAN downloads
   app.get('/api/download-apk', (req, res) => {
     const candidates = [
-      path.join(distPath, 'VanCross.apk'),
-      path.join(__dirname, '../release/VanCross.apk'),
-      path.join(__dirname, 'release/VanCross.apk'),
+      path.join(distPath, 'ENCross.apk'),
+      path.join(__dirname, '../release/ENCross.apk'),
+      path.join(__dirname, 'release/ENCross.apk'),
       path.join(__dirname, '../client/android/app/build/outputs/apk/debug/app-debug.apk'),
       path.join(__dirname, 'client/android/app/build/outputs/apk/debug/app-debug.apk'),
-      path.join(__dirname, '../client/public/VanCross.apk')
+      path.join(__dirname, '../client/public/ENCross.apk'),
+      path.join(distPath, 'VanCross.apk'),
+      path.join(__dirname, '../release/VanCross.apk')
     ];
     for (const cand of candidates) {
       if (fs.existsSync(cand)) {
         res.setHeader('Content-Type', 'application/vnd.android.package-archive');
-        return res.download(cand, 'VanCross.apk');
+        return res.download(cand, 'ENCross.apk');
       }
     }
     res.status(404).send('File APK belum tersedia. Silakan build APK terlebih dahulu.');

@@ -1,7 +1,7 @@
-# ⚡ VNCross: High-Performance Cross-Device P2P File Transfer & Screen Hub
+# ⚡ ENCross: High-Performance Cross-Device P2P File Transfer & Screen Hub
 
 > **Zero-Cloud, High-Speed P2P File Transfer & Real-Time Screen Hub over Local Area Network (WebRTC + WebSockets)**  
-> Bagian dari inisiatif pengembangan proyek mandiri **VN Ecosystem** oleh [Edvan Nuriana Putra Septia](https://github.com/EdvanVPRoject).
+> Bagian dari inisiatif pengembangan proyek mandiri **EN Ecosystem** oleh [Edvan Nuriana Putra Septia](https://github.com/EdvanVPRoject).
 
 [![React](https://img.shields.io/badge/React-19.x-blue.svg?logo=react)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-8.x-646CFF.svg?logo=vite)](https://vitejs.dev/)
@@ -21,7 +21,7 @@ Berbagi file berukuran besar (video 4K, arsip ZIP, foto resolusi tinggi, dokumen
 2. **Kabel Data & Flashdisk:** Kurang fleksibel dan memerlukan adaptor OTG atau kabel fisik.
 3. **Ekosistem Tertutup (AirDrop / Quick Share):** Terbatas hanya pada vendor atau ekosistem perangkat tertentu.
 
-**VNCross** memecahkan masalah ini dengan menghadirkan solusi transfer lokal berkecepatan tinggi:
+**ENCross** memecahkan masalah ini dengan menghadirkan solusi transfer lokal berkecepatan tinggi:
 - **Zero Cloud Storage:** File dialirkan langsung dari memori perangkat pengirim ke perangkat penerima (**Peer-to-Peer**) melalui protokol **WebRTC DataChannel**.
 - **Tanpa Akun & Tanpa Login:** Cukup buka aplikasi atau scan QR Code di jaringan Wi-Fi/LAN yang sama.
 - **Cross-Platform Sejati:** Tersedia sebagai aplikasi desktop **Windows** (Electron), aplikasi mobile **Android** (Capacitor APK), serta web browser murni (**PWA**).
@@ -54,10 +54,10 @@ Berbagi file berukuran besar (video 4K, arsip ZIP, foto resolusi tinggi, dokumen
 ### 5. 💻 Aplikasi Desktop Windows Lengkap
 - Dibangun dengan **Electron**, dilengkapi embedded in-process server Express & Socket.IO.
 - Berjalan di latar belakang (**System Tray**) tanpa mengganggu kerja Anda.
-- **Pembuatan Shortcut Desktop Otomatis:** Saat instalasi installer NSIS maupun saat aplikasi portable dijalankan pertama kali, shortcut `VNCross.lnk` otomatis dibuat di Desktop.
+- **Pembuatan Shortcut Desktop Otomatis:** Saat instalasi installer NSIS maupun saat aplikasi portable dijalankan pertama kali, shortcut `ENCross.lnk` otomatis dibuat di Desktop.
 
 ### 6. 📱 Aplikasi Android Native & PWA
-- Dapat diinstal sebagai aplikasi native Android (`VNCross.apk`) melalui Capacitor.
+- Dapat diinstal sebagai aplikasi native Android (`ENCross.apk`) melalui Capacitor.
 - Dapat juga diakses langsung dari browser smartphone mana pun tanpa instalasi (PWA).
 
 ---
@@ -141,10 +141,10 @@ graph TD
 ## 📂 Struktur Direktori Proyek
 
 ```text
-vancross/
+encross/
 ├── client/                     # Frontend Web & Mobile Application (React + Vite)
 │   ├── android/                # Native Android Project (Capacitor + Gradle)
-│   │   └── app/build/outputs/  # Lokasi file VNCross.apk hasil build
+│   │   └── app/build/outputs/  # Lokasi file ENCross.apk hasil build
 │   ├── public/                 # Aset statis & APK download bundle
 │   └── src/
 │       ├── components/         # Komponen UI (Navbar, Radar, Drawer, Modals)
@@ -156,9 +156,9 @@ vancross/
 │   ├── preload.js              # IPC bridge API
 │   └── server.js               # Embedded in-process Express & Socket.IO server
 ├── release/                    # Hasil kompilasi binary Windows & Android
-│   ├── VNCross 1.0.0.exe       # Versi Windows Portable
-│   ├── VNCross Setup 1.0.0.exe # Versi Windows NSIS Installer
-│   └── VNCross.apk             # Versi Android APK
+│   ├── ENCross 1.0.0.exe       # Versi Windows Portable
+│   ├── ENCross Setup 1.0.0.exe # Versi Windows NSIS Installer
+│   └── ENCross.apk             # Versi Android APK
 ├── server/                     # Standalone Node.js signaling server (opsional untuk dev)
 ├── package.json                # Root build scripts & electron-builder configuration
 └── README.md                   # Dokumentasi teknis proyek
@@ -171,10 +171,10 @@ vancross/
 ### Opsi 1: Menjalankan Aplikasi Siap Pakai (Recommended)
 
 1. **Pengguna Windows:**
-   - Jalankan installer: `release/VNCross Setup 1.0.0.exe` atau jalankan langsung versi portable: `release/VNCross 1.0.0.exe`.
-   - Aplikasi otomatis membuat shortcut **VNCross** di Desktop Anda dan aktif di latar belakang (System Tray).
+   - Jalankan installer: `release/ENCross Setup 1.0.0.exe` atau jalankan langsung versi portable: `release/ENCross 1.0.0.exe`.
+   - Aplikasi otomatis membuat shortcut **ENCross** di Desktop Anda dan aktif di latar belakang (System Tray).
 2. **Pengguna Android:**
-   - Pasang file `release/VNCross.apk` di HP Android Anda, atau cukup scan QR Code di aplikasi desktop untuk mengunduh APK secara langsung melalui jaringan Wi-Fi LAN.
+   - Pasang file `release/ENCross.apk` di HP Android Anda, atau cukup scan QR Code di aplikasi desktop untuk mengunduh APK secara langsung melalui jaringan Wi-Fi LAN.
 
 ---
 
@@ -187,8 +187,8 @@ vancross/
 #### Langkah Menjalankan:
 ```bash
 # 1. Clone repositori
-git clone https://github.com/EdvanVPRoject/VNCross.git
-cd VNCross
+git clone https://github.com/EdvanVPRoject/ENCross.git
+cd ENCross
 
 # 2. Install dependensi root & client
 npm install
@@ -206,7 +206,7 @@ npm run desktop:dev
 ```bash
 npm run desktop:dist
 ```
-*Hasil file installer (`VNCross Setup 1.0.0.exe`) dan portable (`VNCross 1.0.0.exe`) akan otomatis tersimpan di folder `release/`.*
+*Hasil file installer (`ENCross Setup 1.0.0.exe`) dan portable (`ENCross 1.0.0.exe`) akan otomatis tersimpan di folder `release/`.*
 
 #### 2. Build APK Android (.apk)
 ```bash
@@ -225,7 +225,7 @@ cd android
 ## 🔄 CI/CD Automation (GitHub Actions)
 
 Proyek ini telah dilengkapi pipeline otomatisasi GitHub Actions:
-- Setiap kali Anda melakukan `git push` ke branch `main` atau `master`, workflow [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml) akan secara otomatis mengompilasi file **VNCross Android APK** di cloud dan menyediakannya di tab **GitHub Actions Artifacts**.
+- Setiap kali Anda melakukan `git push` ke branch `main` atau `master`, workflow [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml) akan secara otomatis mengompilasi file **ENCross Android APK** di cloud dan menyediakannya di tab **GitHub Actions Artifacts**.
 
 ---
 

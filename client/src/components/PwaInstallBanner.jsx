@@ -73,7 +73,7 @@ export function PwaInstallBanner({ selfInfo }) {
           <div className="flex items-center gap-1.5 shrink-0">
             <a
               href="/api/download-apk"
-              download="VNCross.apk"
+              download="ENCross.apk"
               className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-medium px-2 py-1.5 rounded-lg text-xs transition cursor-pointer"
               title="Unduh file APK langsung"
             >
@@ -141,7 +141,7 @@ export function PwaInstallBanner({ selfInfo }) {
                   3
                 </span>
                 <p>
-                  Aplikasi <strong>VNCross</strong> akan otomatis terpasang di menu utama HP Anda layaknya aplikasi native!
+                  Aplikasi <strong>ENCross</strong> akan otomatis terpasang di menu utama HP Anda layaknya aplikasi native!
                 </p>
               </div>
             </div>
