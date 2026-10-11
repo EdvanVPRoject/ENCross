@@ -195,24 +195,58 @@ io.on('connection', (socket) => {
     });
   });
 
-  // Instant Text / Clipboard Sharing Relay
   socket.on('send-text-message', ({ targetId, text, timestamp }) => {
-    if (targetId) {
-      // Direct message to specific peer
-      io.to(targetId).emit('receive-text-message', {
-        senderId: socket.id,
-        senderName: peerData?.name || 'Peer',
-        text,
-        timestamp: timestamp || Date.now()
-      });
+    let resolvedTargetSocket = null;
+
+    const isSocketActive = (id) =>
+      io.sockets?.sockets?.has ? io.sockets.sockets.has(id) : Boolean(io.sockets?.sockets?.[id]);
+
+    if (currentRoom && rooms.has(currentRoom)) {
+      const roomPeers = rooms.get(currentRoom);
+
+      // 1. Direct deviceKey match (e.g. "client_192.168.1.15" or "host_pc")
+      if (targetId && roomPeers.has(targetId)) {
+        resolvedTargetSocket = roomPeers.get(targetId).id;
+      } else if (targetId) {
+        // 2. Search peers by socket.id or deviceId
+        for (const peer of roomPeers.values()) {
+          if (peer.id === targetId || peer.deviceId === targetId) {
+            resolvedTargetSocket = peer.id;
+            break;
+          }
+        }
+      }
+
+      // 3. Check if targetId is an active socket ID
+      if (!resolvedTargetSocket && targetId && isSocketActive(targetId)) {
+        resolvedTargetSocket = targetId;
+      }
+
+      // 4. Fallback: If 2 devices in room, route to the other device
+      if (!resolvedTargetSocket && roomPeers.size === 2) {
+        for (const [key, peer] of roomPeers.entries()) {
+          if (key !== deviceKey && isSocketActive(peer.id)) {
+            resolvedTargetSocket = peer.id;
+            break;
+          }
+        }
+      }
+    }
+
+    const payload = {
+      senderId: socket.id,
+      senderDeviceId: deviceKey,
+      senderName: peerData?.name || 'Peer',
+      text,
+      timestamp: timestamp || Date.now()
+    };
+
+    console.log(`[Text Message] From: ${peerData?.name} (${socket.id}) -> Target: ${resolvedTargetSocket || 'Broadcast Room'}`);
+
+    if (resolvedTargetSocket) {
+      io.to(resolvedTargetSocket).emit('receive-text-message', payload);
     } else if (currentRoom) {
-      // Broadcast to entire room
-      socket.to(currentRoom).emit('receive-text-message', {
-        senderId: socket.id,
-        senderName: peerData?.name || 'Peer',
-        text,
-        timestamp: timestamp || Date.now()
-      });
+      socket.to(currentRoom).emit('receive-text-message', payload);
     }
   });
 

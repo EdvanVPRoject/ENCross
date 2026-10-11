@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { X, Send, Copy, Check, ExternalLink, MessageSquare } from 'lucide-react';
 
 export function TextSyncDrawer({
@@ -10,6 +10,13 @@ export function TextSyncDrawer({
 }) {
   const [text, setText] = useState('');
   const [copiedId, setCopiedId] = useState(null);
+  const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (isOpen) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen]);
 
   if (!isOpen) return null;
 
@@ -28,10 +35,21 @@ export function TextSyncDrawer({
 
   const isUrl = (str) => {
     try {
-      return str.startsWith('http://') || str.startsWith('https://');
+      const trimmed = str.trim();
+      return (
+        trimmed.startsWith('http://') ||
+        trimmed.startsWith('https://') ||
+        trimmed.startsWith('www.')
+      );
     } catch {
       return false;
     }
+  };
+
+  const getUrlHref = (str) => {
+    const trimmed = str.trim();
+    if (trimmed.startsWith('www.')) return `https://${trimmed}`;
+    return trimmed;
   };
 
   return (
@@ -89,7 +107,7 @@ export function TextSyncDrawer({
                 <div className="flex items-center gap-2 mt-2 pt-2 border-t border-zinc-700/40">
                   {isUrl(msg.text) && (
                     <a
-                      href={msg.text}
+                      href={getUrlHref(msg.text)}
                       target="_blank"
                       rel="noreferrer"
                       className="inline-flex items-center gap-1 text-[11px] text-zinc-300 hover:text-white underline"
@@ -119,6 +137,7 @@ export function TextSyncDrawer({
               </div>
             ))
           )}
+          <div ref={messagesEndRef} />
         </div>
 
         {/* Input Footer */}

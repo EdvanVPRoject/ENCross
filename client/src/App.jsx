@@ -10,6 +10,7 @@ import { RenameModal } from './components/RenameModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
+import { MessageSquare, X } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -32,6 +33,7 @@ export function App() {
   const [textTargetPeer, setTextTargetPeer] = useState(null);
   const [textMessages, setTextMessages] = useState([]);
   const [isSuperseded, setIsSuperseded] = useState(false);
+  const [incomingToast, setIncomingToast] = useState(null);
 
   // Screen Monitoring
   const [incomingStream, setIncomingStream] = useState(null);
@@ -202,8 +204,28 @@ export function App() {
     // Socket Event: Instant Text Message received
     newSocket.on('receive-text-message', (msg) => {
       playSound('message');
-      triggerHaptic([40]);
+      triggerHaptic([40, 60]);
       setTextMessages((prev) => [...prev, { ...msg, isSelf: false }]);
+
+      // Match sender to update textTargetPeer so user can easily reply
+      setPeers((currPeers) => {
+        const sender = currPeers.find(
+          (p) => p.id === msg.senderId || (msg.senderDeviceId && p.deviceId === msg.senderDeviceId)
+        );
+        if (sender) {
+          setTextTargetPeer(sender);
+        }
+        return currPeers;
+      });
+
+      // 1. Open drawer on receiving device so message is immediately visible
+      setIsTextSyncOpen(true);
+      // 2. Show top floating toast with 1-click copy
+      setIncomingToast(msg);
+      setTimeout(() => {
+        setIncomingToast((curr) => (curr?.timestamp === msg.timestamp ? null : curr));
+      }, 7000);
+
       if (window.electronAPI) {
         window.electronAPI.showNotification(`Pesan dari ${msg.senderName || 'Perangkat'}`, msg.text || '');
       }
@@ -258,8 +280,9 @@ export function App() {
   // Quick Text/Clipboard Message Handler
   const handleSendMessage = (targetId, text) => {
     if (!socket) return;
+    const resolvedTarget = textTargetPeer?.deviceId || textTargetPeer?.id || targetId;
     const msg = {
-      targetId,
+      targetId: resolvedTarget,
       text,
       timestamp: Date.now()
     };
@@ -324,6 +347,41 @@ export function App() {
         onOpenQR={() => setIsQrOpen(true)}
         onOpenRename={() => setIsRenameOpen(true)}
       />
+
+      {/* Floating Incoming Text Toast */}
+      {incomingToast && (
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-[90vw] sm:max-w-md animate-slideDown">
+          <div className="p-2 rounded-xl bg-zinc-800 text-zinc-200 shrink-0">
+            <MessageSquare className="w-4 h-4 text-emerald-400" />
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-[11px] font-semibold text-zinc-400 truncate">
+              Pesan dari {incomingToast.senderName}
+            </p>
+            <p className="text-xs text-zinc-100 truncate font-mono">
+              {incomingToast.text}
+            </p>
+          </div>
+          <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              onClick={() => {
+                navigator.clipboard.writeText(incomingToast.text);
+                triggerHaptic([30]);
+                setIncomingToast(null);
+              }}
+              className="px-2.5 py-1 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold rounded-lg text-xs transition cursor-pointer"
+            >
+              Salin
+            </button>
+            <button
+              onClick={() => setIncomingToast(null)}
+              className="p-1 text-zinc-400 hover:text-white rounded-lg transition cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5" />
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Tab Superseded Notice Banner */}
       {isSuperseded && (
