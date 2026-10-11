@@ -403,8 +403,8 @@ export class WebRTCManager {
     const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
     let stream;
 
-    // Check if getDisplayMedia is supported or if camera mode is requested
-    if (mode === 'camera' || (!navigator.mediaDevices.getDisplayMedia && navigator.mediaDevices.getUserMedia)) {
+    // Check if camera mode is requested or screen share
+    if (mode === 'camera') {
       this.currentFacingMode = isMobile ? 'environment' : 'user';
       try {
         stream = await navigator.mediaDevices.getUserMedia({
@@ -422,37 +422,34 @@ export class WebRTCManager {
             audio: false
           });
         } catch (retryErr) {
-          throw new Error('Gagal mengakses kamera HP: ' + (retryErr.message || camErr.message));
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+          });
         }
       }
-    } else {
       try {
-        const constraints = isMobile
-          ? { video: true, audio: false }
-          : { video: true, audio: false };
+        const tr = stream?.getVideoTracks()?.[0];
+        if (tr?.getSettings?.()?.deviceId) {
+          this.currentDeviceId = tr.getSettings().deviceId;
+        }
+      } catch (_) {}
+    } else {
+      // Screen mirror mode
+      if (!navigator.mediaDevices.getDisplayMedia) {
+        throw new Error('Mirroring Layar dari HP dibatasi oleh sistem Android WebView (memerlukan izin MediaProjection). Silakan gunakan mode Kamera HP (Wireless Cam) dari HP, atau lakukan Mirroring Layar dari Laptop ke HP.');
+      }
 
-        stream = await navigator.mediaDevices.getDisplayMedia(constraints);
+      try {
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: true,
+          audio: false
+        });
       } catch (dispErr) {
         if (dispErr.name === 'NotAllowedError') {
-          throw dispErr;
+          throw new Error('Izin berbagi layar dibatalkan.');
         }
-
-        // Retry with pure video constraint
-        try {
-          stream = await navigator.mediaDevices.getDisplayMedia({ video: true });
-        } catch (retryErr) {
-          // If mobile Chrome blocks getDisplayMedia on plain HTTP, suggest camera fallback
-          if (isMobile && navigator.mediaDevices.getUserMedia) {
-            console.warn('[ScreenShare] getDisplayMedia failed, falling back to camera', retryErr);
-            this.currentFacingMode = 'environment';
-            stream = await navigator.mediaDevices.getUserMedia({
-              video: { facingMode: 'environment' },
-              audio: false
-            });
-          } else {
-            throw retryErr;
-          }
-        }
+        throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
       }
     }
 
@@ -500,23 +497,105 @@ export class WebRTCManager {
       throw new Error('Tidak ada siaran kamera yang aktif');
     }
 
-    const nextFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+    const currentMode = this.currentFacingMode || 'environment';
+    const nextFacingMode = currentMode === 'user' ? 'environment' : 'user';
 
-    let newStream;
+    // 1. MUST stop existing video track on Android first so hardware sensor is released!
+    const oldTracks = peerObj.localStream ? peerObj.localStream.getVideoTracks() : [];
+    oldTracks.forEach((track) => {
+      try {
+        track.stop();
+      } catch (_) {}
+    });
+
+    // Small delay to let Android Camera HAL completely release the sensor
+    await new Promise((resolve) => setTimeout(resolve, 80));
+
+    let newStream = null;
+
+    // Strategy 1: Physical Camera Sensor selection via enumerateDevices (Most reliable on Android)
     try {
-      newStream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: nextFacingMode },
-          width: { ideal: 1280 },
-          height: { ideal: 720 }
-        },
-        audio: false
-      });
-    } catch (e) {
-      newStream = await navigator.mediaDevices.getUserMedia({
-        video: { facingMode: nextFacingMode },
-        audio: false
-      });
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const videoDevices = devices.filter((d) => d.kind === 'videoinput');
+
+      if (videoDevices.length > 1) {
+        let matched = null;
+        if (nextFacingMode === 'user') {
+          matched =
+            videoDevices.find((d) => /front|user|depan|selfie|facing front/i.test(d.label)) ||
+            (this.currentDeviceId ? videoDevices.find((d) => d.deviceId !== this.currentDeviceId) : null) ||
+            videoDevices[1] ||
+            videoDevices[videoDevices.length - 1];
+        } else {
+          matched =
+            videoDevices.find((d) => /back|environment|belakang|rear|facing back/i.test(d.label)) ||
+            (this.currentDeviceId ? videoDevices.find((d) => d.deviceId !== this.currentDeviceId) : null) ||
+            videoDevices[0];
+        }
+
+        if (matched && matched.deviceId) {
+          try {
+            newStream = await navigator.mediaDevices.getUserMedia({
+              video: {
+                deviceId: { exact: matched.deviceId },
+                width: { ideal: 1280 },
+                height: { ideal: 720 }
+              },
+              audio: false
+            });
+            this.currentDeviceId = matched.deviceId;
+          } catch (eDev) {
+            try {
+              newStream = await navigator.mediaDevices.getUserMedia({
+                video: { deviceId: matched.deviceId },
+                audio: false
+              });
+              this.currentDeviceId = matched.deviceId;
+            } catch (eDevFallback) {
+              console.warn('[Camera] deviceId exact/ideal failed, proceeding to facingMode...', eDevFallback);
+            }
+          }
+        }
+      }
+    } catch (eEnum) {
+      console.warn('[Camera] Device enumeration error:', eEnum);
+    }
+
+    // Strategy 2: Exact facingMode
+    if (!newStream) {
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { exact: nextFacingMode },
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e1) {
+        console.warn('[Camera] Exact facingMode failed, trying ideal constraint...', e1);
+      }
+    }
+
+    // Strategy 3: Ideal facingMode
+    if (!newStream) {
+      try {
+        newStream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: nextFacingMode,
+            width: { ideal: 1280 },
+            height: { ideal: 720 }
+          },
+          audio: false
+        });
+      } catch (e2) {
+        console.warn('[Camera] Ideal facingMode failed, falling back to general video...', e2);
+      }
+    }
+
+    // Strategy 4: General video request fallback
+    if (!newStream) {
+      newStream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
     }
 
     const newVideoTrack = newStream.getVideoTracks()[0];
@@ -530,13 +609,19 @@ export class WebRTCManager {
       pc.addTrack(newVideoTrack, newStream);
     }
 
-    // Stop old video track
-    if (peerObj.localStream) {
-      peerObj.localStream.getVideoTracks().forEach((t) => t.stop());
-    }
-
     peerObj.localStream = newStream;
     this.currentFacingMode = nextFacingMode;
+    if (newVideoTrack?.getSettings?.()?.deviceId) {
+      this.currentDeviceId = newVideoTrack.getSettings().deviceId;
+    }
+
+    // Notify peers via socket about camera facing update
+    if (this.socket && targetId) {
+      this.socket.emit('camera-facing-changed', {
+        targetId,
+        facingMode: nextFacingMode
+      });
+    }
 
     newVideoTrack.onended = () => {
       this.stopScreenShare(targetId);

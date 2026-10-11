@@ -19,17 +19,32 @@ public class MainActivity extends BridgeActivity {
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        // Ensure Android status bar and display cutout / notch do not overlap WebView content
-        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (view, windowInsets) -> {
-            Insets insets = windowInsets.getInsets(
-                WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()
-            );
-            view.setPadding(0, insets.top, 0, 0);
-            return windowInsets;
-        });
+        // Dark status bar and navigation bar matching dark theme
+        getWindow().setStatusBarColor(Color.parseColor("#09090b"));
+        getWindow().setNavigationBarColor(Color.parseColor("#09090b"));
         findViewById(android.R.id.content).setBackgroundColor(Color.parseColor("#09090b"));
 
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public String getDeviceIp() {
+                try {
+                    java.util.Enumeration<java.net.NetworkInterface> en = java.net.NetworkInterface.getNetworkInterfaces();
+                    while (en.hasMoreElements()) {
+                        java.net.NetworkInterface intf = en.nextElement();
+                        java.util.Enumeration<java.net.InetAddress> enumIpAddr = intf.getInetAddresses();
+                        while (enumIpAddr.hasMoreElements()) {
+                            java.net.InetAddress inetAddress = enumIpAddr.nextElement();
+                            if (!inetAddress.isLoopbackAddress() && inetAddress instanceof java.net.Inet4Address) {
+                                return inetAddress.getHostAddress();
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+                return "";
+            }
+
             @JavascriptInterface
             public boolean saveToEncross(String fileName, String base64Data, String subfolder) {
                 try {

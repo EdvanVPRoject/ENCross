@@ -297,6 +297,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  socket.on('camera-facing-changed', ({ targetId, facingMode }) => {
+    if (targetId) {
+      io.to(targetId).emit('camera-facing-changed', {
+        senderId: socket.id,
+        facingMode
+      });
+    }
+  });
+
   // Disconnect handler
   socket.on('disconnect', () => {
     console.log(`[Socket Disconnected] ID: ${socket.id}`);

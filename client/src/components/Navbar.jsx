@@ -3,7 +3,7 @@ import { QrCode, Laptop, Smartphone, Tablet, Radio, Edit2, Wifi, Plus } from 'lu
 import { triggerHaptic } from '../utils/feedback';
 import logoImg from '../assets/logo.png';
 
-export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOpenConnect }) {
+export function Navbar({ selfInfo, localIp, selfIp, roomId, onOpenQR, onOpenRename, onOpenConnect }) {
   const getDeviceIcon = () => {
     if (selfInfo?.deviceType === 'mobile') return <Smartphone className="w-3.5 h-3.5 text-zinc-400" />;
     if (selfInfo?.deviceType === 'tablet') return <Tablet className="w-3.5 h-3.5 text-zinc-400" />;
@@ -20,17 +20,17 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
     selfInfo?.deviceType === 'tablet' ||
     (typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent));
 
+  const displayIp = isMobile ? (selfIp || localIp) : localIp;
+
   return (
     <header
       style={{
-        paddingTop: isMobile
-          ? 'max(env(safe-area-inset-top, 0px), 2.5rem)'
-          : 'max(env(safe-area-inset-top, 0px), 0.75rem)'
+        paddingTop: 'max(env(safe-area-inset-top, 0px), 0.625rem)'
       }}
-      className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3.5 pb-2.5 sm:px-6 sm:pb-3 w-full max-w-full overflow-hidden"
+      className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3 pb-2.5 sm:px-6 sm:pb-3 w-full max-w-full overflow-hidden"
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
-        {/* Brand & Laptop IP Badge */}
+        {/* Brand & Device IP Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
             <img
@@ -48,12 +48,16 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
             </div>
           </div>
 
-          {/* Prominent Laptop IP Badge on Website / Desktop */}
-          {localIp && localIp !== '127.0.0.1' && (
-            <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 shadow-xs">
+          {/* Prominent IP Badge: Shows 'IP HP' on phone, 'IP Laptop' on desktop */}
+          {displayIp && displayIp !== '127.0.0.1' && (
+            <div className="flex items-center gap-1.5 px-2 sm:px-2.5 py-1 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 shadow-xs shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-              <span className="text-zinc-500 text-[10px] hidden md:inline font-sans font-medium">IP Laptop:</span>
-              <span className="text-emerald-400 font-semibold text-[11px] sm:text-xs">{localIp}</span>
+              <span className="text-zinc-400 text-[10px] font-sans font-medium">
+                {isMobile ? 'IP HP:' : 'IP Laptop:'}
+              </span>
+              <span className="text-emerald-400 font-semibold text-[11px] sm:text-xs">
+                {displayIp}
+              </span>
             </div>
           )}
         </div>
@@ -67,12 +71,12 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
                 triggerHaptic([30]);
                 onOpenConnect();
               }}
-              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg h-7 px-2 sm:px-2.5 text-xs text-zinc-300 transition cursor-pointer"
-              title={isMobile ? 'Sambungkan / Ganti IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
+              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg h-7 px-2 sm:px-2.5 text-xs text-zinc-300 transition cursor-pointer shrink-0"
+              title={isMobile ? 'Sambungkan ke IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
             >
               <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
               <span className="text-[11px] font-medium hidden sm:inline">
-                {isMobile ? 'IP Laptop' : 'Sambung IP'}
+                Sambung IP
               </span>
               <span className="text-[11px] font-medium sm:hidden">IP</span>
             </button>
@@ -81,7 +85,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
           {/* Self Device Badge (Click to Rename) */}
           <button
             onClick={handleRenameClick}
-            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800/80 active:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs text-zinc-300 transition cursor-pointer max-w-[120px] sm:max-w-[200px]"
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800/80 active:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs text-zinc-300 transition cursor-pointer max-w-[85px] sm:max-w-[180px] shrink-0"
             title="Klik untuk mengubah nama perangkat Anda"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />

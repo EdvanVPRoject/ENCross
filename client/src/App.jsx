@@ -20,6 +20,7 @@ export function App() {
   const [selfInfo, setSelfInfo] = useState(null);
   const [roomId, setRoomId] = useState('encross-lan');
   const [localIp, setLocalIp] = useState('');
+  const [selfIp, setSelfIp] = useState('');
   const [peers, setPeers] = useState([]);
   const [socket, setSocket] = useState(null);
 
@@ -74,6 +75,16 @@ export function App() {
     // 2. Initialize self device profile
     let device = getDeviceInfo();
     setSelfInfo(device);
+
+    // Query device's own local Wi-Fi IP on Android APK
+    if (window.AndroidDownloader?.getDeviceIp) {
+      try {
+        const dIp = window.AndroidDownloader.getDeviceIp();
+        if (dIp) setSelfIp(dIp);
+      } catch (e) {
+        console.warn('[Network] getDeviceIp note:', e);
+      }
+    }
 
     // 3. Connect to backend signaling server
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
@@ -180,6 +191,12 @@ export function App() {
       }
     });
 
+    newSocket.on('camera-facing-changed', ({ facingMode }) => {
+      if (facingMode) {
+        setCameraFacingMode(facingMode);
+      }
+    });
+
     // Socket Event: Connection Error (Prompt IP for mobile APK)
     newSocket.on('connect_error', () => {
       if (isMobileDevice && isLocalhost) {
@@ -202,6 +219,9 @@ export function App() {
       if (assignedSelf) {
         device.deviceId = assignedSelf.deviceId;
         setSelfInfo(assignedSelf);
+        if (assignedSelf.clientIp && assignedSelf.clientIp !== '127.0.0.1') {
+          setSelfIp((prev) => prev || assignedSelf.clientIp);
+        }
         if (webrtcManagerRef.current) {
           webrtcManagerRef.current.selfInfo = assignedSelf;
         }
@@ -558,6 +578,7 @@ export function App() {
       <Navbar
         selfInfo={selfInfo}
         localIp={resolvedIp}
+        selfIp={selfIp}
         roomId={roomId}
         onOpenQR={() => setIsQrOpen(true)}
         onOpenRename={() => setIsRenameOpen(true)}
@@ -651,6 +672,7 @@ export function App() {
         <PeersRadar
           peers={peers}
           localIp={resolvedIp}
+          selfIp={selfIp}
           activeSharingPeerId={activeSharingPeerId}
           activeSharingMode={activeSharingMode}
           cameraFacingMode={cameraFacingMode}

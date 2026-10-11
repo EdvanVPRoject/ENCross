@@ -6,6 +6,7 @@ import logoImg from '../assets/logo.png';
 export function PeersRadar({
   peers,
   localIp,
+  selfIp,
   activeSharingPeerId,
   activeSharingMode,
   cameraFacingMode,
@@ -96,11 +97,11 @@ export function PeersRadar({
               </button>
             ) : null}
 
-            {!isMobile && localIp && localIp !== '127.0.0.1' && (
+            {((isMobile && (selfIp || localIp)) || (!isMobile && localIp && localIp !== '127.0.0.1')) && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-                <span className="text-zinc-500 font-sans text-[11px]">IP Laptop:</span>
-                <span className="text-emerald-400 font-semibold">{localIp}</span>
+                <span className="text-zinc-500 font-sans text-[11px]">{isMobile ? 'IP HP:' : 'IP Laptop:'}</span>
+                <span className="text-emerald-400 font-semibold">{isMobile ? (selfIp || localIp) : localIp}</span>
               </div>
             )}
           </div>
@@ -248,7 +249,7 @@ export function PeersRadar({
                       <span>
                         {activeSharingPeerId === peer.id
                           ? (activeSharingMode === 'camera' ? 'Stop Kamera' : 'Stop Layar')
-                          : 'Bagi Layar'}
+                          : (isMobile ? 'Kamera / Layar' : 'Bagi Layar')}
                       </span>
                     </button>
                   </div>
