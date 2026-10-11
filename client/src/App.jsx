@@ -10,7 +10,7 @@ import { RenameModal } from './components/RenameModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
-import { MessageSquare, X } from 'lucide-react';
+import { MessageSquare, X, SwitchCamera } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -36,12 +36,18 @@ export function App() {
   const [isSuperseded, setIsSuperseded] = useState(false);
   const [incomingToast, setIncomingToast] = useState(null);
 
-  // Screen Monitoring
+  // Screen & Camera Monitoring
   const [incomingStream, setIncomingStream] = useState(null);
+  const [incomingStreamMode, setIncomingStreamMode] = useState('screen');
+  const [incomingStreamPeerId, setIncomingStreamPeerId] = useState(null);
   const [screenSenderName, setScreenSenderName] = useState('');
   const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
+  const [activeSharingMode, setActiveSharingMode] = useState(null);
+  const [cameraFacingMode, setCameraFacingMode] = useState('environment');
+  const [localBroadcastStream, setLocalBroadcastStream] = useState(null);
 
   const webrtcManagerRef = useRef(null);
+  const activeSharingPeerIdRef = useRef(activeSharingPeerId);
   const incomingStreamRef = useRef(incomingStream);
   const isTextSyncOpenRef = useRef(isTextSyncOpen);
   const activeTransferRef = useRef(activeTransfer);
@@ -51,6 +57,7 @@ export function App() {
   const isRenameOpenRef = useRef(isRenameOpen);
 
   useEffect(() => { incomingStreamRef.current = incomingStream; }, [incomingStream]);
+  useEffect(() => { activeSharingPeerIdRef.current = activeSharingPeerId; }, [activeSharingPeerId]);
   useEffect(() => { isTextSyncOpenRef.current = isTextSyncOpen; }, [isTextSyncOpen]);
   useEffect(() => { activeTransferRef.current = activeTransfer; }, [activeTransfer]);
   useEffect(() => { isSourceModalOpenRef.current = isSourceModalOpen; }, [isSourceModalOpen]);
@@ -129,9 +136,11 @@ export function App() {
       }
     };
 
-    // Handle incoming Remote Screen Stream
-    rtcManager.onRemoteStream = (peerId, stream) => {
+    // Handle incoming Remote Screen or Camera Stream
+    rtcManager.onRemoteStream = (peerId, stream, mode) => {
       setIncomingStream(stream);
+      setIncomingStreamMode(mode || 'screen');
+      setIncomingStreamPeerId(peerId);
       playSound('connect');
       triggerHaptic([40]);
       setPeers((currPeers) => {
@@ -143,13 +152,31 @@ export function App() {
 
     rtcManager.onScreenShareEnded = () => {
       setActiveSharingPeerId(null);
+      setActiveSharingMode(null);
+      setLocalBroadcastStream(null);
       setIncomingStream(null);
+      setIncomingStreamPeerId(null);
     };
 
     // Socket Event: Peer started or stopped screen sharing
     newSocket.on('peer-screen-share-status', ({ senderId, isSharing }) => {
       if (!isSharing) {
         setIncomingStream(null);
+        setIncomingStreamPeerId(null);
+      }
+    });
+
+    // Socket Event: Remote peer requested camera switch (front <-> back)
+    newSocket.on('camera-switch-requested', () => {
+      if (webrtcManagerRef.current) {
+        webrtcManagerRef.current.switchCamera()
+          .then((res) => {
+            if (res) {
+              setCameraFacingMode(res.facingMode);
+              setLocalBroadcastStream(res.stream);
+            }
+          })
+          .catch((err) => console.warn('[CameraSwitch] Remote switch error:', err));
       }
     });
 
@@ -261,8 +288,18 @@ export function App() {
 
   // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
   const handleBackStep = () => {
+    if (activeSharingPeerIdRef.current) {
+      if (webrtcManagerRef.current) {
+        webrtcManagerRef.current.stopScreenShare(activeSharingPeerIdRef.current);
+      }
+      setActiveSharingPeerId(null);
+      setActiveSharingMode(null);
+      setLocalBroadcastStream(null);
+      return true;
+    }
     if (incomingStreamRef.current) {
       setIncomingStream(null);
+      setIncomingStreamPeerId(null);
       return true;
     }
     if (isTextSyncOpenRef.current) {
@@ -428,23 +465,30 @@ export function App() {
   const executeStream = async (peerId, mode = 'screen') => {
     if (!webrtcManagerRef.current) return;
     try {
-      await webrtcManagerRef.current.startScreenShare(peerId, mode);
+      const stream = await webrtcManagerRef.current.startScreenShare(peerId, mode);
       setActiveSharingPeerId(peerId);
+      setActiveSharingMode(mode);
+      setLocalBroadcastStream(stream);
+      setCameraFacingMode(webrtcManagerRef.current.currentFacingMode || 'environment');
     } catch (err) {
       setActiveSharingPeerId(null);
+      setActiveSharingMode(null);
+      setLocalBroadcastStream(null);
       if (err.name !== 'NotAllowedError') {
         alert('Info Siaran: ' + err.message);
       }
     }
   };
 
-  // Screen Share Handler (Toggle start/stop)
+  // Screen / Camera Share Handler (Toggle start/stop)
   const handleStartScreenShare = async (peerId) => {
     if (!webrtcManagerRef.current) return;
 
     if (activeSharingPeerId === peerId) {
       webrtcManagerRef.current.stopScreenShare(peerId);
       setActiveSharingPeerId(null);
+      setActiveSharingMode(null);
+      setLocalBroadcastStream(null);
       return;
     }
 
@@ -455,6 +499,28 @@ export function App() {
     } else {
       executeStream(peerId, 'screen');
     }
+  };
+
+  // Switch between front and rear camera
+  const handleSwitchCamera = async () => {
+    if (!webrtcManagerRef.current) return;
+    try {
+      triggerHaptic([30]);
+      const res = await webrtcManagerRef.current.switchCamera(activeSharingPeerId);
+      if (res) {
+        setCameraFacingMode(res.facingMode);
+        setLocalBroadcastStream(res.stream);
+      }
+    } catch (err) {
+      console.warn('Gagal mengganti kamera:', err);
+    }
+  };
+
+  // Remote viewer request camera switch on broadcaster
+  const handleRequestRemoteCameraSwitch = (targetId) => {
+    if (!socket || !targetId) return;
+    triggerHaptic([30]);
+    socket.emit('request-camera-switch', { targetId });
   };
 
   // Open Chat Drawer from Floating Notification Pop-up
@@ -579,6 +645,9 @@ export function App() {
           peers={peers}
           localIp={resolvedIp}
           activeSharingPeerId={activeSharingPeerId}
+          activeSharingMode={activeSharingMode}
+          cameraFacingMode={cameraFacingMode}
+          onSwitchCamera={handleSwitchCamera}
           unreadPeerId={incomingToast?.senderId || incomingToast?.senderDeviceId}
           onSendFile={handleSendFile}
           onOpenTextSync={(peer) => {
@@ -646,12 +715,70 @@ export function App() {
         onSendMessage={handleSendMessage}
       />
 
-      {/* Live Remote Screen Monitoring Modal */}
+      {/* Floating Camera Broadcaster Bar when Camera Streaming is Active */}
+      {activeSharingPeerId && activeSharingMode === 'camera' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700/80 rounded-2xl shadow-2xl p-2 sm:p-2.5 flex items-center gap-3 backdrop-blur-md max-w-[94vw] animate-in fade-in slide-in-from-bottom-3 duration-200">
+          {/* Mini Camera Preview */}
+          <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-zinc-700 shrink-0 relative">
+            <video
+              ref={(el) => {
+                if (el && localBroadcastStream && el.srcObject !== localBroadcastStream) {
+                  el.srcObject = localBroadcastStream;
+                }
+              }}
+              autoPlay
+              playsInline
+              muted
+              className="w-full h-full object-cover"
+            />
+            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
+          </div>
+
+          {/* Info & Mode */}
+          <div className="min-w-0 pr-1">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-white">Siaran Kamera HP</span>
+              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1 rounded">
+                {cameraFacingMode === 'user' ? 'Depan' : 'Belakang'}
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-400 truncate">
+              Ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Perangkat Lawan'}
+            </p>
+          </div>
+
+          {/* Switch Camera Button */}
+          <button
+            onClick={handleSwitchCamera}
+            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-emerald-400 hover:text-emerald-300 border border-zinc-700/70 text-xs font-semibold transition cursor-pointer shrink-0"
+            title="Ganti Kamera Depan / Belakang"
+          >
+            <SwitchCamera className="w-3.5 h-3.5" />
+            <span className="text-[11px]">Ganti Kamera</span>
+          </button>
+
+          {/* Stop Button */}
+          <button
+            onClick={() => handleStartScreenShare(activeSharingPeerId)}
+            className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
+            title="Hentikan Siaran"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Live Remote Screen / Camera Monitoring Modal */}
       {incomingStream && (
         <ScreenViewModal
           stream={incomingStream}
           senderName={screenSenderName}
-          onClose={() => setIncomingStream(null)}
+          mode={incomingStreamMode}
+          onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+          onClose={() => {
+            setIncomingStream(null);
+            setIncomingStreamPeerId(null);
+          }}
         />
       )}
 

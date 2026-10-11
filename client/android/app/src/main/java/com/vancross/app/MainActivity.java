@@ -1,11 +1,15 @@
 package com.vancross.app;
 
+import android.graphics.Color;
 import android.media.MediaScannerConnection;
 import android.os.Bundle;
 import android.os.Environment;
 import android.util.Base64;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
+import androidx.core.graphics.Insets;
+import androidx.core.view.ViewCompat;
+import androidx.core.view.WindowInsetsCompat;
 import com.getcapacitor.BridgeActivity;
 import java.io.File;
 import java.io.FileOutputStream;
@@ -14,6 +18,16 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Ensure Android status bar and display cutout / notch do not overlap WebView content
+        ViewCompat.setOnApplyWindowInsetsListener(findViewById(android.R.id.content), (view, windowInsets) -> {
+            Insets insets = windowInsets.getInsets(
+                WindowInsetsCompat.Type.statusBars() | WindowInsetsCompat.Type.displayCutout()
+            );
+            view.setPadding(0, insets.top, 0, 0);
+            return windowInsets;
+        });
+        findViewById(android.R.id.content).setBackgroundColor(Color.parseColor("#09090b"));
 
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
             @JavascriptInterface

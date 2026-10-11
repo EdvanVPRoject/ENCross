@@ -1,11 +1,14 @@
 import React, { useRef } from 'react';
-import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, QrCode, Wifi, Activity } from 'lucide-react';
+import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, QrCode, Wifi, Activity, SwitchCamera } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
 export function PeersRadar({
   peers,
   localIp,
   activeSharingPeerId,
+  activeSharingMode,
+  cameraFacingMode,
+  onSwitchCamera,
   unreadPeerId,
   onSendFile,
   onOpenTextSync,
@@ -231,9 +234,27 @@ export function PeersRadar({
                       }`}
                     >
                       <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id ? 'text-red-400 animate-pulse' : 'text-zinc-400'}`} />
-                      <span>{activeSharingPeerId === peer.id ? 'Stop Layar' : 'Bagi Layar'}</span>
+                      <span>
+                        {activeSharingPeerId === peer.id
+                          ? (activeSharingMode === 'camera' ? 'Stop Kamera' : 'Stop Layar')
+                          : 'Bagi Layar'}
+                      </span>
                     </button>
                   </div>
+
+                  {/* Quick Switch Camera Button on Peer Card when Camera Streaming */}
+                  {activeSharingPeerId === peer.id && activeSharingMode === 'camera' && onSwitchCamera && (
+                    <button
+                      onClick={() => {
+                        triggerHaptic([30]);
+                        onSwitchCamera();
+                      }}
+                      className="w-full mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition cursor-pointer"
+                    >
+                      <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Ganti Kamera ({cameraFacingMode === 'user' ? 'Depan' : 'Belakang'})</span>
+                    </button>
+                  )}
                 </div>
               </div>
             ))}

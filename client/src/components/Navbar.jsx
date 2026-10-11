@@ -18,8 +18,8 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
 
   return (
     <header
-      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 0.625rem)' }}
-      className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3 pb-2.5 sm:px-6 sm:pb-3 w-full max-w-full overflow-hidden"
+      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 0.75rem)' }}
+      className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3.5 pb-2.5 sm:px-6 sm:pb-3 w-full max-w-full overflow-hidden"
     >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
         {/* Brand & Laptop IP Badge */}

@@ -23,6 +23,11 @@ export class WebRTCManager {
     this.onRemoteStream = null;
     this.onScreenShareEnded = null;
 
+    // Camera & Screen share state
+    this.currentFacingMode = 'environment';
+    this.activeSharePeerId = null;
+    this.activeShareMode = null;
+
     this.setupSocketListeners();
   }
 
@@ -31,6 +36,9 @@ export class WebRTCManager {
       console.log(`[WebRTC] Received offer from ${senderId}`, metadata);
       const pc = this.getOrCreatePeerConnection(senderId);
       const peerObj = this.peers.get(senderId);
+      if (metadata && metadata.mode) {
+        peerObj.remoteMode = metadata.mode;
+      }
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
 
@@ -121,7 +129,7 @@ export class WebRTCManager {
       const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
       peerObj.remoteStream = stream;
       if (this.onRemoteStream) {
-        this.onRemoteStream(peerId, stream);
+        this.onRemoteStream(peerId, stream, peerObj.remoteMode);
       }
     };
 
@@ -397,17 +405,25 @@ export class WebRTCManager {
 
     // Check if getDisplayMedia is supported or if camera mode is requested
     if (mode === 'camera' || (!navigator.mediaDevices.getDisplayMedia && navigator.mediaDevices.getUserMedia)) {
+      this.currentFacingMode = isMobile ? 'environment' : 'user';
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
-            facingMode: isMobile ? 'environment' : 'user',
+            facingMode: { ideal: this.currentFacingMode },
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
           audio: false
         });
       } catch (camErr) {
-        throw new Error('Gagal mengakses kamera HP: ' + camErr.message);
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode: this.currentFacingMode },
+            audio: false
+          });
+        } catch (retryErr) {
+          throw new Error('Gagal mengakses kamera HP: ' + (retryErr.message || camErr.message));
+        }
       }
     } else {
       try {
@@ -428,6 +444,7 @@ export class WebRTCManager {
           // If mobile Chrome blocks getDisplayMedia on plain HTTP, suggest camera fallback
           if (isMobile && navigator.mediaDevices.getUserMedia) {
             console.warn('[ScreenShare] getDisplayMedia failed, falling back to camera', retryErr);
+            this.currentFacingMode = 'environment';
             stream = await navigator.mediaDevices.getUserMedia({
               video: { facingMode: 'environment' },
               audio: false
@@ -440,6 +457,9 @@ export class WebRTCManager {
     }
 
     peerObj.localStream = stream;
+    peerObj.shareMode = mode;
+    this.activeSharePeerId = peerId;
+    this.activeShareMode = mode;
 
     // Remove old video senders if any
     const existingSenders = pc.getSenders();
@@ -472,11 +492,69 @@ export class WebRTCManager {
     return stream;
   }
 
+  // Switch between front ('user') and rear ('environment') camera without tearing down WebRTC
+  async switchCamera(peerId = this.activeSharePeerId) {
+    const targetId = peerId || this.activeSharePeerId;
+    const peerObj = targetId ? this.peers.get(targetId) : null;
+    if (!peerObj || !peerObj.pc) {
+      throw new Error('Tidak ada siaran kamera yang aktif');
+    }
+
+    const nextFacingMode = this.currentFacingMode === 'user' ? 'environment' : 'user';
+
+    let newStream;
+    try {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: { ideal: nextFacingMode },
+          width: { ideal: 1280 },
+          height: { ideal: 720 }
+        },
+        audio: false
+      });
+    } catch (e) {
+      newStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: nextFacingMode },
+        audio: false
+      });
+    }
+
+    const newVideoTrack = newStream.getVideoTracks()[0];
+    const pc = peerObj.pc;
+    const senders = pc.getSenders();
+    const videoSender = senders.find((s) => s.track && s.track.kind === 'video');
+
+    if (videoSender) {
+      await videoSender.replaceTrack(newVideoTrack);
+    } else {
+      pc.addTrack(newVideoTrack, newStream);
+    }
+
+    // Stop old video track
+    if (peerObj.localStream) {
+      peerObj.localStream.getVideoTracks().forEach((t) => t.stop());
+    }
+
+    peerObj.localStream = newStream;
+    this.currentFacingMode = nextFacingMode;
+
+    newVideoTrack.onended = () => {
+      this.stopScreenShare(targetId);
+    };
+
+    return { facingMode: nextFacingMode, stream: newStream };
+  }
+
   stopScreenShare(peerId) {
     const peerObj = this.peers.get(peerId);
     if (peerObj && peerObj.localStream) {
-      peerObj.localStream.getTracks().forEach(track => track.stop());
+      peerObj.localStream.getTracks().forEach((track) => track.stop());
       peerObj.localStream = null;
+      peerObj.shareMode = null;
+    }
+    if (this.activeSharePeerId === peerId) {
+      this.activeSharePeerId = null;
+      this.activeShareMode = null;
     }
     this.socket.emit('screen-share-status', { targetId: peerId, isSharing: false });
     if (this.onScreenShareEnded) {

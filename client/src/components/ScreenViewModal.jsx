@@ -1,8 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { X, Maximize2, Minimize2, MonitorPlay, Play, RotateCw } from 'lucide-react';
+import { X, Maximize2, Minimize2, MonitorPlay, Camera, Play, RotateCw, SwitchCamera } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
-export function ScreenViewModal({ stream, senderName, onClose }) {
+export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCamera }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
@@ -71,12 +71,16 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
         >
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-1.5 rounded-lg bg-zinc-800 text-emerald-400 shrink-0">
-              <MonitorPlay className="w-4 h-4 animate-pulse" />
+              {mode === 'camera' ? (
+                <Camera className="w-4 h-4 text-emerald-400 animate-pulse" />
+              ) : (
+                <MonitorPlay className="w-4 h-4 animate-pulse" />
+              )}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-1.5">
                 <h3 className="text-xs font-semibold text-white truncate">
-                  Mirroring Layar
+                  {mode === 'camera' ? 'Kamera Wireless (Webcam)' : 'Mirroring Layar'}
                 </h3>
                 <span className="text-[10px] bg-red-500/15 text-red-400 border border-red-500/30 px-1.5 py-0.2 rounded font-mono uppercase shrink-0 font-bold">
                   LIVE
@@ -89,6 +93,19 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            {onSwitchCamera && (
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onSwitchCamera();
+                }}
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-emerald-400 hover:text-emerald-300 border border-zinc-700/70 text-xs font-medium transition cursor-pointer"
+                title="Ganti Kamera Depan / Belakang"
+              >
+                <SwitchCamera className="w-3.5 h-3.5" />
+                <span className="hidden sm:inline text-[11px]">Ganti Kamera</span>
+              </button>
+            )}
             <button
               onClick={toggleFullscreen}
               className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
@@ -102,7 +119,7 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
                 onClose();
               }}
               className="p-2 rounded-lg text-zinc-300 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
-              title="Tutup Mirroring"
+              title="Tutup Siaran"
             >
               <X className="w-4 h-4" />
             </button>

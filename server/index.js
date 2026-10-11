@@ -286,6 +286,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Camera switch request from remote viewer to camera streamer
+  socket.on('request-camera-switch', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('camera-switch-requested', {
+        requesterId: socket.id
+      });
+    }
+  });
+
   // Disconnect handler
   socket.on('disconnect', () => {
     console.log(`[Socket Disconnected] ID: ${socket.id}`);
