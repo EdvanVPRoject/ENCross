@@ -123,7 +123,8 @@ function createMainWindow() {
 
 // 4. Create System Tray
 function createSystemTray() {
-  const trayIcon = getAppIcon();
+  const iconPath = path.join(__dirname, 'assets/icon.png');
+  const trayIcon = nativeImage.createFromPath(iconPath);
 
   tray = new Tray(trayIcon);
   tray.setToolTip('ENCross Hub - Aktif di Jaringan LAN');
