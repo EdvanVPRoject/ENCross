@@ -17,7 +17,10 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
   const isMobile = selfInfo?.deviceType === 'mobile';
 
   return (
-    <header className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3 py-2.5 sm:px-6 sm:py-3 w-full max-w-full overflow-hidden">
+    <header
+      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 0.625rem)' }}
+      className="border-b border-zinc-800 bg-zinc-950/90 backdrop-blur-md sticky top-0 z-40 px-3 pb-2.5 sm:px-6 sm:pb-3 w-full max-w-full overflow-hidden"
+    >
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
         {/* Brand & Laptop IP Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
@@ -77,15 +80,15 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
             <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden sm:inline" />
           </button>
 
-          {/* QR Button (For Desktop / Laptop Host) */}
-          {!isMobile && (
+          {/* QR Button */}
+          {onOpenQR && (
             <button
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenQR();
               }}
               className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 rounded-lg h-7 px-2 sm:px-3 text-xs font-semibold transition cursor-pointer shrink-0"
-              title="Hubungkan HP (Scan QR)"
+              title="Hubungkan HP (Tampilkan QR Code)"
             >
               <QrCode className="w-3.5 h-3.5 shrink-0" />
               <span className="hidden sm:inline">Hubungkan HP</span>

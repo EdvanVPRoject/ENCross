@@ -65,7 +65,10 @@ export function ScreenViewModal({ stream, senderName, onClose }) {
         className="bg-zinc-950 border-0 sm:border sm:border-zinc-800 sm:rounded-2xl w-full h-full sm:h-[88vh] sm:max-w-5xl flex flex-col shadow-2xl overflow-hidden relative"
       >
         {/* Top Control Bar */}
-        <div className="p-3 bg-zinc-900/95 border-b border-zinc-800 flex items-center justify-between z-20 shrink-0">
+        <div
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 0.75rem)' }}
+          className="px-3 pb-3 bg-zinc-900/95 border-b border-zinc-800 flex items-center justify-between z-20 shrink-0"
+        >
           <div className="flex items-center gap-2 min-w-0">
             <div className="p-1.5 rounded-lg bg-zinc-800 text-emerald-400 shrink-0">
               <MonitorPlay className="w-4 h-4 animate-pulse" />

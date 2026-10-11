@@ -126,6 +126,20 @@ export function PeersRadar({
                 Kirim file, teks, atau pantau layar secara real-time.
               </p>
             </div>
+
+            {onOpenQR && (
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenQR();
+                }}
+                className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 active:bg-zinc-700 border border-zinc-800 hover:border-zinc-700 text-zinc-200 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-medium transition cursor-pointer shrink-0 shadow-xs"
+                title="Tampilkan QR Code untuk menambah atau menghubungkan perangkat lain"
+              >
+                <QrCode className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span>QR Code</span>
+              </button>
+            )}
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">

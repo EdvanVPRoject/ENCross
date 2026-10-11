@@ -42,11 +42,21 @@ export function App() {
   const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
 
   const webrtcManagerRef = useRef(null);
+  const incomingStreamRef = useRef(incomingStream);
   const isTextSyncOpenRef = useRef(isTextSyncOpen);
+  const activeTransferRef = useRef(activeTransfer);
+  const isSourceModalOpenRef = useRef(isSourceModalOpen);
+  const isServerIpModalOpenRef = useRef(isServerIpModalOpen);
+  const isQrOpenRef = useRef(isQrOpen);
+  const isRenameOpenRef = useRef(isRenameOpen);
 
-  useEffect(() => {
-    isTextSyncOpenRef.current = isTextSyncOpen;
-  }, [isTextSyncOpen]);
+  useEffect(() => { incomingStreamRef.current = incomingStream; }, [incomingStream]);
+  useEffect(() => { isTextSyncOpenRef.current = isTextSyncOpen; }, [isTextSyncOpen]);
+  useEffect(() => { activeTransferRef.current = activeTransfer; }, [activeTransfer]);
+  useEffect(() => { isSourceModalOpenRef.current = isSourceModalOpen; }, [isSourceModalOpen]);
+  useEffect(() => { isServerIpModalOpenRef.current = isServerIpModalOpen; }, [isServerIpModalOpen]);
+  useEffect(() => { isQrOpenRef.current = isQrOpen; }, [isQrOpen]);
+  useEffect(() => { isRenameOpenRef.current = isRenameOpen; }, [isRenameOpen]);
 
   useEffect(() => {
     // 1. Parse or assign room ID from URL query
@@ -251,12 +261,108 @@ export function App() {
     };
   }, []);
 
-  // Auto-close QR Modal as soon as any device connects
-  useEffect(() => {
-    if (peers.length > 0 && isQrOpen) {
-      setIsQrOpen(false);
+  // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
+  const handleBackStep = () => {
+    if (incomingStreamRef.current) {
+      setIncomingStream(null);
+      return true;
     }
-  }, [peers.length, isQrOpen]);
+    if (isTextSyncOpenRef.current) {
+      setIsTextSyncOpen(false);
+      return true;
+    }
+    if (activeTransferRef.current) {
+      setActiveTransfer(null);
+      return true;
+    }
+    if (isSourceModalOpenRef.current) {
+      setIsSourceModalOpen(false);
+      return true;
+    }
+    if (isServerIpModalOpenRef.current) {
+      setIsServerIpModalOpen(false);
+      return true;
+    }
+    if (isQrOpenRef.current) {
+      setIsQrOpen(false);
+      return true;
+    }
+    if (isRenameOpenRef.current) {
+      setIsRenameOpen(false);
+      return true;
+    }
+    return false;
+  };
+
+  useEffect(() => {
+    let backListener = null;
+
+    const setupMobileSystem = async () => {
+      // 1. Configure Capacitor StatusBar so it doesn't overlay WebView and matches dark theme
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        await StatusBar.setOverlaysWebView({ overlay: false });
+        await StatusBar.setStyle({ style: Style.Dark });
+        await StatusBar.setBackgroundColor({ color: '#09090b' });
+      } catch {
+        // Not running in native Capacitor
+      }
+
+      // 2. Configure Capacitor Hardware Back Button
+      try {
+        const { App: CapApp } = await import('@capacitor/app');
+        backListener = await CapApp.addListener('backButton', () => {
+          const handled = handleBackStep();
+          if (!handled) {
+            CapApp.exitApp();
+          }
+        });
+      } catch {
+        // Not running in native Capacitor
+      }
+    };
+
+    setupMobileSystem();
+
+    // 3. Mobile Browser Popstate handler (physical/virtual back button in Chrome / PWA)
+    const handlePopState = () => {
+      handleBackStep();
+    };
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      if (backListener && typeof backListener.remove === 'function') {
+        backListener.remove();
+      }
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, []);
+
+  // Sync open overlay state to browser history for popstate support
+  useEffect(() => {
+    const isAnyModalOpen =
+      Boolean(incomingStream) ||
+      isTextSyncOpen ||
+      Boolean(activeTransfer) ||
+      isSourceModalOpen ||
+      isServerIpModalOpen ||
+      isQrOpen ||
+      isRenameOpen;
+
+    if (isAnyModalOpen) {
+      if (!window.history.state?.encrossModal) {
+        window.history.pushState({ encrossModal: true }, '');
+      }
+    }
+  }, [
+    incomingStream,
+    isTextSyncOpen,
+    activeTransfer,
+    isSourceModalOpen,
+    isServerIpModalOpen,
+    isQrOpen,
+    isRenameOpen
+  ]);
 
   // Reactivate session if superseded by another tab/browser
   const handleReactivateSession = () => {

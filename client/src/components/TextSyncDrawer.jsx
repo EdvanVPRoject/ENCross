@@ -56,7 +56,10 @@ export function TextSyncDrawer({
     <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-xs">
       <div className="bg-zinc-900 border-l border-zinc-800 w-full max-w-md h-full flex flex-col shadow-2xl">
         {/* Header */}
-        <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+        <div
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)' }}
+          className="px-4 pb-3.5 border-b border-zinc-800 flex items-center justify-between"
+        >
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-lg bg-zinc-800 border border-zinc-700/60 text-zinc-300">
               <MessageSquare className="w-4 h-4" />
@@ -141,7 +144,11 @@ export function TextSyncDrawer({
         </div>
 
         {/* Input Footer */}
-        <form onSubmit={handleSend} className="p-3 border-t border-zinc-800 bg-zinc-950">
+        <form
+          style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 0.75rem)' }}
+          onSubmit={handleSend}
+          className="p-3 border-t border-zinc-800 bg-zinc-950"
+        >
           <div className="flex items-end gap-2">
             <textarea
               value={text}

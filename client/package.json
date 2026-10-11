@@ -14,8 +14,10 @@
   },
   "dependencies": {
     "@capacitor/android": "^8.5.3",
+    "@capacitor/app": "^8.1.2",
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
+    "@capacitor/status-bar": "^8.0.4",
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-basic-ssl": "^2.3.0",
     "lucide-react": "^1.55.0",
