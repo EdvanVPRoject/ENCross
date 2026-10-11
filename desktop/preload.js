@@ -11,5 +11,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send('minimize-to-tray');
   },
   createDesktopShortcut: () => ipcRenderer.invoke('create-desktop-shortcut'),
-  saveFileToEncross: (data) => ipcRenderer.invoke('save-file-to-encross', data)
+  saveFileToEncross: (data) => ipcRenderer.invoke('save-file-to-encross', data),
+  getScrcpyStatus: () => ipcRenderer.invoke('get-scrcpy-status'),
+  startScrcpy: (opts) => ipcRenderer.invoke('start-scrcpy', opts),
+  connectAdbTcpip: (ip, port) => ipcRenderer.invoke('connect-adb-tcpip', { ip, port }),
+  enableAdbTcpip: (port) => ipcRenderer.invoke('enable-adb-tcpip', { port }),
+  stopScrcpy: () => ipcRenderer.invoke('stop-scrcpy')
 });

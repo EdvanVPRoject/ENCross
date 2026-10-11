@@ -2,6 +2,7 @@ const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, sess
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const { exec, spawn } = require('child_process');
 const { startServer, getLocalIpAddresses } = require('./server');
 
 let mainWindow = null;
@@ -343,6 +344,165 @@ ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeTyp
     console.error('[Electron] Error saving file to ENCross folder:', err);
     return { success: false, error: err.message };
   }
+});
+
+// Scrcpy & ADB Integration for Ultra-Smooth Phone Mirroring
+let activeScrcpyProcess = null;
+
+function parseAdbDevices(stdout) {
+  if (!stdout) return [];
+  const lines = stdout.split(/\r?\n/).filter(line => line.trim() && !line.startsWith('List of devices'));
+  return lines.map(line => {
+    const parts = line.trim().split(/\s+/);
+    const id = parts[0];
+    const status = parts[1] || 'unknown';
+    const modelMatch = line.match(/model:([^\s]+)/);
+    const model = modelMatch ? modelMatch[1].replace(/_/g, ' ') : id;
+    const isWireless = id.includes(':');
+    return {
+      id,
+      status, // 'device', 'unauthorized', 'offline'
+      model,
+      isWireless,
+      raw: line
+    };
+  });
+}
+
+ipcMain.handle('get-scrcpy-status', async () => {
+  return new Promise((resolve) => {
+    exec('scrcpy --version', (sErr, sOut) => {
+      const isScrcpyAvailable = !sErr && Boolean(sOut && sOut.includes('scrcpy'));
+      const scrcpyVersion = isScrcpyAvailable ? (sOut.match(/scrcpy\s+([^\s]+)/)?.[1] || '4.1') : null;
+
+      exec('adb devices -l', (aErr, aOut) => {
+        const isAdbAvailable = !aErr;
+        const devices = (!aErr && aOut) ? parseAdbDevices(aOut) : [];
+        resolve({
+          isScrcpyAvailable,
+          scrcpyVersion,
+          isAdbAvailable,
+          devices,
+          isMirroringActive: Boolean(activeScrcpyProcess && !activeScrcpyProcess.killed)
+        });
+      });
+    });
+  });
+});
+
+ipcMain.handle('start-scrcpy', async (_, options = {}) => {
+  const { deviceId, ip, stayAwake = true, alwaysOnTop = false } = options;
+
+  if (activeScrcpyProcess && !activeScrcpyProcess.killed) {
+    try {
+      activeScrcpyProcess.kill();
+    } catch (_) {}
+    activeScrcpyProcess = null;
+  }
+
+  const args = ['--window-title=ENCross - Layar HP'];
+  if (stayAwake) args.push('--stay-awake');
+  if (alwaysOnTop) args.push('--always-on-top');
+
+  if (deviceId) {
+    args.push('-s', deviceId);
+  } else if (ip) {
+    args.push(`--tcpip=${ip}:5555`);
+  }
+
+  return new Promise((resolve) => {
+    try {
+      const child = spawn('scrcpy', args, {
+        windowsHide: false,
+        detached: true
+      });
+      activeScrcpyProcess = child;
+
+      let hasReported = false;
+      let errorOutput = '';
+
+      child.stderr.on('data', (data) => {
+        const text = data.toString();
+        errorOutput += text;
+        console.log('[Scrcpy stderr]', text);
+      });
+
+      child.stdout.on('data', (data) => {
+        const text = data.toString();
+        console.log('[Scrcpy stdout]', text);
+        if (!hasReported) {
+          hasReported = true;
+          resolve({ success: true, pid: child.pid });
+        }
+      });
+
+      child.on('error', (err) => {
+        console.error('[Scrcpy process error]', err);
+        if (!hasReported) {
+          hasReported = true;
+          resolve({ success: false, error: err.message });
+        }
+      });
+
+      child.on('exit', (code) => {
+        console.log('[Scrcpy process exited]', code);
+        activeScrcpyProcess = null;
+        if (!hasReported) {
+          hasReported = true;
+          resolve({ success: false, error: errorOutput || `Scrcpy keluar dengan kode ${code}` });
+        }
+      });
+
+      // If process starts without immediate error in 1.5 seconds, consider it running
+      setTimeout(() => {
+        if (!hasReported) {
+          hasReported = true;
+          resolve({ success: true, pid: child.pid });
+        }
+      }, 1500);
+    } catch (err) {
+      resolve({ success: false, error: err.message });
+    }
+  });
+});
+
+ipcMain.handle('connect-adb-tcpip', async (_, { ip, port = 5555 }) => {
+  if (!ip) return { success: false, error: 'Alamat IP diperlukan' };
+  const target = `${ip}:${port}`;
+  return new Promise((resolve) => {
+    exec(`adb connect ${target}`, (err, stdout, stderr) => {
+      const out = (stdout || '') + (stderr || '');
+      const isConnected = out.includes('connected to') && !out.includes('cannot connect') && !out.includes('failed');
+      resolve({
+        success: isConnected,
+        output: out.trim(),
+        error: isConnected ? null : out.trim()
+      });
+    });
+  });
+});
+
+ipcMain.handle('enable-adb-tcpip', async (_, { port = 5555 }) => {
+  return new Promise((resolve) => {
+    exec(`adb tcpip ${port}`, (err, stdout, stderr) => {
+      const out = (stdout || '') + (stderr || '');
+      if (err) {
+        return resolve({ success: false, error: out || err.message });
+      }
+      resolve({ success: true, output: out.trim() });
+    });
+  });
+});
+
+ipcMain.handle('stop-scrcpy', async () => {
+  if (activeScrcpyProcess && !activeScrcpyProcess.killed) {
+    try {
+      activeScrcpyProcess.kill();
+    } catch (_) {}
+    activeScrcpyProcess = null;
+    return { success: true };
+  }
+  return { success: false, message: 'Tidak ada proses Scrcpy yang berjalan' };
 });
 
 // Single Instance Lock (prevents multiple desktop windows)

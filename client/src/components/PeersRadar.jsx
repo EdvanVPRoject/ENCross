@@ -17,6 +17,7 @@ export function PeersRadar({
   onStartScreenShare,
   onRequestRemoteScreen,
   onRequestRemoteCamera,
+  onOpenScrcpy,
   onOpenQR,
   isMobile,
   onOpenConnect
@@ -328,32 +329,47 @@ export function PeersRadar({
                         </button>
                       </div>
 
-                      {/* If peer is a mobile phone: Show "Minta Layar HP" & "Minta Webcam HP" */}
+                      {/* If peer is a mobile phone: Show "Mirror Layar HP (Scrcpy Hub)" & Webcam HP */}
                       {(peer.deviceType === 'mobile' || /Android|iPhone|iPad/i.test(peer.os)) && (
-                        <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1.5 pt-1">
                           <button
                             onClick={() => {
                               triggerHaptic([30]);
-                              if (onRequestRemoteScreen) onRequestRemoteScreen(peer.id);
+                              if (onOpenScrcpy) onOpenScrcpy(peer);
                             }}
-                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30 transition cursor-pointer active:scale-95"
-                            title="Minta siaran layar ponsel ini ditampilkan di layar laptop"
+                            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer active:scale-95 shadow-xs"
+                            title="Buka Mirroring Layar HP via Scrcpy Hub (Native 60 FPS)"
                           >
-                            <Smartphone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                            <span className="truncate">Minta Layar HP</span>
+                            <Smartphone className="w-4 h-4 text-sky-400 shrink-0" />
+                            <span>Mirror Layar HP (Scrcpy Hub)</span>
+                            <span className="text-[9px] bg-sky-500/25 text-sky-300 border border-sky-500/30 px-1 py-0.2 rounded font-mono font-bold">60 FPS</span>
                           </button>
 
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
-                            }}
-                            className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-95"
-                            title="Jadikan kamera ponsel ini sebagai webcam nirkabel"
-                          >
-                            <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                            <span className="truncate">Webcam HP</span>
-                          </button>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => {
+                                triggerHaptic([30]);
+                                if (onRequestRemoteScreen) onRequestRemoteScreen(peer.id);
+                              }}
+                              className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition cursor-pointer active:scale-95"
+                              title="Minta siaran layar ponsel WebRTC"
+                            >
+                              <MonitorPlay className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
+                              <span className="truncate">Siaran WebRTC</span>
+                            </button>
+
+                            <button
+                              onClick={() => {
+                                triggerHaptic([30]);
+                                if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
+                              }}
+                              className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-95"
+                              title="Jadikan kamera ponsel ini sebagai webcam nirkabel"
+                            >
+                              <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                              <span className="truncate">Webcam HP</span>
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>

@@ -10,6 +10,7 @@ import { RenameModal } from './components/RenameModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
+import { ScrcpyModal } from './components/ScrcpyModal';
 import { MessageSquare, X, SwitchCamera } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -29,6 +30,8 @@ export function App() {
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [isServerIpModalOpen, setIsServerIpModalOpen] = useState(false);
+  const [isScrcpyModalOpen, setIsScrcpyModalOpen] = useState(false);
+  const [scrcpyTargetPeer, setScrcpyTargetPeer] = useState(null);
   const [pendingTargetPeerId, setPendingTargetPeerId] = useState(null);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
@@ -587,6 +590,13 @@ export function App() {
     socket.emit('request-remote-camera', { targetId });
   };
 
+  // Open Scrcpy Phone Mirroring Hub modal
+  const handleOpenScrcpy = (peer) => {
+    triggerHaptic([30]);
+    setScrcpyTargetPeer(peer);
+    setIsScrcpyModalOpen(true);
+  };
+
   // Open Chat Drawer from Floating Notification Pop-up
   const handleOpenChatFromToast = () => {
     triggerHaptic([30]);
@@ -726,11 +736,19 @@ export function App() {
           onStartScreenShare={handleStartScreenShare}
           onRequestRemoteScreen={handleRequestRemoteScreen}
           onRequestRemoteCamera={handleRequestRemoteCamera}
+          onOpenScrcpy={handleOpenScrcpy}
           onOpenQR={() => setIsQrOpen(true)}
           isMobile={isMobileDevice}
           onOpenConnect={() => setIsServerIpModalOpen(true)}
         />
       </main>
+
+      {/* Scrcpy Phone Mirroring Hub Modal (Native Desktop 60 FPS) */}
+      <ScrcpyModal
+        isOpen={isScrcpyModalOpen}
+        onClose={() => setIsScrcpyModalOpen(false)}
+        targetPeer={scrcpyTargetPeer}
+      />
 
       {/* Stream Source Selector for Mobile */}
       <ShareSourceModal
