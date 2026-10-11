@@ -62,8 +62,8 @@ export function App() {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
-    // Auto-prompt 2 connection options on mobile app startup if no server IP is configured yet
-    if (isMobileDevice && isLocalhost && !savedServerIp) {
+    // Auto-prompt 2 connection options (Scan QR / Gunakan IP) on mobile startup
+    if (isMobileDevice) {
       setIsServerIpModalOpen(true);
     }
 
@@ -486,6 +486,8 @@ export function App() {
           }}
           onStartScreenShare={handleStartScreenShare}
           onOpenQR={() => setIsQrOpen(true)}
+          isMobile={isMobileDevice}
+          onOpenConnect={() => setIsServerIpModalOpen(true)}
         />
       </main>
 

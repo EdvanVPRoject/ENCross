@@ -45,10 +45,18 @@ async function ensureServerRunning() {
   }
 }
 
+function getAppIcon() {
+  const icoPath = path.join(__dirname, 'assets/icon.ico');
+  const pngPath = path.join(__dirname, 'assets/icon.png');
+  if (process.platform === 'win32' && fs.existsSync(icoPath)) {
+    return nativeImage.createFromPath(icoPath);
+  }
+  return nativeImage.createFromPath(pngPath);
+}
+
 // 3. Create Main Application Window
 function createMainWindow() {
-  const iconPath = path.join(__dirname, 'assets/icon.png');
-  const appIcon = nativeImage.createFromPath(iconPath);
+  const appIcon = getAppIcon();
 
   mainWindow = new BrowserWindow({
     width: 1100,
@@ -110,8 +118,7 @@ function createMainWindow() {
 
 // 4. Create System Tray
 function createSystemTray() {
-  const iconPath = path.join(__dirname, 'assets/icon.png');
-  const trayIcon = nativeImage.createFromPath(iconPath);
+  const trayIcon = getAppIcon();
 
   tray = new Tray(trayIcon);
   tray.setToolTip('ENCross Hub - Aktif di Jaringan LAN');
@@ -190,15 +197,18 @@ function createDesktopShortcut(force = false) {
     }
 
     const workDir = path.dirname(targetExe);
+    const icoPath = path.join(__dirname, 'assets/icon.ico');
+    const hasIco = fs.existsSync(icoPath);
     const vbsPath = path.join(app.getPath('temp'), `encross_sc_${Date.now()}.vbs`);
     const script = [
       'Set ws = CreateObject("WScript.Shell")',
       `Set lnk = ws.CreateShortcut("${shortcutPath.replace(/\\/g, '\\\\')}")`,
       `lnk.TargetPath = "${targetExe.replace(/\\/g, '\\\\')}"`,
       `lnk.WorkingDirectory = "${workDir.replace(/\\/g, '\\\\')}"`,
+      hasIco ? `lnk.IconLocation = "${icoPath.replace(/\\/g, '\\\\')},0"` : '',
       'lnk.Description = "ENCross LAN Hub - P2P File Transfer & Screen Hub"',
       'lnk.Save'
-    ].join('\r\n');
+    ].filter(Boolean).join('\r\n');
 
     fs.writeFileSync(vbsPath, script, 'utf8');
 
@@ -213,11 +223,10 @@ function createDesktopShortcut(force = false) {
       } else {
         console.log('[Shortcut] Desktop shortcut ensured at:', shortcutPath);
         if (force && Notification.isSupported()) {
-          const iconPath = path.join(__dirname, 'assets/icon.png');
           new Notification({
             title: 'ENCross Hub',
             body: 'Shortcut ENCross berhasil dibuat di Desktop Anda!',
-            icon: nativeImage.createFromPath(iconPath)
+            icon: getAppIcon()
           }).show();
         }
       }

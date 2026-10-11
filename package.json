@@ -29,7 +29,7 @@
         "nsis",
         "portable"
       ],
-      "icon": "desktop/assets/icon.png"
+      "icon": "desktop/assets/icon.ico"
     },
     "nsis": {
       "oneClick": false,

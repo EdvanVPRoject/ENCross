@@ -10,7 +10,9 @@ export function PeersRadar({
   onSendFile,
   onOpenTextSync,
   onStartScreenShare,
-  onOpenQR
+  onOpenQR,
+  isMobile,
+  onOpenConnect
 }) {
   const fileInputRef = useRef(null);
   const selectedPeerRef = useRef(null);
@@ -55,10 +57,12 @@ export function PeersRadar({
       {peers.length === 0 ? (
         /* Waiting / Empty State */
         <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
-          <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-zinc-900 border border-zinc-800 flex items-center justify-center text-zinc-400 mb-4">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-zinc-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-zinc-500" />
+          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-md mb-4 relative">
+            <span className="text-[13px] sm:text-[15px] font-black tracking-tight text-white leading-[13px] sm:leading-[15px]">EN</span>
+            <span className="text-[13px] sm:text-[15px] font-black tracking-tight text-white leading-[13px] sm:leading-[15px]">CS</span>
+            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
             </span>
           </div>
 
@@ -66,22 +70,37 @@ export function PeersRadar({
             Menunggu Perangkat Lain
           </h2>
           <p className="text-zinc-400 text-xs max-w-xs sm:max-w-sm mb-5 leading-relaxed px-2">
-            Pastikan kedua perangkat di Wi-Fi yang sama, lalu scan QR Code di bawah menggunakan smartphone.
+            {isMobile
+              ? 'Pastikan HP dan Laptop terhubung ke Wi-Fi yang sama, lalu sambungkan via Scan QR atau ketik IP Laptop.'
+              : 'Pastikan kedua perangkat di Wi-Fi yang sama, lalu scan QR Code di bawah menggunakan smartphone.'}
           </p>
 
           <div className="flex flex-col items-center gap-2.5">
-            <button
-              onClick={() => {
-                triggerHaptic([30]);
-                onOpenQR();
-              }}
-              className="flex items-center gap-2 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 font-medium px-4 py-2.5 rounded-lg text-xs transition cursor-pointer"
-            >
-              <QrCode className="w-4 h-4" />
-              <span>Tampilkan QR Code</span>
-            </button>
+            {isMobile && onOpenConnect ? (
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenConnect();
+                }}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-98"
+              >
+                <Wifi className="w-4 h-4" />
+                <span>Sambungkan ke Laptop (Scan QR / IP)</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenQR();
+                }}
+                className="flex items-center gap-2 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 font-medium px-4 py-2.5 rounded-lg text-xs transition cursor-pointer"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Tampilkan QR Code</span>
+              </button>
+            )}
 
-            {localIp && localIp !== '127.0.0.1' && (
+            {!isMobile && localIp && localIp !== '127.0.0.1' && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 mt-1">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
                 <span className="text-zinc-500 font-sans text-[11px]">IP Laptop:</span>

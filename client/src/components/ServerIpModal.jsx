@@ -128,14 +128,15 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
         )}
 
         <div className="text-center mb-4">
-          <div className="w-11 h-11 rounded-xl bg-zinc-800 border border-zinc-700/80 flex items-center justify-center text-emerald-400 mx-auto mb-2.5">
-            <Wifi className="w-5 h-5 animate-pulse" />
+          <div className="w-12 h-12 rounded-xl bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-md mx-auto mb-2.5">
+            <span className="text-[11px] font-black tracking-wider text-white leading-[11px]">EN</span>
+            <span className="text-[11px] font-black tracking-wider text-white leading-[11px]">CS</span>
           </div>
           <h3 className="text-base font-semibold text-white">
             Sambungkan ke Laptop
           </h3>
           <p className="text-[11px] text-zinc-400 mt-1">
-            Pilih cara menghubungkan HP Anda ke aplikasi ENCross laptop:
+            Pilih cara menghubungkan HP Anda ke aplikasi laptop:
           </p>
         </div>
 
@@ -169,7 +170,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
             }`}
           >
             <Wifi className="w-3.5 h-3.5" />
-            <span>2. Masukkan IP</span>
+            <span>2. Gunakan Alamat IP</span>
           </button>
         </div>
 
