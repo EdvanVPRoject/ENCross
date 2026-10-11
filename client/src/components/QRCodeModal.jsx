@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { QRCodeSVG } from 'qrcode.react';
 import { X, Copy, Check, Download, ExternalLink, Smartphone, Laptop, Wifi, Radio, Plus } from 'lucide-react';
 
-export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp }) {
+export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp, onOpenManualIp }) {
   const [copied, setCopied] = useState(false);
 
   if (!isOpen) return null;
@@ -75,6 +75,20 @@ export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp }) {
             </button>
           </div>
         </div>
+
+        {/* Option to Connect to Another Laptop via IP */}
+        {onOpenManualIp && (
+          <button
+            onClick={() => {
+              onClose();
+              onOpenManualIp();
+            }}
+            className="w-full mb-3 py-2 px-3 bg-zinc-950 hover:bg-zinc-800 text-zinc-300 border border-zinc-800 hover:border-zinc-700 rounded-xl text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer active:scale-98"
+          >
+            <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+            <span>Masukkan IP Laptop Lain (Koneksi Antar-PC)</span>
+          </button>
+        )}
 
         {/* Action Buttons: Direct APK & GitHub */}
         <div className="grid grid-cols-2 gap-2 mb-3">

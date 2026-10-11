@@ -3,8 +3,8 @@ import { Wifi, ArrowRight, QrCode, Camera, AlertCircle, X, Check } from 'lucide-
 import { triggerHaptic, playSound } from '../utils/feedback';
 import logoImg from '../assets/logo.png';
 
-export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
-  const [activeTab, setActiveTab] = useState('qr'); // 'qr' | 'ip'
+export function ServerIpModal({ isOpen, onClose, onSave, currentIp, isMobile = false }) {
+  const [activeTab, setActiveTab] = useState(isMobile ? 'qr' : 'ip'); // 'qr' | 'ip'
   const [ip, setIp] = useState(currentIp || '');
   const [isScanning, setIsScanning] = useState(false);
   const [scanError, setScanError] = useState('');
@@ -27,12 +27,15 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
   };
 
   useEffect(() => {
-    if (!isOpen) {
+    if (isOpen) {
+      setActiveTab(isMobile ? 'qr' : 'ip');
+      setIp(currentIp || '');
+    } else {
       stopCamera();
       setScanError('');
       setScannedSuccess(false);
     }
-  }, [isOpen]);
+  }, [isOpen, isMobile, currentIp]);
 
   useEffect(() => {
     if (activeTab !== 'qr') {
@@ -137,30 +140,17 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
             />
           </div>
           <h3 className="text-base font-semibold text-white">
-            Sambungkan ke Laptop
+            {isMobile ? 'Sambungkan ke Laptop' : 'Sambungkan ke Laptop Lain'}
           </h3>
           <p className="text-[11px] text-zinc-400 mt-1">
-            Pilih cara menghubungkan HP Anda ke aplikasi laptop:
+            {isMobile
+              ? 'Pilih cara menghubungkan HP Anda ke aplikasi laptop:'
+              : 'Masukkan alamat IP laptop target untuk terhubung ke sesi yang sama dalam satu jaringan Wi-Fi/LAN:'}
           </p>
         </div>
 
         {/* 2 Options Switcher Tabs */}
         <div className="grid grid-cols-2 gap-1.5 bg-zinc-950 p-1 rounded-xl border border-zinc-800 mb-4">
-          <button
-            type="button"
-            onClick={() => {
-              setActiveTab('qr');
-              setScanError('');
-            }}
-            className={`py-2 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer ${
-              activeTab === 'qr'
-                ? 'bg-zinc-800 text-white shadow-xs'
-                : 'text-zinc-400 hover:text-zinc-200'
-            }`}
-          >
-            <QrCode className="w-3.5 h-3.5" />
-            <span>1. Scan QR Code</span>
-          </button>
           <button
             type="button"
             onClick={() => {
@@ -174,7 +164,22 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
             }`}
           >
             <Wifi className="w-3.5 h-3.5" />
-            <span>2. Gunakan Alamat IP</span>
+            <span>Ketik Alamat IP</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveTab('qr');
+              setScanError('');
+            }}
+            className={`py-2 px-2 rounded-lg text-xs font-medium flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              activeTab === 'qr'
+                ? 'bg-zinc-800 text-white shadow-xs'
+                : 'text-zinc-400 hover:text-zinc-200'
+            }`}
+          >
+            <QrCode className="w-3.5 h-3.5" />
+            <span>Scan QR Code</span>
           </button>
         </div>
 
@@ -239,7 +244,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
           <form onSubmit={handleManualSubmit} className="space-y-3.5">
             <div>
               <label className="text-[11px] font-medium text-zinc-400 block mb-1">
-                Alamat IP Laptop
+                {isMobile ? 'Alamat IP Laptop' : 'Alamat IP Laptop Lawan / Host'}
               </label>
               <input
                 type="text"
@@ -250,7 +255,9 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
                 autoFocus
               />
               <p className="text-[10px] text-zinc-500 mt-1.5 leading-relaxed">
-                Lihat tulisan <strong>IP Laptop</strong> di pojok atas aplikasi ENCross pada laptop Anda.
+                {isMobile
+                  ? 'Lihat tulisan IP Laptop di pojok atas aplikasi ENCross pada laptop Anda.'
+                  : 'Lihat tulisan IP Laptop di pojok atas aplikasi ENCross pada laptop yang ingin Anda hubungkan.'}
               </p>
             </div>
 
@@ -273,6 +280,19 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
                 <ArrowRight className="w-3.5 h-3.5" />
               </button>
             </div>
+
+            {/* Tombol Reset ke Server Lokal Sendiri jika sedang terhubung ke IP lain */}
+            {currentIp && (
+              <div className="pt-2 border-t border-zinc-800/80">
+                <button
+                  type="button"
+                  onClick={() => onSave('')}
+                  className="w-full py-2 bg-zinc-800/70 hover:bg-zinc-700 text-zinc-400 hover:text-zinc-200 rounded-xl text-xs font-medium transition cursor-pointer"
+                >
+                  Kembalikan ke Server Lokal Sendiri (Reset)
+                </button>
+              </div>
+            )}
           </form>
         )}
       </div>

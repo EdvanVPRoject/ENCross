@@ -85,7 +85,7 @@ export function App() {
     }
 
     let backendHost = window.location.hostname || 'localhost';
-    if (isMobileDevice && isLocalhost && savedServerIp) {
+    if (isLocalhost && savedServerIp) {
       backendHost = savedServerIp;
     }
 
@@ -410,9 +410,14 @@ export function App() {
     }
   };
 
-  // Save Server IP (for mobile APK)
+  // Save Server IP (for mobile APK & Laptop-to-Laptop connection)
   const handleSaveServerIp = (newIp) => {
-    localStorage.setItem('encross_server_ip', newIp);
+    if (!newIp || newIp === 'localhost' || newIp === '127.0.0.1') {
+      localStorage.removeItem('encross_server_ip');
+      localStorage.removeItem('vancross_server_ip');
+    } else {
+      localStorage.setItem('encross_server_ip', newIp);
+    }
     window.location.reload();
   };
 
@@ -675,12 +680,13 @@ export function App() {
         }}
       />
 
-      {/* Server IP Config Modal for Android APK */}
+      {/* Server IP Config Modal for Android APK & Laptop-to-Laptop */}
       <ServerIpModal
         isOpen={isServerIpModalOpen}
         onClose={() => setIsServerIpModalOpen(false)}
         onSave={handleSaveServerIp}
         currentIp={localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip') || ''}
+        isMobile={isMobileDevice}
       />
 
       {/* Rename Device Modal */}
@@ -691,13 +697,14 @@ export function App() {
         onSave={handleSaveRename}
       />
 
-      {/* QR Code Modal for Phone Connection */}
+      {/* QR Code Modal for Phone Connection & Other Devices */}
       <QRCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
         joinUrl={joinUrl}
         roomId={roomId}
         localIp={resolvedIp}
+        onOpenManualIp={() => setIsServerIpModalOpen(true)}
       />
 
       {/* File Transfer Progress & Download Trigger */}

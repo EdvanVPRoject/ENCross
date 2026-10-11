@@ -53,18 +53,21 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
 
         {/* Right Actions: Compact & Never Overflowing */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Mobile Connection Button */}
-          {isMobile && onOpenConnect && (
+          {/* Connection / IP Config Button (Both Mobile & Laptop-to-Laptop) */}
+          {onOpenConnect && (
             <button
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenConnect();
               }}
-              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg h-7 px-2.5 text-xs text-zinc-300 transition cursor-pointer"
-              title="Sambungkan / Ganti IP Laptop"
+              className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg h-7 px-2 sm:px-2.5 text-xs text-zinc-300 transition cursor-pointer"
+              title={isMobile ? 'Sambungkan / Ganti IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
             >
               <Wifi className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <span className="text-[11px] font-medium">IP Laptop</span>
+              <span className="text-[11px] font-medium hidden sm:inline">
+                {isMobile ? 'IP Laptop' : 'Sambung IP'}
+              </span>
+              <span className="text-[11px] font-medium sm:hidden">IP</span>
             </button>
           )}
 
