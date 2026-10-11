@@ -16,6 +16,7 @@ import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
 
 export function App() {
+  const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const [selfInfo, setSelfInfo] = useState(null);
   const [roomId, setRoomId] = useState('encross-lan');
   const [localIp, setLocalIp] = useState('');
@@ -58,7 +59,6 @@ export function App() {
     setSelfInfo(device);
 
     // 3. Connect to backend signaling server
-    const isMobileDevice = /Android|iPhone|iPad/i.test(navigator.userAgent);
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 

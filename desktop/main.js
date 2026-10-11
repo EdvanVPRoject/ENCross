@@ -83,6 +83,11 @@ function createMainWindow() {
     mainWindow.loadURL('http://localhost:3001');
   });
 
+  // Log renderer console messages for diagnostics
+  mainWindow.webContents.on('console-message', (event, level, message, line, sourceId) => {
+    console.log(`[Renderer] [${level}] ${message} (${sourceId}:${line})`);
+  });
+
   // Handle load failure and retry gracefully
   mainWindow.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {
     console.error(`[Electron] Load failed: ${validatedURL} (${errorCode}: ${errorDescription})`);
