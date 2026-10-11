@@ -82,19 +82,18 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
             <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden sm:inline" />
           </button>
 
-          {/* Add Device Button (Laptop, Phone, Tablet) */}
+          {/* Connect / Hubungkan Button */}
           {onOpenQR && (
             <button
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenQR();
               }}
-              className="flex items-center justify-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 active:bg-emerald-600 text-zinc-950 rounded-lg h-7 px-2.5 sm:px-3 text-xs font-bold transition cursor-pointer shrink-0 shadow-xs"
-              title="Tambahkan Perangkat (Laptop, HP, Tablet via QR atau IP LAN)"
+              className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 rounded-lg h-7 px-2.5 sm:px-3 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
+              title="Hubungkan Perangkat (Scan QR / Link LAN)"
             >
-              <Plus className="w-3.5 h-3.5 shrink-0 stroke-[2.5]" />
-              <span className="hidden sm:inline">Tambahkan Perangkat</span>
-              <span className="sm:hidden">Tambah</span>
+              <QrCode className="w-3.5 h-3.5 shrink-0" />
+              <span>Hubungkan</span>
             </button>
           )}
         </div>

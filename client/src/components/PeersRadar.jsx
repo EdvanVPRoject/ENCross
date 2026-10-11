@@ -94,18 +94,7 @@ export function PeersRadar({
                 <Wifi className="w-4 h-4" />
                 <span>Sambungkan ke Laptop (Scan QR / IP)</span>
               </button>
-            ) : (
-              <button
-                onClick={() => {
-                  triggerHaptic([30]);
-                  onOpenQR();
-                }}
-                className="flex items-center gap-2 bg-zinc-100 hover:bg-white active:bg-zinc-200 text-zinc-950 font-medium px-4 py-2.5 rounded-lg text-xs transition cursor-pointer"
-              >
-                <QrCode className="w-4 h-4" />
-                <span>Tampilkan QR Code</span>
-              </button>
-            )}
+            ) : null}
 
             {!isMobile && localIp && localIp !== '127.0.0.1' && (
               <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-xs font-mono text-zinc-300 mt-1">
@@ -117,40 +106,61 @@ export function PeersRadar({
           </div>
         </div>
       ) : (
-        /* Connected Peers Grid */
-        <div>
-          <div className="flex items-center justify-between mb-4 pb-3 border-b border-zinc-800">
-            <div>
-              <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-semibold text-white tracking-tight">
-                  Perangkat Terdeteksi
-                </h2>
-                <span className="text-[10px] sm:text-[11px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 px-2 py-0.2 rounded-md font-mono">
-                  {peers.length} Online
-                </span>
-              </div>
-              <p className="text-[11px] text-zinc-400 mt-0.5">
-                Kirim file, teks, atau pantau layar secara real-time.
-              </p>
+        /* Connected Peers Layout */
+        <div className="w-full">
+          {/* Bagian Atas: Logo ENCross & Perangkat Terdeteksi */}
+          <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 text-center">
+            {/* Logo ENCross */}
+            <div className="w-14 h-14 sm:w-16 sm:h-16 mb-2 relative flex items-center justify-center">
+              <img
+                src={logoImg}
+                alt="ENCross"
+                className="w-full h-full object-contain filter drop-shadow-md select-none"
+              />
+              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500" />
+              </span>
             </div>
 
-            {onOpenQR && (
-              <button
-                onClick={() => {
-                  triggerHaptic([30]);
-                  onOpenQR();
-                }}
-                className="flex items-center gap-1.5 bg-emerald-500/15 hover:bg-emerald-500/25 active:bg-emerald-500/35 border border-emerald-500/40 text-emerald-300 hover:text-white px-2.5 sm:px-3 py-1.5 rounded-lg text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
-                title="Tampilkan QR Code atau tautan LAN untuk menghubungkan perangkat lain"
-              >
-                <Plus className="w-3.5 h-3.5 text-emerald-400 shrink-0 stroke-[2.5]" />
-                <span>Tambahkan Perangkat</span>
-              </button>
-            )}
+            {/* Perangkat Terdeteksi di bawah Logo */}
+            <div className="flex items-center gap-2 mb-2">
+              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
+                Perangkat Terdeteksi
+              </h2>
+              <span className="text-[10px] sm:text-[11px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium">
+                {peers.length} Online
+              </span>
+            </div>
+
+            {/* Tulisan Kirim File, Teks, Layar Dipanjangkan ke Samping */}
+            <div className="w-full max-w-4xl py-2 px-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 shadow-xs">
+              <span className="flex items-center gap-1.5">
+                <Upload className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="font-medium">Kirim File & Foto</span>
+              </span>
+              <span className="text-zinc-600 hidden sm:inline">•</span>
+              <span className="flex items-center gap-1.5">
+                <MessageSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
+                <span className="font-medium">Kirim Pesan Teks</span>
+              </span>
+              <span className="text-zinc-600 hidden sm:inline">•</span>
+              <span className="flex items-center gap-1.5">
+                <MonitorPlay className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                <span className="font-medium">Bagi Layar / Webcam</span>
+              </span>
+              <span className="text-zinc-600 hidden sm:inline">•</span>
+              <span className="text-zinc-400 text-[11px] font-mono">Real-time P2P LAN</span>
+            </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-            {peers.map((peer) => (
+          {/* Helper render kartu perangkat */}
+          {(() => {
+            const isPc = (peer) => peer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(peer.os);
+            const pcPeers = peers.filter(isPc);
+            const mobilePeers = peers.filter((p) => !isPc(p));
+
+            const renderPeerCard = (peer) => (
               <div
                 key={peer.id}
                 onDragOver={(e) => e.preventDefault()}
@@ -184,7 +194,7 @@ export function PeersRadar({
                   </div>
                 </div>
 
-                {/* Actions with Large Tactile Touch Targets */}
+                {/* Actions */}
                 <div className="space-y-2 pt-3 border-t border-zinc-800">
                   {/* Send File Button */}
                   <button
@@ -258,8 +268,74 @@ export function PeersRadar({
                   )}
                 </div>
               </div>
-            ))}
-          </div>
+            );
+
+            return (
+              <div className="space-y-6">
+                {/* Kelompok 1: Laptop & Komputer (PC) di Atas */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                    <div className="flex items-center gap-2">
+                      <Laptop className="w-4 h-4 text-emerald-400" />
+                      <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
+                        Laptop & Komputer (PC)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                        {pcPeers.length} Perangkat
+                      </span>
+                    </div>
+                  </div>
+
+                  {pcPeers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {pcPeers.map(renderPeerCard)}
+                    </div>
+                  ) : (
+                    <div className="py-4 px-4 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
+                      Belum ada Laptop/PC lain yang terhubung
+                    </div>
+                  )}
+                </section>
+
+                {/* Garis Pemisah Antara Kelompok PC dan HP */}
+                <div className="relative my-6 sm:my-8">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-zinc-800" />
+                  </div>
+                  <div className="relative flex justify-center text-xs">
+                    <span className="bg-zinc-950 px-3 py-0.5 text-zinc-500 font-mono text-[11px] uppercase tracking-wider rounded border border-zinc-800/80">
+                      Pemisah Perangkat (PC / HP)
+                    </span>
+                  </div>
+                </div>
+
+                {/* Kelompok 2: Smartphone & HP di Bawah */}
+                <section className="space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                    <div className="flex items-center gap-2">
+                      <Smartphone className="w-4 h-4 text-cyan-400" />
+                      <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
+                        Smartphone & HP (Android / iOS)
+                      </h3>
+                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                        {mobilePeers.length} Perangkat
+                      </span>
+                    </div>
+                  </div>
+
+                  {mobilePeers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                      {mobilePeers.map(renderPeerCard)}
+                    </div>
+                  ) : (
+                    <div className="py-4 px-4 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
+                      Belum ada Smartphone/HP yang terhubung (Gunakan tombol "Hubungkan" di atas untuk scan QR)
+                    </div>
+                  )}
+                </section>
+              </div>
+            );
+          })()}
         </div>
       )}
     </div>
