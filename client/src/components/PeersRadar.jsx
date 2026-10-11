@@ -5,6 +5,7 @@ import { triggerHaptic } from '../utils/feedback';
 export function PeersRadar({
   peers,
   activeSharingPeerId,
+  unreadPeerId,
   onSendFile,
   onOpenTextSync,
   onStartScreenShare,
@@ -150,10 +151,24 @@ export function PeersRadar({
                         triggerHaptic([30]);
                         onOpenTextSync(peer);
                       }}
-                      className="flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 border border-zinc-700/60 py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer"
+                      className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
+                        unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                          ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
+                          : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+                      }`}
                     >
-                      <MessageSquare className="w-3.5 h-3.5 text-zinc-400" />
-                      <span>Kirim Teks</span>
+                      <MessageSquare
+                        className={`w-3.5 h-3.5 ${
+                          unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                            ? 'text-emerald-400 animate-bounce'
+                            : 'text-zinc-400'
+                        }`}
+                      />
+                      <span>
+                        {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                          ? 'Pesan Baru'
+                          : 'Kirim Teks'}
+                      </span>
                     </button>
 
                     {/* Screen Share / Stop Share */}

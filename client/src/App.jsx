@@ -41,6 +41,11 @@ export function App() {
   const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
 
   const webrtcManagerRef = useRef(null);
+  const isTextSyncOpenRef = useRef(isTextSyncOpen);
+
+  useEffect(() => {
+    isTextSyncOpenRef.current = isTextSyncOpen;
+  }, [isTextSyncOpen]);
 
   useEffect(() => {
     // 1. Parse or assign room ID from URL query
@@ -218,13 +223,13 @@ export function App() {
         return currPeers;
       });
 
-      // 1. Open drawer on receiving device so message is immediately visible
-      setIsTextSyncOpen(true);
-      // 2. Show top floating toast with 1-click copy
-      setIncomingToast(msg);
-      setTimeout(() => {
-        setIncomingToast((curr) => (curr?.timestamp === msg.timestamp ? null : curr));
-      }, 7000);
+      // Do NOT auto-open drawer. Show interactive pop-up notification if chat drawer is closed.
+      if (!isTextSyncOpenRef.current) {
+        setIncomingToast(msg);
+        setTimeout(() => {
+          setIncomingToast((curr) => (curr?.timestamp === msg.timestamp ? null : curr));
+        }, 8500);
+      }
 
       if (window.electronAPI) {
         window.electronAPI.showNotification(`Pesan dari ${msg.senderName || 'Perangkat'}`, msg.text || '');
@@ -332,6 +337,23 @@ export function App() {
     }
   };
 
+  // Open Chat Drawer from Floating Notification Pop-up
+  const handleOpenChatFromToast = () => {
+    triggerHaptic([30]);
+    if (incomingToast) {
+      const sender = peers.find(
+        (p) =>
+          p.id === incomingToast.senderId ||
+          (incomingToast.senderDeviceId && p.deviceId === incomingToast.senderDeviceId)
+      );
+      if (sender) {
+        setTextTargetPeer(sender);
+      }
+    }
+    setIsTextSyncOpen(true);
+    setIncomingToast(null);
+  };
+
   const protocol = window.location.protocol || 'http:';
   const resolvedIp = localIp || window.location.hostname || 'localhost';
   const currentPort = window.location.port ? `:${window.location.port}` : ':3001';
@@ -348,34 +370,62 @@ export function App() {
         onOpenRename={() => setIsRenameOpen(true)}
       />
 
-      {/* Floating Incoming Text Toast */}
+      {/* Floating Incoming Text Pop-up Notification */}
       {incomingToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-4 py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-3 max-w-[90vw] sm:max-w-md animate-slideDown">
-          <div className="p-2 rounded-xl bg-zinc-800 text-zinc-200 shrink-0">
-            <MessageSquare className="w-4 h-4 text-emerald-400" />
+        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown">
+          {/* Clickable Message Area to Open Chat */}
+          <div
+            onClick={handleOpenChatFromToast}
+            className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 cursor-pointer group select-none"
+            title="Klik untuk membuka chat"
+          >
+            <div className="p-2 rounded-xl bg-zinc-800 border border-zinc-700/70 text-zinc-200 shrink-0 relative">
+              <MessageSquare className="w-4 h-4 text-emerald-400" />
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute -top-0.5 -right-0.5" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1.5">
+                <p className="text-[11px] font-semibold text-zinc-300 truncate group-hover:text-white transition">
+                  Pesan dari {incomingToast.senderName}
+                </p>
+                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+                  Baru
+                </span>
+              </div>
+              <p className="text-xs text-zinc-100 truncate font-mono mt-0.5 group-hover:text-emerald-300 transition">
+                {incomingToast.text}
+              </p>
+            </div>
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="text-[11px] font-semibold text-zinc-400 truncate">
-              Pesan dari {incomingToast.senderName}
-            </p>
-            <p className="text-xs text-zinc-100 truncate font-mono">
-              {incomingToast.text}
-            </p>
-          </div>
+
+          {/* Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {/* Open / Balas Button */}
+            <button
+              onClick={handleOpenChatFromToast}
+              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+            >
+              <span>Buka</span>
+            </button>
+
+            {/* Quick Copy Button */}
             <button
               onClick={() => {
                 navigator.clipboard.writeText(incomingToast.text);
                 triggerHaptic([30]);
                 setIncomingToast(null);
               }}
-              className="px-2.5 py-1 bg-zinc-100 hover:bg-white text-zinc-950 font-semibold rounded-lg text-xs transition cursor-pointer"
+              title="Salin teks ke clipboard"
+              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer border border-zinc-700/60 active:scale-95"
             >
               Salin
             </button>
+
+            {/* Dismiss Button */}
             <button
               onClick={() => setIncomingToast(null)}
-              className="p-1 text-zinc-400 hover:text-white rounded-lg transition cursor-pointer"
+              title="Tutup notifikasi"
+              className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition cursor-pointer"
             >
               <X className="w-3.5 h-3.5" />
             </button>
@@ -407,10 +457,14 @@ export function App() {
         <PeersRadar
           peers={peers}
           activeSharingPeerId={activeSharingPeerId}
+          unreadPeerId={incomingToast?.senderId || incomingToast?.senderDeviceId}
           onSendFile={handleSendFile}
           onOpenTextSync={(peer) => {
             setTextTargetPeer(peer);
             setIsTextSyncOpen(true);
+            if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
+              setIncomingToast(null);
+            }
           }}
           onStartScreenShare={handleStartScreenShare}
           onOpenQR={() => setIsQrOpen(true)}
