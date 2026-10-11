@@ -128,9 +128,12 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
         )}
 
         <div className="text-center mb-4">
-          <div className="w-12 h-12 rounded-xl bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-md mx-auto mb-2.5">
-            <span className="text-[11px] font-black tracking-wider text-white leading-[11px]">EN</span>
-            <span className="text-[11px] font-black tracking-wider text-white leading-[11px]">CS</span>
+          <div className="w-14 h-14 mx-auto mb-2 flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="ENCross"
+              className="w-full h-full object-contain filter drop-shadow-sm select-none"
+            />
           </div>
           <h3 className="text-base font-semibold text-white">
             Sambungkan ke Laptop

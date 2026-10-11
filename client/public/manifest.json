@@ -1,6 +1,6 @@
 {
-  "name": "ENCS P2P Hub",
-  "short_name": "ENCS",
+  "name": "ENCross P2P Hub",
+  "short_name": "ENCross",
   "description": "Cross-Device P2P File & Screen Hub over Local LAN",
   "start_url": "/",
   "display": "standalone",

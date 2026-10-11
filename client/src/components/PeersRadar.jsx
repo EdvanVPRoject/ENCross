@@ -57,12 +57,15 @@ export function PeersRadar({
       {peers.length === 0 ? (
         /* Waiting / Empty State */
         <div className="flex flex-col items-center justify-center py-12 sm:py-20 text-center">
-          <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-md mb-4 relative">
-            <span className="text-[13px] sm:text-[15px] font-black tracking-tight text-white leading-[13px] sm:leading-[15px]">EN</span>
-            <span className="text-[13px] sm:text-[15px] font-black tracking-tight text-white leading-[13px] sm:leading-[15px]">CS</span>
-            <span className="absolute -top-1 -right-1 flex h-3 w-3">
+          <div className="w-16 h-16 sm:w-20 sm:h-20 mb-4 relative flex items-center justify-center">
+            <img
+              src="/logo.png"
+              alt="ENCross"
+              className="w-full h-full object-contain filter drop-shadow-md select-none"
+            />
+            <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+              <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500" />
             </span>
           </div>
 

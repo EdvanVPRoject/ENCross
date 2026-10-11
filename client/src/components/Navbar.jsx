@@ -25,13 +25,14 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename, onOp
         {/* Brand & Laptop IP Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-black border border-zinc-800 flex flex-col items-center justify-center select-none shadow-xs">
-              <span className="text-[9px] font-black tracking-tight text-white leading-[10px]">EN</span>
-              <span className="text-[9px] font-black tracking-tight text-white leading-[10px]">CS</span>
-            </div>
+            <img
+              src="/logo.png"
+              alt="ENCross"
+              className="w-8 h-8 object-contain shrink-0 select-none filter drop-shadow-xs"
+            />
             <div className="flex items-baseline gap-1.5">
               <span className="text-sm sm:text-base font-bold tracking-tight text-white">
-                ENCS
+                ENCross
               </span>
               <span className="text-[10px] font-mono text-zinc-500 px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800">
                 LAN
