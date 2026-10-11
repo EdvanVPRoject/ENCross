@@ -55,7 +55,7 @@ function createMainWindow() {
     height: 760,
     minWidth: 640,
     minHeight: 520,
-    title: 'VanCross Hub',
+    title: 'VNCross Hub',
     icon: appIcon,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
@@ -99,7 +99,7 @@ function createMainWindow() {
       if (!hasShownTrayTip && Notification.isSupported()) {
         hasShownTrayTip = true;
         new Notification({
-          title: 'VanCross Hub',
+          title: 'VNCross Hub',
           body: 'Aplikasi tetap aktif di latar belakang (System Tray) untuk menerima file dan teks.',
           icon: appIcon
         }).show();
@@ -114,12 +114,12 @@ function createSystemTray() {
   const trayIcon = nativeImage.createFromPath(iconPath);
 
   tray = new Tray(trayIcon);
-  tray.setToolTip('VanCross Hub - Aktif di Jaringan LAN');
+  tray.setToolTip('VNCross Hub - Aktif di Jaringan LAN');
 
   const updateContextMenu = () => {
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Buka VanCross Hub',
+        label: 'Buka VNCross Hub',
         click: () => {
           if (mainWindow) {
             mainWindow.show();
@@ -176,7 +176,7 @@ function createDesktopShortcut(force = false) {
   if (process.platform !== 'win32') return false;
   try {
     const desktopPath = app.getPath('desktop');
-    const shortcutPath = path.join(desktopPath, 'VanCross.lnk');
+    const shortcutPath = path.join(desktopPath, 'VNCross.lnk');
 
     // If shortcut already exists and not explicitly forced, skip
     if (fs.existsSync(shortcutPath) && !force) {
@@ -190,13 +190,13 @@ function createDesktopShortcut(force = false) {
     }
 
     const workDir = path.dirname(targetExe);
-    const vbsPath = path.join(app.getPath('temp'), `vancross_sc_${Date.now()}.vbs`);
+    const vbsPath = path.join(app.getPath('temp'), `vncross_sc_${Date.now()}.vbs`);
     const script = [
       'Set ws = CreateObject("WScript.Shell")',
       `Set lnk = ws.CreateShortcut("${shortcutPath.replace(/\\/g, '\\\\')}")`,
       `lnk.TargetPath = "${targetExe.replace(/\\/g, '\\\\')}"`,
       `lnk.WorkingDirectory = "${workDir.replace(/\\/g, '\\\\')}"`,
-      'lnk.Description = "VanCross LAN Hub - P2P File Transfer & Screen Hub"',
+      'lnk.Description = "VNCross LAN Hub - P2P File Transfer & Screen Hub"',
       'lnk.Save'
     ].join('\r\n');
 
@@ -215,8 +215,8 @@ function createDesktopShortcut(force = false) {
         if (force && Notification.isSupported()) {
           const iconPath = path.join(__dirname, 'assets/icon.png');
           new Notification({
-            title: 'VanCross Hub',
-            body: 'Shortcut VanCross berhasil dibuat di Desktop Anda!',
+            title: 'VNCross Hub',
+            body: 'Shortcut VNCross berhasil dibuat di Desktop Anda!',
             icon: nativeImage.createFromPath(iconPath)
           }).show();
         }

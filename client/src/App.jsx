@@ -176,6 +176,9 @@ export function App() {
 
       playSound('connect');
       triggerHaptic([30]);
+      // Auto-close QR Code modal when phone joins
+      setIsQrOpen(false);
+
       setPeers((prev) => {
         // If there was an existing socket for this physical device, clean up WebRTC
         const existing = prev.find((p) => p.deviceId === newPeer.deviceId);
@@ -241,6 +244,13 @@ export function App() {
       rtcManager.cleanup();
     };
   }, []);
+
+  // Auto-close QR Modal as soon as any device connects
+  useEffect(() => {
+    if (peers.length > 0 && isQrOpen) {
+      setIsQrOpen(false);
+    }
+  }, [peers.length, isQrOpen]);
 
   // Reactivate session if superseded by another tab/browser
   const handleReactivateSession = () => {
@@ -534,7 +544,7 @@ export function App() {
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4">
         <p>
-          VanCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
+          VNCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
         </p>
       </footer>
     </div>

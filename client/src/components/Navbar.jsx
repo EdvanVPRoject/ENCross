@@ -24,7 +24,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename }) {
           </div>
           <div className="flex items-baseline gap-1.5">
             <span className="text-sm sm:text-base font-semibold tracking-tight text-white">
-              VanCross
+              VNCross
             </span>
             <span className="text-[10px] font-mono text-zinc-500 px-1 py-0.2 rounded bg-zinc-900 border border-zinc-800">
               LAN
@@ -37,7 +37,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename }) {
           {/* Self Device Badge (Click to Rename) */}
           <button
             onClick={handleRenameClick}
-            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800/80 active:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs text-zinc-300 transition cursor-pointer max-w-[130px] xs:max-w-[160px] sm:max-w-[200px]"
+            className="flex items-center gap-1.5 bg-zinc-900 hover:bg-zinc-800/80 active:bg-zinc-800 border border-zinc-800 hover:border-zinc-700 rounded-lg px-2 sm:px-3 py-1.5 text-xs text-zinc-300 transition cursor-pointer max-w-[130px] sm:max-w-[220px]"
             title="Klik untuk mengubah nama perangkat Anda"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -45,7 +45,7 @@ export function Navbar({ selfInfo, localIp, roomId, onOpenQR, onOpenRename }) {
             <span className="font-medium truncate text-[11px] sm:text-xs">
               {selfInfo?.name || 'Perangkat Ini'}
             </span>
-            <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden xs:inline" />
+            <Edit2 className="w-2.5 h-2.5 text-zinc-500 shrink-0 hidden sm:inline" />
           </button>
 
           {/* QR Button */}

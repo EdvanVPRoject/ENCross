@@ -49,6 +49,25 @@ function startServer(port = 3001, customDistPath = null) {
     });
   });
 
+  // Serve Android APK directly for local LAN downloads
+  app.get('/api/download-apk', (req, res) => {
+    const candidates = [
+      path.join(distPath, 'VanCross.apk'),
+      path.join(__dirname, '../release/VanCross.apk'),
+      path.join(__dirname, 'release/VanCross.apk'),
+      path.join(__dirname, '../client/android/app/build/outputs/apk/debug/app-debug.apk'),
+      path.join(__dirname, 'client/android/app/build/outputs/apk/debug/app-debug.apk'),
+      path.join(__dirname, '../client/public/VanCross.apk')
+    ];
+    for (const cand of candidates) {
+      if (fs.existsSync(cand)) {
+        res.setHeader('Content-Type', 'application/vnd.android.package-archive');
+        return res.download(cand, 'VanCross.apk');
+      }
+    }
+    res.status(404).send('File APK belum tersedia. Silakan build APK terlebih dahulu.');
+  });
+
   // SPA fallback: Return index.html for any client navigation
   app.use((req, res, next) => {
     if (req.method !== 'GET') return next();

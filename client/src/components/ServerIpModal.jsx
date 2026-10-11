@@ -24,7 +24,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp }) {
           Sambungkan ke Laptop
         </h3>
         <p className="text-xs text-zinc-400 mb-5 leading-relaxed">
-          Masukkan alamat IP Laptop yang terhubung ke jaringan Wi-Fi yang sama (lihat IP di pojok atas aplikasi VanCross laptop):
+          Masukkan alamat IP Laptop yang terhubung ke jaringan Wi-Fi yang sama (lihat IP di pojok atas aplikasi VNCross laptop):
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">

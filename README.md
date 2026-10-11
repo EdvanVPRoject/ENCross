@@ -1,142 +1,247 @@
-# ⚡ VanCross: Cross-Device P2P File Transfer & Screen Hub
+# ⚡ VNCross: High-Performance Cross-Device P2P File Transfer & Screen Hub
 
-> **High-Performance, Zero-Cloud P2P File & Screen Sharing over Local Network (WebRTC + WebSockets)**
+> **Zero-Cloud, High-Speed P2P File Transfer & Real-Time Screen Hub over Local Area Network (WebRTC + WebSockets)**  
+> Bagian dari inisiatif pengembangan proyek mandiri **VN Ecosystem** oleh [Edvan Nuriana Putra Septia](https://github.com/EdvanVPRoject).
 
-[![React](https://img.shields.io/badge/React-19.x-blue.svg)](https://react.dev/)
-[![Vite](https://img.shields.io/badge/Vite-8.x-646CFF.svg)](https://vitejs.dev/)
-[![WebRTC](https://img.shields.io/badge/WebRTC-PeerConnection-orange.svg)](https://webrtc.org/)
-[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-black.svg)](https://socket.io/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38B2AC.svg)](https://tailwindcss.com/)
-
----
-
-## 📌 Problem & Motivation
-
-Berbagi file besar (video, gambar beresolusi tinggi, dokumen) antar perangkat berbeda sistem operasi (Windows $\leftrightarrow$ Android / iPhone / macOS) biasanya memerlukan:
-1. **Cloud Drive (Google Drive / Telegram):** Menghabiskan kuota internet dua kali (upload lalu download), memakan waktu, dan memiliki batasan privasi.
-2. **Kabel Data / Flashdisk:** Merepotkan dan membutuhkan adaptor OTG.
-3. **Ekosistem Tertutup (AirDrop / Quick Share):** Terbatas hanya untuk perangkat bermerek sama.
-
-**VanCross** memecahkan masalah ini dengan menghadirkan solusi berbasis browser **tanpa install aplikasi**, **tanpa akun**, dan **tanpa menyimpan file di server**. File dan video layar dikirimkan langsung dari memori perangkat pengirim ke penerima (**Peer-to-Peer**) melalui protokol **WebRTC**.
+[![React](https://img.shields.io/badge/React-19.x-blue.svg?logo=react)](https://react.dev/)
+[![Vite](https://img.shields.io/badge/Vite-8.x-646CFF.svg?logo=vite)](https://vitejs.dev/)
+[![WebRTC](https://img.shields.io/badge/WebRTC-PeerConnection-orange.svg?logo=webrtc)](https://webrtc.org/)
+[![Electron](https://img.shields.io/badge/Electron-44.x-47848F.svg?logo=electron)](https://www.electronjs.org/)
+[![Capacitor](https://img.shields.io/badge/Capacitor-Android-119EFF.svg?logo=capacitor)](https://capacitorjs.com/)
+[![Socket.IO](https://img.shields.io/badge/Socket.IO-4.x-black.svg?logo=socketdotio)](https://socket.io/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-v4-38B2AC.svg?logo=tailwindcss)](https://tailwindcss.com/)
+[![License](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
 
-## 🚀 Fitur Utama
+## 📌 Latar Belakang & Masalah
 
-- 📱 **Instant Mobile Pairing via QR Code:** Buka kamera HP, scan QR code di layar laptop $\rightarrow$ langsung terhubung dalam hitungan detik.
-- ⚡ **P2P Bi-Directional File Transfer:** Kirim file ukuran berapa pun bolak-balik antara HP dan Laptop dengan kecepatan lokal Wi-Fi (bisa mencapai puluhan MB/s).
-- 🔄 **Backpressure & Streaming Control:** Menggunakan chunking 64KB dan pemantauan `bufferedAmount` agar browser tidak kehabisan memori (*out of memory*) saat mengirim file berukuran besar.
-- 📋 **Quick Text & Clipboard Sync:** Bertukar tautan URL, catatan, atau teks secara instan dengan satu tombol *"Salin ke Clipboard"*.
-- 🖥️ **Live Screen Monitoring / Screen Share:** Bagikan tampilan layar laptop ke HP (atau sebaliknya) secara realtime dengan latensi ultra-rendah melalui WebRTC MediaStream.
-- 🔒 **End-to-End Privacy:** File tidak pernah mampir ke harddisk server.
+Berbagi file berukuran besar (video 4K, arsip ZIP, foto resolusi tinggi, dokumen) atau berbagi layar antar perangkat dengan sistem operasi berbeda (**Windows** $\leftrightarrow$ **Android / iOS / macOS**) umumnya menghadapi kendala:
+1. **Layanan Cloud Drive (Google Drive, Telegram, WhatsApp):** Menghabiskan kuota internet dua kali (*upload* lalu *download*), memakan waktu lama, memiliki batasan ukuran file, dan menimbulkan kekhawatiran privasi data.
+2. **Kabel Data & Flashdisk:** Kurang fleksibel dan memerlukan adaptor OTG atau kabel fisik.
+3. **Ekosistem Tertutup (AirDrop / Quick Share):** Terbatas hanya pada vendor atau ekosistem perangkat tertentu.
+
+**VNCross** memecahkan masalah ini dengan menghadirkan solusi transfer lokal berkecepatan tinggi:
+- **Zero Cloud Storage:** File dialirkan langsung dari memori perangkat pengirim ke perangkat penerima (**Peer-to-Peer**) melalui protokol **WebRTC DataChannel**.
+- **Tanpa Akun & Tanpa Login:** Cukup buka aplikasi atau scan QR Code di jaringan Wi-Fi/LAN yang sama.
+- **Cross-Platform Sejati:** Tersedia sebagai aplikasi desktop **Windows** (Electron), aplikasi mobile **Android** (Capacitor APK), serta web browser murni (**PWA**).
 
 ---
 
-## 🏗️ Arsitektur Sistem
+## 🚀 Fitur Unggulan
+
+### 1. ⚡ Transfer File P2P Berkecepatan Tinggi
+- Memanfaatkan **WebRTC RTCDataChannel** dengan chunking memori 64KB dan mekanisme *backpressure flow control* (`bufferedAmountLow`).
+- Kecepatan transfer memanfaatkan throughput penuh Wi-Fi LAN lokal (mencapai 50–100 MB/s tanpa terpengaruh kecepatan internet).
+- Mendukung pengiriman file berukuran besar tanpa risiko kehabisan memori (*out of memory*).
+
+### 2. 📱 Pairing Cepat via QR Code & Auto-Close
+- Laptop menampilkan QR Code yang memuat alamat IP lokal.
+- Cukup scan menggunakan kamera smartphone; begitu koneksi tersambung, modal QR Code di laptop **otomatis tertutup** (*auto-close*).
+- Opsi langsung untuk **mengunduh file APK Android** langsung dari laptop via LAN atau melalui **GitHub**.
+
+### 3. 💬 Sinkronisasi Teks & Clipboard Interaktif (Pop-up Toast)
+- Mengirim catatan, nomor telepon, atau tautan web seketika antar perangkat.
+- Dilengkapi **Pop-up Notifikasi Mengambang** yang tidak mengganggu: tidak langsung membuka paksa drawer chat, melainkan memunculkan opsi interaktif:
+  - Tombol **"Buka"** untuk melihat riwayat percakapan.
+  - Tombol **"Salin"** untuk menyalin teks langsung ke clipboard dalam 1 ketukan.
+  - Deteksi URL otomatis (`http://`, `https://`, `www.`) dengan tombol langsung **"Buka Link"**.
+
+### 4. 🖥️ Berbagi Layar Real-Time (Live Screen Share)
+- Berbagi layar laptop ke layar smartphone (atau sebaliknya) secara langsung dengan latensi ultra-rendah melalui **WebRTC MediaStream**.
+- Terintegrasi dengan Electron `desktopCapturer` untuk performa tangkapan layar desktop yang mulus.
+
+### 5. 💻 Aplikasi Desktop Windows Lengkap
+- Dibangun dengan **Electron**, dilengkapi embedded in-process server Express & Socket.IO.
+- Berjalan di latar belakang (**System Tray**) tanpa mengganggu kerja Anda.
+- **Pembuatan Shortcut Desktop Otomatis:** Saat instalasi installer NSIS maupun saat aplikasi portable dijalankan pertama kali, shortcut `VNCross.lnk` otomatis dibuat di Desktop.
+
+### 6. 📱 Aplikasi Android Native & PWA
+- Dapat diinstal sebagai aplikasi native Android (`VNCross.apk`) melalui Capacitor.
+- Dapat juga diakses langsung dari browser smartphone mana pun tanpa instalasi (PWA).
+
+---
+
+## 🏗️ Arsitektur & Alur Kerja Sistem
+
+### 1. Diagram Alur Koneksi & Transfer Data (Sequence Diagram)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Laptop as Laptop (Host)
-    participant Server as Signaling Server (Node.js)
-    actor Phone as Smartphone (Client)
+    actor Laptop as Laptop (Host - Windows App)
+    participant Server as Embedded Signaling Server (Node.js/Socket.IO)
+    actor Phone as Smartphone (Client - Android / Browser)
 
-    Note over Laptop,Server: 1. Inisialisasi & Presence
-    Laptop->>Server: Connect Socket (Join Room & Register OS/Browser)
-    Server-->>Laptop: Return LAN IPv4 (e.g. 192.168.18.4)
-    Laptop->>Laptop: Render QR Code
+    Note over Laptop,Server: 1. Inisialisasi & Presence Jaringan LAN
+    Laptop->>Server: Inisialisasi Embedded Server di Port 3001
+    Laptop->>Server: Socket Join Room & Daftarkan Profil Perangkat
+    Server-->>Laptop: Kembalikan Alamat IP Lokal (misal: 192.168.1.10)
+    Laptop->>Laptop: Tampilkan QR Code Berisi URL Pairing
 
-    Note over Phone,Laptop: 2. Pairing via QR Code
-    Phone->>Server: Scan QR & Connect Socket (Join Room)
-    Server->>Laptop: Event 'peer-joined' (Phone terdeteksi)
-    Server->>Phone: Event 'room-peers' (Laptop terdeteksi)
+    Note over Phone,Laptop: 2. Pairing & Auto-Close Modal
+    Phone->>Server: Scan QR / Buka URL & Join Room
+    Server->>Laptop: Event 'peer-joined' (Smartphone Terdeteksi)
+    Laptop->>Laptop: Tutup Otomatis Modal QR Code!
+    Server->>Phone: Event 'room-peers' (Daftar Perangkat Online)
 
-    Note over Laptop,Phone: 3. WebRTC Handshake (Signaling)
-    Laptop->>Server: Send SDP Offer
-    Server->>Phone: Forward SDP Offer
-    Phone->>Server: Send SDP Answer
-    Server->>Laptop: Forward SDP Answer
-    Laptop-->>Phone: Exchange ICE Candidates via Server
+    Note over Laptop,Phone: 3. WebRTC Signaling Handshake
+    Laptop->>Server: Kirim SDP Offer
+    Server->>Phone: Teruskan SDP Offer
+    Phone->>Server: Kirim SDP Answer
+    Server->>Laptop: Teruskan SDP Answer
+    Laptop<<-->>Phone: Pertukaran ICE Candidates via Signaling Server
 
-    Note over Laptop,Phone: 4. Direct P2P DataChannel (Tanpa Server!)
-    Laptop->>Phone: Kirim File Chunks (64KB ArrayBuffer) via RTCDataChannel
-    Phone->>Phone: Reassemble Blobs & Auto Trigger Download
+    Note over Laptop,Phone: 4. Direct P2P DataChannel (Zero Cloud / Memori Langsung)
+    Laptop->>Phone: Stream File Chunks (64KB ArrayBuffer) via RTCDataChannel
+    Phone->>Phone: Rakit Blob Memori & Trigger Unduhan Otomatis
+```
+
+### 2. Diagram Topologi Komponen
+
+```mermaid
+graph TD
+    subgraph Host["💻 Laptop / PC (Host Windows App)"]
+        UI_PC["Frontend (React 19 + Tailwind v4)"]
+        Server_Embedded["Embedded Server (Express + Socket.IO :3001)"]
+        Electron_Core["Electron Main Process + System Tray"]
+        UI_PC <--> Server_Embedded
+        Electron_Core --> UI_PC
+    end
+
+    subgraph Mobile["📱 Smartphone (Android APK / Browser)"]
+        UI_Mobile["Client UI (Capacitor / PWA)"]
+    end
+
+    subgraph Network["🌐 Jaringan Wi-Fi / LAN Lokal"]
+        Signaling["Signaling & Discovery (WebSockets)"]
+        P2P_Tunnel["Direct Peer-to-Peer Tunnel (WebRTC DataChannel / MediaStream)"]
+    end
+
+    Server_Embedded <--> Signaling
+    UI_Mobile <--> Signaling
+    UI_PC <== P2P_Tunnel ==> UI_Mobile
 ```
 
 ---
 
-## 🛠️ Tech Stack & Konsep Rekayasa
+## 🛠️ Tech Stack
 
-| Layer | Teknologi | Konsep yang Diterapkan |
+| Komponen | Teknologi | Penjelasan Teknis |
 | :--- | :--- | :--- |
-| **Networking Core** | WebRTC DataChannel & MediaStream | NAT Traversal, STUN, ICE Candidates, SCTP Protocol |
-| **Signaling & Presence**| Node.js, Express, Socket.IO | Real-time bi-directional events, Room state, LAN IP discovery |
-| **Frontend** | React 19, Vite, Tailwind CSS v4 | Responsive mobile-first UI, Drag & Drop, Canvas QR Code |
-| **Data Streaming** | JavaScript ArrayBuffer & Blob API | Memory chunking (64KB), Backpressure management (`bufferedAmountLow`) |
+| **Networking Core** | WebRTC DataChannel & MediaStream | NAT Traversal LAN, STUN/ICE Candidates, SCTP Protocol, Chunking 64KB |
+| **Signaling & Presence** | Node.js, Express 5, Socket.IO 4 | Real-time bi-directional events, Room state, LAN IP discovery, Hardware deduplication |
+| **Desktop Platform** | Electron 44, electron-builder | In-process embedded server, System Tray, Desktop shortcut auto-creation, desktopCapturer |
+| **Mobile Platform** | Capacitor 7, Android SDK 36 | Native Android runtime, splashscreen, local assets sync |
+| **Frontend Framework**| React 19, Vite 8, Tailwind CSS v4 | Component-based, hooks, touch-friendly tactile UI, QR SVG generation |
+| **Feedback UX** | Web Audio API, Vibration API | Haptic tactile feedback & notifikasi audio native |
 
 ---
 
-## 💻 Cara Menjalankan Proyek di Lokal
+## 📂 Struktur Direktori Proyek
 
-### 1. Prasyarat
-- Node.js versi 18+ (Disarankan versi 20+).
-- Komputer dan Smartphone terhubung ke **jaringan Wi-Fi yang sama** (atau tethering hotspot).
-
-### 2. Menjalankan Server & Klien
-
-Buka terminal di root direktori proyek (`vancross`):
-
-**Opsi A (Menggunakan start script):**
-```cmd
-start.bat
+```text
+vancross/
+├── client/                     # Frontend Web & Mobile Application (React + Vite)
+│   ├── android/                # Native Android Project (Capacitor + Gradle)
+│   │   └── app/build/outputs/  # Lokasi file VNCross.apk hasil build
+│   ├── public/                 # Aset statis & APK download bundle
+│   └── src/
+│       ├── components/         # Komponen UI (Navbar, Radar, Drawer, Modals)
+│       ├── utils/              # WebRTC Manager, Device Info, Audio Feedback
+│       └── App.jsx             # State orchestration & event routing
+├── desktop/                    # Electron Desktop Application
+│   ├── assets/                 # Ikon aplikasi & system tray
+│   ├── main.js                 # Electron main process & desktop shortcuts
+│   ├── preload.js              # IPC bridge API
+│   └── server.js               # Embedded in-process Express & Socket.IO server
+├── release/                    # Hasil kompilasi binary Windows & Android
+│   ├── VNCross 1.0.0.exe       # Versi Windows Portable
+│   ├── VNCross Setup 1.0.0.exe # Versi Windows NSIS Installer
+│   └── VNCross.apk             # Versi Android APK
+├── server/                     # Standalone Node.js signaling server (opsional untuk dev)
+├── package.json                # Root build scripts & electron-builder configuration
+└── README.md                   # Dokumentasi teknis proyek
 ```
 
-**Opsi B (Manual):**
+---
 
-Terminal 1 (Backend Signaling Server):
+## 🚀 Panduan Penggunaan & Instalasi
+
+### Opsi 1: Menjalankan Aplikasi Siap Pakai (Recommended)
+
+1. **Pengguna Windows:**
+   - Jalankan installer: `release/VNCross Setup 1.0.0.exe` atau jalankan langsung versi portable: `release/VNCross 1.0.0.exe`.
+   - Aplikasi otomatis membuat shortcut **VNCross** di Desktop Anda dan aktif di latar belakang (System Tray).
+2. **Pengguna Android:**
+   - Pasang file `release/VNCross.apk` di HP Android Anda, atau cukup scan QR Code di aplikasi desktop untuk mengunduh APK secara langsung melalui jaringan Wi-Fi LAN.
+
+---
+
+### Opsi 2: Menjalankan dari Source Code (Local Development)
+
+#### Prasyarat:
+- [Node.js](https://nodejs.org/) versi 18+ (Disarankan versi 20+).
+- Komputer dan Smartphone berada di **jaringan Wi-Fi/LAN yang sama** (atau tethering hotspot).
+
+#### Langkah Menjalankan:
 ```bash
-cd server
-npm start
+# 1. Clone repositori
+git clone https://github.com/EdvanVPRoject/VNCross.git
+cd VNCross
+
+# 2. Install dependensi root & client
+npm install
+cd client && npm install && cd ..
+
+# 3. Jalankan aplikasi desktop dalam mode development
+npm run desktop:dev
 ```
-*Server akan berjalan di port `3001` dan mendeteksi IP lokal Anda.*
 
-Terminal 2 (Frontend Client):
+---
+
+### 🔨 Cara Melakukan Build Mandiri
+
+#### 1. Build Executable & Installer Windows (.exe)
 ```bash
+npm run desktop:dist
+```
+*Hasil file installer (`VNCross Setup 1.0.0.exe`) dan portable (`VNCross 1.0.0.exe`) akan otomatis tersimpan di folder `release/`.*
+
+#### 2. Build APK Android (.apk)
+```bash
+# 1. Build aset web dan sinkronisasikan ke Capacitor Android
 cd client
-npm run dev
-```
-*Vite akan berjalan di port `5173` dengan flag host aktif.*
-
-### 3. Penggunaan
-1. Buka browser di laptop: `http://localhost:5173`
-2. Klik tombol **Hubungkan HP (QR)**.
-3. Arahkan kamera smartphone ke QR Code tersebut.
-4. Perangkat Anda akan langsung saling mengenali di layar, dan Anda siap mentransfer file atau berbagi layar!
-
----
-
-## 📱 Build Aplikasi Native Android (Capacitor & CI/CD)
-
-Proyek ini telah dikonfigurasi dengan **Capacitor Android** sehingga dapat menghasilkan aplikasi Android asli (.apk).
-
-### Opsi 1: Build Otomatis di Cloud (GitHub Actions CI/CD)
-Tidak perlu menginstal Android Studio di laptop:
-1. Push repositori ini ke GitHub.
-2. Tab **Actions** di GitHub akan secara otomatis meng-compile file APK via workflow [build-apk.yml](.github/workflows/build-apk.yml).
-3. Unduh file `VanCross-Android-APK` langsung dari GitHub Artifacts dan pasang di HP Anda!
-
-### Opsi 2: Build di Lokal (Jika memiliki Android Studio)
-```bash
-# 1. Build frontend & sinkronisasi ke project Android
 npm run build:android
 
-# 2. Buka project di Android Studio
-cd client
-npx cap open android
+# 2. Compile APK menggunakan Gradle
+cd android
+./gradlew assembleDebug
 ```
-Di Android Studio, pilih menu **Build > Build Bundle(s) / APK(s) > Build APK(s)**.
+*Hasil file `app-debug.apk` akan berada di `client/android/app/build/outputs/apk/debug/`.*
 
 ---
 
-## 👨‍💻 Author & Portofolio
-Dibuat sebagai proyek rekayasa fullstack & networking modern untuk demonstrasi arsitektur sistem real-time terdistribusi.
+## 🔄 CI/CD Automation (GitHub Actions)
+
+Proyek ini telah dilengkapi pipeline otomatisasi GitHub Actions:
+- Setiap kali Anda melakukan `git push` ke branch `main` atau `master`, workflow [.github/workflows/build-apk.yml](.github/workflows/build-apk.yml) akan secara otomatis mengompilasi file **VNCross Android APK** di cloud dan menyediakannya di tab **GitHub Actions Artifacts**.
+
+---
+
+## 👨‍💻 Pengembang (Author)
+
+Proyek ini dirancang dan dikembangkan secara mandiri oleh:
+
+**Edvan Nuriana Putra Septia**  
+*Lulusan S1 Sistem Komputer — Universitas Komputer Indonesia (UNIKOM)*  
+*Spesialisasi: IoT, Computer Vision, Embedded Systems, & Fullstack Networking.*
+
+- 🌐 **GitHub:** [https://github.com/EdvanVPRoject](https://github.com/EdvanVPRoject)
+- 💼 **LinkedIn:** [https://linkedin.com/in/edvannuriana](https://linkedin.com/in/edvannuriana)
+
+---
+
+## 📄 Lisensi
+
+Didistribusikan di bawah lisensi **MIT License**. Lihat file `LICENSE` untuk informasi lebih lanjut.

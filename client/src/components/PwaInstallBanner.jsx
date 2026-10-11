@@ -71,12 +71,20 @@ export function PwaInstallBanner({ selfInfo }) {
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0">
+            <a
+              href="/api/download-apk"
+              download="VNCross.apk"
+              className="flex items-center gap-1 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 font-medium px-2 py-1.5 rounded-lg text-xs transition cursor-pointer"
+              title="Unduh file APK langsung"
+            >
+              <Download className="w-3.5 h-3.5 text-emerald-400" />
+              <span>APK</span>
+            </a>
             <button
               onClick={handleInstallClick}
               className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white active:scale-95 text-zinc-950 font-semibold px-2.5 py-1.5 rounded-lg text-xs transition cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5" />
-              <span>Pasang App</span>
+              <span>Pasang</span>
             </button>
             <button
               onClick={() => setDismissed(true)}
@@ -133,7 +141,7 @@ export function PwaInstallBanner({ selfInfo }) {
                   3
                 </span>
                 <p>
-                  Aplikasi <strong>VanCross</strong> akan otomatis terpasang di menu utama HP Anda layaknya aplikasi native!
+                  Aplikasi <strong>VNCross</strong> akan otomatis terpasang di menu utama HP Anda layaknya aplikasi native!
                 </p>
               </div>
             </div>
