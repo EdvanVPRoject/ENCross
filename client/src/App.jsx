@@ -9,6 +9,7 @@ import { ScreenViewModal } from './components/ScreenViewModal';
 import { RenameModal } from './components/RenameModal';
 import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ShareSourceModal } from './components/ShareSourceModal';
+import { ServerIpModal } from './components/ServerIpModal';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -24,6 +25,7 @@ export function App() {
   const [isQrOpen, setIsQrOpen] = useState(false);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
+  const [isServerIpModalOpen, setIsServerIpModalOpen] = useState(false);
   const [pendingTargetPeerId, setPendingTargetPeerId] = useState(null);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
@@ -49,7 +51,15 @@ export function App() {
     setSelfInfo(device);
 
     // 3. Connect to backend signaling server
-    const backendHost = window.location.hostname || 'localhost';
+    const isMobileDevice = /Android|iPhone|iPad/i.test(navigator.userAgent);
+    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
+    const savedServerIp = localStorage.getItem('vancross_server_ip');
+
+    let backendHost = window.location.hostname || 'localhost';
+    if (isMobileDevice && isLocalhost && savedServerIp) {
+      backendHost = savedServerIp;
+    }
+
     const serverUrl = `http://${backendHost}:3001`;
 
     // Fetch network information (for accurate Hostname & QR Code generation)
@@ -120,9 +130,17 @@ export function App() {
       }
     });
 
+    // Socket Event: Connection Error (Prompt IP for mobile APK)
+    newSocket.on('connect_error', () => {
+      if (isMobileDevice && isLocalhost) {
+        setIsServerIpModalOpen(true);
+      }
+    });
+
     // Socket Event: Connected
     newSocket.on('connect', () => {
       console.log('Connected to VanCross signaling server');
+      setIsServerIpModalOpen(false);
       newSocket.emit('join-room', {
         roomId: roomParam,
         device
@@ -206,6 +224,12 @@ export function App() {
       });
       setIsSuperseded(false);
     }
+  };
+
+  // Save Server IP (for mobile APK)
+  const handleSaveServerIp = (newIp) => {
+    localStorage.setItem('vancross_server_ip', newIp);
+    window.location.reload();
   };
 
   // Rename Device Handler
@@ -344,6 +368,14 @@ export function App() {
             executeStream(pendingTargetPeerId, mode);
           }
         }}
+      />
+
+      {/* Server IP Config Modal for Android APK */}
+      <ServerIpModal
+        isOpen={isServerIpModalOpen}
+        onClose={() => setIsServerIpModalOpen(false)}
+        onSave={handleSaveServerIp}
+        currentIp={localStorage.getItem('vancross_server_ip') || ''}
       />
 
       {/* Rename Device Modal */}
