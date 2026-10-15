@@ -1,0 +1,358 @@
+import React, { useState, useEffect } from 'react';
+import { Smartphone, MonitorPlay, Wifi, RefreshCw, X, CheckCircle, AlertTriangle, Play, Square, Usb, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { triggerHaptic } from '../utils/feedback';
+
+export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
+  const [loading, setLoading] = useState(false);
+  const [status, setStatus] = useState(null);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
+  const [showGuide, setShowGuide] = useState(false);
+  const [targetIp, setTargetIp] = useState('');
+
+  const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
+
+  useEffect(() => {
+    if (isOpen) {
+      if (targetPeer?.clientIp && targetPeer.clientIp !== '127.0.0.1') {
+        setTargetIp(targetPeer.clientIp);
+      } else if (targetPeer?.ip && targetPeer.ip !== '127.0.0.1') {
+        setTargetIp(targetPeer.ip);
+      }
+      refreshStatus();
+    }
+  }, [isOpen, targetPeer]);
+
+  const refreshStatus = async () => {
+    if (!isElectron || !window.electronAPI?.getScrcpyStatus) return;
+    setLoading(true);
+    setErrorMsg('');
+    try {
+      const res = await window.electronAPI.getScrcpyStatus();
+      setStatus(res);
+    } catch (err) {
+      setErrorMsg('Gagal memuat status Scrcpy: ' + err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStartMirror = async (deviceSerial = null) => {
+    triggerHaptic([35]);
+    if (!isElectron || !window.electronAPI?.startScrcpy) return;
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await window.electronAPI.startScrcpy({
+        deviceId: deviceSerial,
+        ip: !deviceSerial ? targetIp : null,
+        stayAwake: true
+      });
+
+      if (res.success) {
+        setSuccessMsg('Mirroring Scrcpy berhasil dimulai! Jendela layar HP telah terbuka.');
+        setTimeout(() => refreshStatus(), 1000);
+      } else {
+        setErrorMsg(res.error || 'Gagal memulai Scrcpy.');
+      }
+    } catch (err) {
+      setErrorMsg(err.message || 'Kesalahan saat menjalankan Scrcpy.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleStopMirror = async () => {
+    triggerHaptic([30]);
+    if (!isElectron || !window.electronAPI?.stopScrcpy) return;
+    setLoading(true);
+    try {
+      await window.electronAPI.stopScrcpy();
+      setSuccessMsg('Mirroring dihentikan.');
+      setTimeout(() => refreshStatus(), 500);
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleConnectWifi = async () => {
+    if (!targetIp.trim()) {
+      setErrorMsg('Masukkan alamat IP HP terlebih dahulu');
+      return;
+    }
+    triggerHaptic([30]);
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await window.electronAPI.connectAdbTcpip(targetIp.trim(), 5555);
+      if (res.success) {
+        setSuccessMsg(`Berhasil terhubung ke ${targetIp}:5555 via Wi-Fi!`);
+        refreshStatus();
+      } else {
+        setErrorMsg(`Gagal menghubungkan ke ${targetIp}:5555: ${res.error || 'Pastikan USB Debugging aktif di HP'}`);
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleEnableTcpip = async () => {
+    triggerHaptic([30]);
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await window.electronAPI.enableAdbTcpip(5555);
+      if (res.success) {
+        setSuccessMsg('Mode Wi-Fi (Port 5555) berhasil diaktifkan pada HP! Anda sekarang bisa mencabut kabel USB.');
+        refreshStatus();
+      } else {
+        setErrorMsg('Gagal mengaktifkan mode Wi-Fi: ' + (res.error || 'Hubungkan HP via kabel USB terlebih dahulu'));
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto">
+        {/* Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+        >
+          <X className="w-5 h-5" />
+        </button>
+
+        {/* Title */}
+        <div className="flex items-center gap-3 mb-4">
+          <div className="p-2.5 rounded-xl bg-sky-500/10 text-sky-400 border border-sky-500/20">
+            <Smartphone className="w-6 h-6" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h3 className="text-base font-semibold text-white">
+                Mirroring Layar HP (Scrcpy Hub)
+              </h3>
+              <span className="text-[10px] bg-sky-500/20 text-sky-400 border border-sky-500/30 px-2 py-0.5 rounded font-mono font-bold">
+                60 FPS
+              </span>
+            </div>
+            <p className="text-xs text-zinc-400">
+              Mirroring layar Android berkecepatan tinggi dengan kontrol mouse & keyboard
+            </p>
+          </div>
+        </div>
+
+        {/* Not Electron Warning */}
+        {!isElectron && (
+          <div className="p-4 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs mb-4 flex items-start gap-2.5 leading-relaxed">
+            <AlertTriangle className="w-5 h-5 shrink-0 text-amber-400 mt-0.5" />
+            <div>
+              <p className="font-semibold text-amber-200 mb-1">Jalankan Aplikasi Desktop ENCross</p>
+              <p>
+                Fitur Scrcpy Mirroring membutuhkan aplikasi Desktop ENCross (versi Windows) agar dapat menjalankan engine Scrcpy secara langsung di laptop Anda.
+              </p>
+            </div>
+          </div>
+        )}
+
+        {/* Notifications */}
+        {errorMsg && (
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs mb-4 flex items-center gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
+            <span className="truncate">{errorMsg}</span>
+          </div>
+        )}
+
+        {successMsg && (
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs mb-4 flex items-center gap-2">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
+            <span className="truncate">{successMsg}</span>
+          </div>
+        )}
+
+        {/* Device Status & Mirroring Control */}
+        {isElectron && (
+          <div className="space-y-4">
+            {/* Status bar */}
+            <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
+              <div className="flex items-center gap-2">
+                <span className={`w-2.5 h-2.5 rounded-full ${status?.devices?.length > 0 ? 'bg-emerald-400 animate-pulse' : 'bg-amber-400'}`} />
+                <span className="text-zinc-300 font-medium">
+                  {status?.devices?.length > 0
+                    ? `${status.devices.length} HP Terdeteksi (ADB)`
+                    : 'Belum ada HP terdeteksi via USB / Wi-Fi'}
+                </span>
+              </div>
+              <button
+                onClick={refreshStatus}
+                disabled={loading}
+                className="flex items-center gap-1 text-[11px] text-zinc-400 hover:text-white px-2 py-1 rounded bg-zinc-800 hover:bg-zinc-700 transition cursor-pointer"
+              >
+                <RefreshCw className={`w-3 h-3 ${loading ? 'animate-spin' : ''}`} />
+                <span>Segarkan</span>
+              </button>
+            </div>
+
+            {/* List of Detected Devices */}
+            {status?.devices && status.devices.length > 0 ? (
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-zinc-300">Pilih Perangkat untuk Dimirror:</p>
+                {status.devices.map((dev) => (
+                  <div
+                    key={dev.id}
+                    className="p-3.5 rounded-xl bg-zinc-800/80 border border-zinc-700 flex items-center justify-between gap-3"
+                  >
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <h4 className="text-xs font-bold text-white truncate">{dev.model || dev.id}</h4>
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-mono ${
+                          dev.status === 'device'
+                            ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+                            : 'bg-amber-500/20 text-amber-400 border border-amber-500/30'
+                        }`}>
+                          {dev.status === 'device' ? 'Siap' : 'Perlu Izin HP'}
+                        </span>
+                        {dev.isWireless && (
+                          <span className="text-[10px] bg-sky-500/20 text-sky-400 px-1 rounded font-mono">
+                            Wi-Fi
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-400 font-mono mt-0.5 truncate">{dev.id}</p>
+                    </div>
+
+                    {dev.status === 'device' ? (
+                      <button
+                        onClick={() => handleStartMirror(dev.id)}
+                        disabled={loading}
+                        className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-sky-500 hover:bg-sky-400 active:scale-95 text-zinc-950 font-bold text-xs transition cursor-pointer shrink-0 shadow-sm"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Mulai Mirror</span>
+                      </button>
+                    ) : (
+                      <span className="text-[11px] text-amber-300 font-medium">
+                        Tekan "Izinkan" di HP
+                      </span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* No Device: Fast Connect Form */
+              <div className="p-4 rounded-xl bg-zinc-950/70 border border-zinc-800/80 space-y-3">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-semibold text-white flex items-center gap-1.5">
+                    <Wifi className="w-3.5 h-3.5 text-sky-400" />
+                    <span>Hubungkan via Wi-Fi (Tanpa Kabel)</span>
+                  </h4>
+                  {targetPeer && (
+                    <span className="text-[10px] text-zinc-400 font-mono">
+                      HP Lawan: {targetPeer.name}
+                    </span>
+                  )}
+                </div>
+
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={targetIp}
+                    onChange={(e) => setTargetIp(e.target.value)}
+                    placeholder="Contoh: 192.168.1.15"
+                    className="flex-1 px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-xl text-xs text-white placeholder-zinc-500 focus:outline-hidden focus:border-sky-500 font-mono"
+                  />
+                  <button
+                    onClick={handleConnectWifi}
+                    disabled={loading}
+                    className="px-3 py-2 rounded-xl bg-sky-500/20 hover:bg-sky-500/30 text-sky-300 border border-sky-500/40 text-xs font-semibold transition cursor-pointer active:scale-95 shrink-0"
+                  >
+                    Hubungkan
+                  </button>
+                </div>
+                <p className="text-[11px] text-zinc-400 leading-relaxed">
+                  Masukkan IP ponsel Anda di jaringan Wi-Fi lokal untuk menghubungkan Scrcpy secara nirkabel.
+                </p>
+              </div>
+            )}
+
+            {/* Quick Actions / USB Helpers */}
+            <div className="flex flex-wrap gap-2 pt-1">
+              <button
+                onClick={handleEnableTcpip}
+                disabled={loading}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 border border-zinc-700 text-xs font-medium transition cursor-pointer"
+                title="Aktifkan port 5555 pada HP yang dicolok kabel agar bisa dicabut dan tetap nirkabel"
+              >
+                <Usb className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Aktifkan Mode Nirkabel (TCP/IP)</span>
+              </button>
+
+              {status?.isMirroringActive && (
+                <button
+                  onClick={handleStopMirror}
+                  disabled={loading}
+                  className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 active:scale-95 text-red-300 border border-red-500/40 text-xs font-semibold transition cursor-pointer ml-auto"
+                >
+                  <Square className="w-3 h-3 fill-current" />
+                  <span>Hentikan Scrcpy</span>
+                </button>
+              )}
+            </div>
+
+            {/* Step-by-Step Guide Accordion */}
+            <div className="border-t border-zinc-800 pt-3">
+              <button
+                onClick={() => setShowGuide(!showGuide)}
+                className="w-full flex items-center justify-between text-xs text-zinc-400 hover:text-zinc-200 transition cursor-pointer py-1"
+              >
+                <span className="flex items-center gap-1.5">
+                  <HelpCircle className="w-3.5 h-3.5 text-sky-400" />
+                  <span className="font-medium">Panduan 3 Langkah Mudah Menghubungkan HP</span>
+                </span>
+                {showGuide ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showGuide && (
+                <div className="mt-3 p-3.5 rounded-xl bg-zinc-950 border border-zinc-800/80 text-xs space-y-2.5 leading-relaxed text-zinc-300">
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[10px] shrink-0">1</span>
+                    <p>
+                      <strong>Aktifkan USB Debugging:</strong> Buka <em>Pengaturan HP &gt; Tentang Ponsel</em>, ketuk <strong>Nomor Bentukan (Build Number)</strong> 7 kali. Lalu buka <em>Opsi Pengembang &gt; Aktifkan USB Debugging</em>.
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[10px] shrink-0">2</span>
+                    <p>
+                      <strong>Hubungkan ke Laptop:</strong> Sambungkan HP ke laptop menggunakan kabel USB (atau aktifkan <em>Debugging Nirkabel</em> jika Android 11+).
+                    </p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <span className="w-5 h-5 rounded-full bg-sky-500/20 text-sky-400 flex items-center justify-center font-bold text-[10px] shrink-0">3</span>
+                    <p>
+                      <strong>Tekan Izinkan:</strong> Saat muncul pop-up <em>"Izinkan USB Debugging?"</em> di layar HP, centang <strong>"Selalu izinkan"</strong> lalu tekan <strong>Izinkan</strong>. Jendela layar HP akan langsung tampil mulus di laptop!
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
