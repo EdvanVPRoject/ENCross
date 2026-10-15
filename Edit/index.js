@@ -84,6 +84,37 @@ app.get('/api/download-apk', (req, res) => {
   res.status(404).send('File APK belum tersedia. Silakan build APK terlebih dahulu.');
 });
 
+// Helper to safely resolve requested path against user's home directory (prevents path traversal)
+function resolveSafePcPath(requestedPath) {
+  const home = os.homedir();
+  if (!requestedPath || requestedPath === '/' || requestedPath === '.' || requestedPath.trim() === '') {
+    return home;
+  }
+  const cleanRel = requestedPath.replace(/^[/\\]+/, '');
+  const resolved = path.resolve(home, cleanRel);
+  if (!resolved.startsWith(home)) {
+    return home;
+  }
+  return resolved;
+}
+
+// HTTP Endpoint for fast LAN direct file downloads from PC Host
+app.get('/api/pc-files/download', (req, res) => {
+  try {
+    const rawPath = req.query.path;
+    if (!rawPath) {
+      return res.status(400).send('Parameter path tidak valid.');
+    }
+    const safePath = resolveSafePcPath(rawPath);
+    if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
+      return res.status(404).send('File tidak ditemukan di PC Host.');
+    }
+    return res.download(safePath, path.basename(safePath));
+  } catch (err) {
+    return res.status(500).send('Gagal mengunduh file: ' + err.message);
+  }
+});
+
 // SPA fallback for direct web browser navigation
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();
@@ -321,6 +352,98 @@ io.on('connection', (socket) => {
         senderId: socket.id,
         facingMode
       });
+    }
+  });
+
+  // Latency ping check
+  socket.on('ping-check', (cb) => {
+    if (typeof cb === 'function') cb(Date.now());
+  });
+
+  // Remote File System: Request directory listing
+  socket.on('fs-list-request', ({ targetId, dirPath }) => {
+    if (targetId) {
+      io.to(targetId).emit('fs-list-request', {
+        requesterId: socket.id,
+        dirPath: dirPath || '/'
+      });
+    }
+  });
+
+  // Remote File System: Send directory listing response
+  socket.on('fs-list-response', ({ targetId, currentPath, items, error }) => {
+    if (targetId) {
+      io.to(targetId).emit('fs-list-response', {
+        senderId: socket.id,
+        currentPath: currentPath || '/',
+        items: items || [],
+        error: error || null
+      });
+    }
+  });
+
+  // Remote File System: Request file pull
+  socket.on('fs-pull-file-request', ({ targetId, filePath, fileName }) => {
+    if (targetId) {
+      io.to(targetId).emit('fs-pull-file-request', {
+        requesterId: socket.id,
+        filePath,
+        fileName
+      });
+    }
+  });
+
+  // Remote File System: Read local PC directory (for PC host)
+  socket.on('fs-read-local-pc-dir', ({ dirPath }, callback) => {
+    if (typeof callback !== 'function') return;
+    try {
+      const targetDir = resolveSafePcPath(dirPath);
+      if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
+        return callback({ error: 'Folder tidak ditemukan.' });
+      }
+      const home = os.homedir();
+      let relPath = path.relative(home, targetDir).replace(/\\/g, '/');
+      if (!relPath || relPath === '') relPath = '/';
+      else if (!relPath.startsWith('/')) relPath = '/' + relPath;
+
+      const entries = fs.readdirSync(targetDir, { withFileTypes: true });
+      const items = [];
+
+      for (const ent of entries) {
+        if (ent.name.startsWith('.')) continue; // skip hidden
+        try {
+          const fullPath = path.join(targetDir, ent.name);
+          const isDir = ent.isDirectory();
+          let size = 0;
+          let mtime = Date.now();
+          try {
+            const st = fs.statSync(fullPath);
+            size = isDir ? 0 : st.size;
+            mtime = st.mtimeMs;
+          } catch (_) {}
+
+          let itemRel = path.relative(home, fullPath).replace(/\\/g, '/');
+          if (!itemRel.startsWith('/')) itemRel = '/' + itemRel;
+
+          items.push({
+            name: ent.name,
+            path: itemRel,
+            isDirectory: isDir,
+            size,
+            lastModified: mtime
+          });
+        } catch (_) {}
+      }
+
+      items.sort((a, b) => {
+        if (a.isDirectory && !b.isDirectory) return -1;
+        if (!a.isDirectory && b.isDirectory) return 1;
+        return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
+      });
+
+      callback({ currentPath: relPath, items });
+    } catch (err) {
+      callback({ error: err.message });
     }
   });
 

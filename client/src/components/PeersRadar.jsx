@@ -1,10 +1,32 @@
-import React, { useRef } from 'react';
-import { Laptop, Smartphone, Tablet, Upload, MessageSquare, MonitorPlay, Camera, QrCode, Wifi, Activity, SwitchCamera, Plus } from 'lucide-react';
+import React, { useRef, useState } from 'react';
+import {
+  Laptop,
+  Smartphone,
+  Tablet,
+  Upload,
+  MessageSquare,
+  MonitorPlay,
+  Camera,
+  QrCode,
+  Wifi,
+  Activity,
+  SwitchCamera,
+  Folder,
+  Clock,
+  Trash2,
+  FolderOpen,
+  ExternalLink,
+  Download,
+  ArrowDownLeft,
+  ArrowUpRight,
+  Sparkles
+} from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
+import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
 import logoImg from '../assets/logo.png';
 
 export function PeersRadar({
-  peers,
+  peers = [],
   localIp,
   selfIp,
   activeSharingPeerId,
@@ -20,10 +42,16 @@ export function PeersRadar({
   onOpenScrcpy,
   onOpenQR,
   isMobile,
-  onOpenConnect
+  onOpenConnect,
+  onOpenFileExplorer,
+  pingMs,
+  transferHistory = [],
+  onClearTransferHistory,
+  onOpenFolder
 }) {
   const fileInputRef = useRef(null);
   const selectedPeerRef = useRef(null);
+  const [dragOverPeerId, setDragOverPeerId] = useState(null);
 
   const handleFileSelect = (peerId) => {
     triggerHaptic([35]);
@@ -35,9 +63,25 @@ export function PeersRadar({
   };
 
   const handleFileChange = (e) => {
-    const file = e.target.files?.[0];
-    if (file && selectedPeerRef.current) {
-      onSendFile(selectedPeerRef.current, file);
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0 && selectedPeerRef.current && onSendFile) {
+      onSendFile(selectedPeerRef.current, files);
+    }
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes || bytes <= 0) return '0 B';
+    const units = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(1024));
+    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${units[i] || 'B'}`;
+  };
+
+  const formatTime = (ts) => {
+    if (!ts) return '';
+    try {
+      return new Date(ts).toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+    } catch {
+      return '';
     }
   };
 
@@ -52,11 +96,237 @@ export function PeersRadar({
     }
   };
 
+  const isPc = (peer) => peer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(peer.os);
+  const pcPeers = peers.filter(isPc);
+  const mobilePeers = peers.filter((p) => !isPc(p));
+
+  const renderPeerCard = (peer) => {
+    const isPeerMobile = !isPc(peer);
+    const isDragOver = dragOverPeerId === peer.id;
+
+    return (
+      <div
+        key={peer.id}
+        onDragOver={(e) => {
+          e.preventDefault();
+          if (dragOverPeerId !== peer.id) setDragOverPeerId(peer.id);
+        }}
+        onDragLeave={() => {
+          if (dragOverPeerId === peer.id) setDragOverPeerId(null);
+        }}
+        onDrop={(e) => {
+          e.preventDefault();
+          setDragOverPeerId(null);
+          const files = Array.from(e.dataTransfer.files || []);
+          if (files.length > 0 && onSendFile) {
+            onSendFile(peer.id, files);
+          }
+        }}
+        className={`bg-zinc-900 border rounded-2xl p-4 sm:p-5 transition-all flex flex-col justify-between shadow-sm relative overflow-hidden text-left ${
+          isDragOver
+            ? 'border-emerald-500 bg-emerald-500/10 ring-2 ring-emerald-500/30 scale-[1.01]'
+            : 'border-zinc-800 hover:border-zinc-700'
+        }`}
+      >
+        {/* Glow overlay during drag-and-drop */}
+        {isDragOver && (
+          <div className="absolute inset-0 z-10 bg-emerald-950/80 backdrop-blur-xs flex flex-col items-center justify-center p-4 text-center pointer-events-none animate-in fade-in duration-150">
+            <Upload className="w-8 h-8 text-emerald-400 mb-2 animate-bounce" />
+            <p className="text-xs font-bold text-white">Lepaskan file untuk mengirim</p>
+            <p className="text-[11px] text-emerald-300 truncate max-w-xs mt-0.5">Ke {peer.name}</p>
+          </div>
+        )}
+
+        <div>
+          {/* Top Bar: Icon & Ping / Connection Status */}
+          <div className="flex items-start justify-between mb-3">
+            <div className="p-2 sm:p-2.5 bg-zinc-800/90 border border-zinc-700/60 rounded-xl">
+              {getDeviceIcon(peer.deviceType)}
+            </div>
+            <div className="flex items-center gap-1.5 text-zinc-400 text-xs">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="font-mono text-[11px] text-emerald-400">
+                {pingMs ? `${pingMs} ms • P2P LAN` : 'P2P LAN'}
+              </span>
+            </div>
+          </div>
+
+          {/* Device Name & Details */}
+          <h3 className="text-sm sm:text-base font-semibold text-white truncate mb-1">
+            {peer.name}
+          </h3>
+          <div className="flex items-center gap-2 text-[11px] text-zinc-400 mb-4 font-mono">
+            <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.os}</span>
+            <span>•</span>
+            <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.browser}</span>
+          </div>
+        </div>
+
+        {/* 2-Column Grid Action Hierarchy */}
+        <div className="space-y-2 pt-3 border-t border-zinc-800/90">
+          {/* Baris Utama: Kirim File / Foto & Jelajahi File */}
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              onClick={() => handleFileSelect(peer.id)}
+              className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white active:scale-[0.98] text-zinc-950 font-semibold py-2 px-2.5 rounded-xl text-xs transition cursor-pointer shadow-xs"
+              title="Kirim satu atau banyak file/foto"
+            >
+              <Upload className="w-3.5 h-3.5 shrink-0" />
+              <span className="truncate">Kirim File</span>
+            </button>
+
+            {FEATURE_TOGGLES.enableRemoteFileExplorer !== false && (
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  if (onOpenFileExplorer) onOpenFileExplorer(peer);
+                }}
+                className="flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-[0.98] text-zinc-200 border border-zinc-700 py-2 px-2.5 rounded-xl text-xs font-semibold transition cursor-pointer shadow-xs"
+                title="Akses folder & file dua arah secara langsung"
+              >
+                <Folder className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Jelajahi File</span>
+              </button>
+            )}
+          </div>
+
+          {/* Baris Kedua: Kirim Teks & Bagi Layar / Mirror */}
+          <div className="grid grid-cols-2 gap-2">
+            {/* Kirim Teks */}
+            <button
+              onClick={() => {
+                triggerHaptic([30]);
+                onOpenTextSync(peer);
+              }}
+              className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-xl text-xs font-medium transition cursor-pointer ${
+                unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                  ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
+                  : 'bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
+              }`}
+            >
+              <MessageSquare
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                    ? 'text-emerald-400 animate-bounce'
+                    : 'text-zinc-400'
+                }`}
+              />
+              <span className="truncate">
+                {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
+                  ? 'Pesan Baru'
+                  : 'Kirim Teks'}
+              </span>
+            </button>
+
+            {/* Bagi Layar / Mirror Layar */}
+            <button
+              onClick={() => {
+                triggerHaptic([30]);
+                onStartScreenShare(peer.id, 'screen');
+              }}
+              className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-xl text-xs font-medium transition cursor-pointer ${
+                activeSharingPeerId === peer.id && activeSharingMode === 'screen'
+                  ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                  : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
+              }`}
+            >
+              <MonitorPlay
+                className={`w-3.5 h-3.5 shrink-0 ${
+                  activeSharingPeerId === peer.id && activeSharingMode === 'screen'
+                    ? 'text-red-400 animate-pulse'
+                    : 'text-sky-400'
+                }`}
+              />
+              <span className="truncate">
+                {activeSharingPeerId === peer.id && activeSharingMode === 'screen'
+                  ? 'Stop Layar'
+                  : isMobile
+                  ? 'Mirror Layar'
+                  : 'Bagi Layar'}
+              </span>
+            </button>
+          </div>
+
+          {/* Baris Ketiga: Khusus jika peer adalah HP dilihat dari Laptop/PC */}
+          {!isMobile && isPeerMobile && (
+            <div className="grid grid-cols-2 gap-2 pt-0.5">
+              {/* Scrcpy 60 FPS Native */}
+              {FEATURE_TOGGLES.enableScrcpyMirror !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onOpenScrcpy) onOpenScrcpy(peer);
+                  }}
+                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer active:scale-[0.98]"
+                  title="Mirror layar HP dengan mouse & keyboard (60 FPS Native)"
+                >
+                  <Smartphone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                  <span className="truncate">Scrcpy 60 FPS</span>
+                </button>
+              )}
+
+              {/* Webcam HP */}
+              {FEATURE_TOGGLES.enableWirelessWebcam !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
+                  }}
+                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-[0.98]"
+                  title="Jadikan kamera ponsel ini sebagai webcam nirkabel PC"
+                >
+                  <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Webcam HP</span>
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Render Custom Actions dari features.js jika ada */}
+          {CUSTOM_ACTIONS && CUSTOM_ACTIONS.length > 0 && (
+            <div className="flex flex-wrap gap-1.5 pt-1">
+              {CUSTOM_ACTIONS.filter(
+                (act) => act.target === 'all' || act.target === peer.deviceType || (act.target === 'mobile' && isPeerMobile) || (act.target === 'desktop' && !isPeerMobile)
+              ).map((act) => (
+                <button
+                  key={act.id}
+                  onClick={() => {
+                    triggerHaptic([25]);
+                    if (typeof act.onClick === 'function') act.onClick(peer);
+                  }}
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-[11px] font-medium border border-zinc-700/60 transition cursor-pointer active:scale-[0.98]"
+                >
+                  <Sparkles className="w-3 h-3 text-amber-400" />
+                  <span>{act.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
+
+          {/* Quick Switch Camera Button on Peer Card when Camera Streaming */}
+          {activeSharingPeerId === peer.id && activeSharingMode === 'camera' && onSwitchCamera && (
+            <button
+              onClick={() => {
+                triggerHaptic([30]);
+                onSwitchCamera();
+              }}
+              className="w-full mt-1 flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-xl text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition cursor-pointer"
+            >
+              <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Ganti Kamera ({cameraFacingMode === 'user' ? 'Depan' : 'Belakang'})</span>
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
     <div className="w-full max-w-6xl mx-auto py-4 sm:py-8 px-3 sm:px-6">
-      {/* Hidden file input with mobile photo/document capture */}
+      {/* Hidden file input supporting multi-file selection */}
       <input
         type="file"
+        multiple
         ref={fileInputRef}
         onChange={handleFileChange}
         className="hidden"
@@ -93,10 +363,22 @@ export function PeersRadar({
                   triggerHaptic([30]);
                   onOpenConnect();
                 }}
-                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-98"
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-[0.98]"
               >
                 <Wifi className="w-4 h-4" />
                 <span>Sambungkan ke Laptop (Scan QR / IP)</span>
+              </button>
+            ) : !isMobile && onOpenQR ? (
+              /* Button on desktop when no peers are connected */
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenQR();
+                }}
+                className="flex items-center gap-2 bg-emerald-600 hover:bg-emerald-500 active:bg-emerald-700 text-white font-semibold px-4 py-2.5 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-[0.98]"
+              >
+                <QrCode className="w-4 h-4" />
+                <span>Tampilkan QR Code Koneksi</span>
               </button>
             ) : null}
 
@@ -112,354 +394,179 @@ export function PeersRadar({
       ) : (
         /* Connected Peers Layout */
         <div className="w-full">
-          {/* Bagian Atas: Logo ENCross & Perangkat Terdeteksi */}
-          <div className="flex flex-col items-center justify-center mb-6 sm:mb-8 text-center">
-            {/* Logo ENCross */}
-            <div className="w-14 h-14 sm:w-16 sm:h-16 mb-2 relative flex items-center justify-center">
-              <img
-                src={logoImg}
-                alt="ENCross"
-                className="w-full h-full object-contain filter drop-shadow-md select-none"
-              />
-              <span className="absolute -top-1 -right-1 flex h-3.5 w-3.5">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-3.5 w-3.5 bg-emerald-500" />
-              </span>
+          {/* Compact Modern Header Bar */}
+          <div className="flex items-center justify-between p-3.5 mb-6 rounded-2xl bg-zinc-900/90 border border-zinc-800 shadow-xs">
+            <div className="flex items-center gap-3">
+              <div className="w-9 h-9 relative flex items-center justify-center shrink-0">
+                <img src={logoImg} alt="ENCross" className="w-full h-full object-contain filter drop-shadow select-none" />
+                <span className="absolute -top-0.5 -right-0.5 flex h-2.5 w-2.5">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                </span>
+              </div>
+              <div className="text-left">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-sm font-bold text-white tracking-tight">Perangkat Terdeteksi</h2>
+                  <span className="text-[10px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium">
+                    {peers.length} Online
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-400 font-mono">
+                  {pingMs ? `Latensi LAN: ${pingMs} ms • Real-time P2P` : 'P2P Real-time LAN Hub'}
+                </p>
+              </div>
             </div>
 
-            {/* Perangkat Terdeteksi di bawah Logo */}
-            <div className="flex items-center gap-2 mb-2">
-              <h2 className="text-base sm:text-lg font-bold text-white tracking-tight">
-                Perangkat Terdeteksi
-              </h2>
-              <span className="text-[10px] sm:text-[11px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-2 py-0.5 rounded-full font-mono font-medium">
-                {peers.length} Online
-              </span>
-            </div>
-
-            {/* Tulisan Kirim File, Teks, Layar Dipanjangkan ke Samping */}
-            <div className="w-full max-w-4xl py-2 px-4 rounded-xl bg-zinc-900/90 border border-zinc-800 text-xs text-zinc-300 flex flex-wrap items-center justify-center gap-x-4 gap-y-1.5 shadow-xs">
-              <span className="flex items-center gap-1.5">
-                <Upload className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="font-medium">Kirim File & Foto</span>
-              </span>
-              <span className="text-zinc-600 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1.5">
-                <MessageSquare className="w-3.5 h-3.5 text-blue-400 shrink-0" />
-                <span className="font-medium">Kirim Pesan Teks</span>
-              </span>
-              <span className="text-zinc-600 hidden sm:inline">•</span>
-              <span className="flex items-center gap-1.5">
-                <MonitorPlay className="w-3.5 h-3.5 text-purple-400 shrink-0" />
-                <span className="font-medium">Bagi Layar / Webcam</span>
-              </span>
-              <span className="text-zinc-600 hidden sm:inline">•</span>
-              <span className="text-zinc-400 text-[11px] font-mono">Real-time P2P LAN</span>
+            {/* Quick Actions in Compact Header */}
+            <div className="flex items-center gap-2">
+              {!isMobile && onOpenQR && (
+                <button
+                  onClick={onOpenQR}
+                  title="Buka QR Code untuk di-scan Smartphone"
+                  className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white transition cursor-pointer border border-zinc-700/60 active:scale-[0.98]"
+                >
+                  <QrCode className="w-4 h-4" />
+                </button>
+              )}
             </div>
           </div>
 
-          {/* Helper render kartu perangkat */}
-          {(() => {
-            const isPc = (peer) => peer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(peer.os);
-            const pcPeers = peers.filter(isPc);
-            const mobilePeers = peers.filter((p) => !isPc(p));
-
-            const renderPeerCard = (peer) => (
-              <div
-                key={peer.id}
-                onDragOver={(e) => e.preventDefault()}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) onSendFile(peer.id, file);
-                }}
-                className="bg-zinc-900 border border-zinc-800 hover:border-zinc-700 rounded-xl p-4 sm:p-5 transition-all flex flex-col justify-between shadow-sm"
-              >
-                <div>
-                  {/* Top Bar: Icon & Ping Status */}
-                  <div className="flex items-start justify-between mb-3">
-                    <div className="p-2 sm:p-2.5 bg-zinc-800/90 border border-zinc-700/60 rounded-lg">
-                      {getDeviceIcon(peer.deviceType)}
-                    </div>
-                    <div className="flex items-center gap-1.5 text-zinc-400 text-xs">
-                      <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-                      <span className="font-mono text-[11px] text-emerald-400">P2P LAN</span>
-                    </div>
-                  </div>
-
-                  {/* Device Name & Details */}
-                  <h3 className="text-sm sm:text-base font-semibold text-white truncate mb-1">
-                    {peer.name}
-                  </h3>
-                  <div className="flex items-center gap-2 text-[11px] text-zinc-400 mb-4 font-mono">
-                    <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.os}</span>
-                    <span>•</span>
-                    <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.browser}</span>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="space-y-2 pt-3 border-t border-zinc-800">
-                  {/* Send File Button */}
-                  <button
-                    onClick={() => handleFileSelect(peer.id)}
-                    className="w-full flex items-center justify-center gap-2 bg-zinc-100 hover:bg-white active:scale-[0.98] text-zinc-950 font-semibold py-2.5 px-3 rounded-lg text-xs transition cursor-pointer shadow-sm"
-                  >
-                    <Upload className="w-3.5 h-3.5" />
-                    <span>Kirim File / Foto</span>
-                  </button>
-
-                  {isMobile ? (
-                    /* MOBILE PEER ACTIONS */
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Send Text */}
-                        <button
-                          onClick={() => {
-                            triggerHaptic([30]);
-                            onOpenTextSync(peer);
-                          }}
-                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                            unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
-                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                          }`}
-                        >
-                          <MessageSquare
-                            className={`w-3.5 h-3.5 ${
-                              unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                                ? 'text-emerald-400 animate-bounce'
-                                : 'text-zinc-400'
-                            }`}
-                          />
-                          <span>
-                            {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                              ? 'Pesan Baru'
-                              : 'Kirim Teks'}
-                          </span>
-                        </button>
-
-                        {/* Screen Mirror Button (Direct, NEVER camera) */}
-                        <button
-                          onClick={() => {
-                            triggerHaptic([30]);
-                            onStartScreenShare(peer.id, 'screen');
-                          }}
-                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                            activeSharingPeerId === peer.id && activeSharingMode === 'screen'
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
-                              : 'bg-sky-500/10 hover:bg-sky-500/20 text-sky-300 border border-sky-500/30'
-                          }`}
-                        >
-                          <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id && activeSharingMode === 'screen' ? 'text-red-400 animate-pulse' : 'text-sky-400'}`} />
-                          <span>
-                            {activeSharingPeerId === peer.id && activeSharingMode === 'screen'
-                              ? 'Stop Layar'
-                              : 'Mirror Layar'}
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* Webcam HP Button */}
-                      <button
-                        onClick={() => {
-                          triggerHaptic([30]);
-                          onStartScreenShare(peer.id, 'camera');
-                        }}
-                        className={`w-full flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                          activeSharingPeerId === peer.id && activeSharingMode === 'camera'
-                            ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
-                            : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                        }`}
-                      >
-                        <Camera className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id && activeSharingMode === 'camera' ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`} />
-                        <span>
-                          {activeSharingPeerId === peer.id && activeSharingMode === 'camera'
-                            ? 'Stop Webcam'
-                            : 'Webcam HP (Wireless Cam)'}
-                        </span>
-                      </button>
-                    </div>
-                  ) : (
-                    /* DESKTOP / LAPTOP PEER ACTIONS */
-                    <div className="space-y-2">
-                      <div className="grid grid-cols-2 gap-2">
-                        {/* Send Text */}
-                        <button
-                          onClick={() => {
-                            triggerHaptic([30]);
-                            onOpenTextSync(peer);
-                          }}
-                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                            unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                              ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 ring-1 ring-emerald-500/30'
-                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                          }`}
-                        >
-                          <MessageSquare
-                            className={`w-3.5 h-3.5 ${
-                              unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                                ? 'text-emerald-400 animate-bounce'
-                                : 'text-zinc-400'
-                            }`}
-                          />
-                          <span>
-                            {unreadPeerId === peer.id || (peer.deviceId && unreadPeerId === peer.deviceId)
-                              ? 'Pesan Baru'
-                              : 'Kirim Teks'}
-                          </span>
-                        </button>
-
-                        {/* Share PC Screen */}
-                        <button
-                          onClick={() => {
-                            triggerHaptic([30]);
-                            onStartScreenShare(peer.id, 'screen');
-                          }}
-                          className={`flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-medium transition cursor-pointer ${
-                            activeSharingPeerId === peer.id
-                              ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
-                              : 'bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60'
-                          }`}
-                        >
-                          <MonitorPlay className={`w-3.5 h-3.5 ${activeSharingPeerId === peer.id ? 'text-red-400 animate-pulse' : 'text-zinc-400'}`} />
-                          <span>
-                            {activeSharingPeerId === peer.id ? 'Stop Layar' : 'Bagi Layar PC'}
-                          </span>
-                        </button>
-                      </div>
-
-                      {/* If peer is a mobile phone: Show "Mirror Layar HP (Scrcpy Hub)" & Webcam HP */}
-                      {(peer.deviceType === 'mobile' || /Android|iPhone|iPad/i.test(peer.os)) && (
-                        <div className="space-y-1.5 pt-1">
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              if (onOpenScrcpy) onOpenScrcpy(peer);
-                            }}
-                            className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl text-xs font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer active:scale-95 shadow-xs"
-                            title="Buka Mirroring Layar HP via Scrcpy Hub (Native 60 FPS)"
-                          >
-                            <Smartphone className="w-4 h-4 text-sky-400 shrink-0" />
-                            <span>Mirror Layar HP (Scrcpy Hub)</span>
-                            <span className="text-[9px] bg-sky-500/25 text-sky-300 border border-sky-500/30 px-1 py-0.2 rounded font-mono font-bold">60 FPS</span>
-                          </button>
-
-                          <div className="grid grid-cols-2 gap-2">
-                            <button
-                              onClick={() => {
-                                triggerHaptic([30]);
-                                if (onRequestRemoteScreen) onRequestRemoteScreen(peer.id);
-                              }}
-                              className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700/60 transition cursor-pointer active:scale-95"
-                              title="Minta siaran layar ponsel WebRTC"
-                            >
-                              <MonitorPlay className="w-3.5 h-3.5 text-zinc-400 shrink-0" />
-                              <span className="truncate">Siaran WebRTC</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                triggerHaptic([30]);
-                                if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
-                              }}
-                              className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-95"
-                              title="Jadikan kamera ponsel ini sebagai webcam nirkabel"
-                            >
-                              <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                              <span className="truncate">Webcam HP</span>
-                            </button>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Quick Switch Camera Button on Peer Card when Camera Streaming */}
-                  {activeSharingPeerId === peer.id && activeSharingMode === 'camera' && onSwitchCamera && (
-                    <button
-                      onClick={() => {
-                        triggerHaptic([30]);
-                        onSwitchCamera();
-                      }}
-                      className="w-full mt-2 flex items-center justify-center gap-1.5 active:scale-[0.98] py-2 px-2 rounded-lg text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 hover:bg-emerald-500/30 transition cursor-pointer"
-                    >
-                      <SwitchCamera className="w-3.5 h-3.5 text-emerald-400" />
-                      <span>Ganti Kamera ({cameraFacingMode === 'user' ? 'Depan' : 'Belakang'})</span>
-                    </button>
-                  )}
-                </div>
-              </div>
-            );
-
-            return (
-              <div className="space-y-6">
-                {/* Kelompok 1: Laptop & Komputer (PC) di Atas */}
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
-                    <div className="flex items-center gap-2">
-                      <Laptop className="w-4 h-4 text-emerald-400" />
-                      <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
-                        Laptop & Komputer (PC)
-                      </h3>
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
-                        {pcPeers.length} Perangkat
-                      </span>
-                    </div>
-                  </div>
-
-                  {pcPeers.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      {pcPeers.map(renderPeerCard)}
-                    </div>
-                  ) : (
-                    <div className="py-4 px-4 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
-                      Belum ada Laptop/PC lain yang terhubung
-                    </div>
-                  )}
-                </section>
-
-                {/* Garis Pemisah Antara Kelompok PC dan HP */}
-                <div className="relative my-6 sm:my-8">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-zinc-800" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-zinc-950 px-3 py-0.5 text-zinc-500 font-mono text-[11px] uppercase tracking-wider rounded border border-zinc-800/80">
-                      Pemisah Perangkat (PC / HP)
+          {/* Grouped Peers Grid */}
+          <div className="space-y-6">
+            {/* Kelompok 1: Laptop & Komputer (PC) - Hanya jika ada */}
+            {pcPeers.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                  <div className="flex items-center gap-2">
+                    <Laptop className="w-4 h-4 text-emerald-400" />
+                    <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
+                      Laptop & Komputer (PC)
+                    </h3>
+                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                      {pcPeers.length} Perangkat
                     </span>
                   </div>
                 </div>
 
-                {/* Kelompok 2: Smartphone & HP di Bawah */}
-                <section className="space-y-3">
-                  <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
-                    <div className="flex items-center gap-2">
-                      <Smartphone className="w-4 h-4 text-cyan-400" />
-                      <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
-                        Smartphone & HP (Android / iOS)
-                      </h3>
-                      <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
-                        {mobilePeers.length} Perangkat
-                      </span>
-                    </div>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {pcPeers.map(renderPeerCard)}
+                </div>
+              </section>
+            )}
 
-                  {mobilePeers.length > 0 ? (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                      {mobilePeers.map(renderPeerCard)}
-                    </div>
-                  ) : (
-                    <div className="py-4 px-4 rounded-xl bg-zinc-900/30 border border-dashed border-zinc-800 text-center text-xs text-zinc-500">
-                      Belum ada Smartphone/HP yang terhubung (Gunakan tombol "Hubungkan" di atas untuk scan QR)
-                    </div>
-                  )}
-                </section>
+            {/* Garis Pemisah: Hanya jika PC DAN HP sama-sama online */}
+            {pcPeers.length > 0 && mobilePeers.length > 0 && (
+              <div className="relative my-6 sm:my-8">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-zinc-800" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-zinc-950 px-3 py-0.5 text-zinc-500 font-mono text-[11px] uppercase tracking-wider rounded border border-zinc-800/80">
+                    Pemisah Perangkat (PC / HP)
+                  </span>
+                </div>
               </div>
-            );
-          })()}
+            )}
+
+            {/* Kelompok 2: Smartphone & HP - Hanya jika ada */}
+            {mobilePeers.length > 0 && (
+              <section className="space-y-3">
+                <div className="flex items-center justify-between pb-2 border-b border-zinc-800/80">
+                  <div className="flex items-center gap-2">
+                    <Smartphone className="w-4 h-4 text-cyan-400" />
+                    <h3 className="text-xs sm:text-sm font-semibold text-zinc-200 tracking-tight uppercase">
+                      Smartphone & HP (Android / iOS)
+                    </h3>
+                    <span className="text-[10px] font-mono text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded">
+                      {mobilePeers.length} Perangkat
+                    </span>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                  {mobilePeers.map(renderPeerCard)}
+                </div>
+              </section>
+            )}
+          </div>
+
+          {/* Session Transfer History Panel */}
+          {FEATURE_TOGGLES.enableTransferHistory !== false && transferHistory && transferHistory.length > 0 && (
+            <div className="mt-8 text-left bg-zinc-900/60 border border-zinc-800 rounded-2xl p-4 sm:p-5 space-y-3">
+              <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-4 h-4 text-emerald-400" />
+                  <h4 className="text-xs font-semibold text-zinc-200 uppercase tracking-tight">
+                    Riwayat Transfer Sesi Ini ({transferHistory.length})
+                  </h4>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  {onOpenFolder && (
+                    <button
+                      onClick={onOpenFolder}
+                      className="flex items-center gap-1 px-2.5 py-1 text-[11px] bg-zinc-800 hover:bg-zinc-700 text-zinc-200 rounded-lg border border-zinc-700 transition cursor-pointer"
+                      title="Buka folder Downloads/ENCross"
+                    >
+                      <FolderOpen className="w-3.5 h-3.5 text-emerald-400" />
+                      <span>Buka Folder ENCross</span>
+                    </button>
+                  )}
+                  {onClearTransferHistory && (
+                    <button
+                      onClick={onClearTransferHistory}
+                      className="flex items-center gap-1 px-2 py-1 text-[11px] text-zinc-400 hover:text-red-400 hover:bg-zinc-800 rounded-lg transition cursor-pointer"
+                      title="Bersihkan riwayat transfer sesi ini"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>Bersihkan</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-1.5 max-h-56 overflow-y-auto">
+                {transferHistory.map((item, idx) => (
+                  <div
+                    key={`${item.fileId}_${idx}`}
+                    className="flex items-center justify-between p-2.5 rounded-xl bg-zinc-950/60 border border-zinc-800/80 text-xs"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 pr-2">
+                      <div className="p-1.5 rounded-lg bg-zinc-800 shrink-0">
+                        {item.direction === 'upload' ? (
+                          <ArrowUpRight className="w-3.5 h-3.5 text-blue-400" />
+                        ) : (
+                          <ArrowDownLeft className="w-3.5 h-3.5 text-emerald-400" />
+                        )}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-zinc-200 font-medium truncate text-xs">{item.fileName}</p>
+                        <p className="text-[10px] text-zinc-400 font-mono">
+                          {formatFileSize(item.fileSize)} • {formatTime(item.timestamp)} •{' '}
+                          {item.direction === 'upload' ? 'Terkirim' : 'Diterima'}
+                        </p>
+                      </div>
+                    </div>
+
+                    {item.blobUrl && (
+                      <a
+                        href={item.blobUrl}
+                        download={item.fileName}
+                        className="flex items-center gap-1 px-2.5 py-1 bg-emerald-600/30 hover:bg-emerald-600 text-emerald-300 hover:text-white rounded-lg text-[11px] font-semibold transition cursor-pointer shrink-0"
+                      >
+                        <Download className="w-3 h-3" />
+                        <span>Unduh Ulang</span>
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
     </div>
   );
 }
+
+export default PeersRadar;

@@ -14,7 +14,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   saveFileToEncross: (data) => ipcRenderer.invoke('save-file-to-encross', data),
   getScrcpyStatus: () => ipcRenderer.invoke('get-scrcpy-status'),
   startScrcpy: (opts) => ipcRenderer.invoke('start-scrcpy', opts),
-  connectAdbTcpip: (ip, port) => ipcRenderer.invoke('connect-adb-tcpip', { ip, port }),
-  enableAdbTcpip: (port) => ipcRenderer.invoke('enable-adb-tcpip', { port }),
+  connectAdbTcpip: (arg1, arg2) => (typeof arg1 === 'object' ? ipcRenderer.invoke('connect-adb-tcpip', arg1) : ipcRenderer.invoke('connect-adb-tcpip', { ip: arg1, port: arg2 })),
+  enableAdbTcpip: (arg1) => (typeof arg1 === 'object' ? ipcRenderer.invoke('enable-adb-tcpip', arg1) : ipcRenderer.invoke('enable-adb-tcpip', { port: arg1 })),
+  pairAdbWifi: (ipPort, code) => ipcRenderer.invoke('pair-adb-wifi', { ipPort, code }),
+  openEncrossFolder: () => ipcRenderer.invoke('open-encross-folder'),
   stopScrcpy: () => ipcRenderer.invoke('stop-scrcpy')
 });

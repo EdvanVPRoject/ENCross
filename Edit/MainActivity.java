@@ -12,21 +12,28 @@ import android.media.ImageReader;
 import android.media.MediaScannerConnection;
 import android.media.projection.MediaProjection;
 import android.media.projection.MediaProjectionManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.provider.Settings;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 import com.getcapacitor.BridgeActivity;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
+import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
+import java.util.Arrays;
+import java.util.Comparator;
 
 public class MainActivity extends BridgeActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 2001;
@@ -56,16 +63,29 @@ public class MainActivity extends BridgeActivity {
             public String getDeviceIp() {
                 try {
                     java.util.Enumeration<java.net.NetworkInterface> en = java.net.NetworkInterface.getNetworkInterfaces();
+                    String fallbackIp = "";
                     while (en.hasMoreElements()) {
                         java.net.NetworkInterface intf = en.nextElement();
+                        String name = intf.getName().toLowerCase();
+                        if (name.contains("tun") || name.contains("ppp") || name.contains("p2p") || name.contains("rmnet") || name.contains("dummy")) {
+                            continue;
+                        }
+                        boolean isWifiOrEth = name.startsWith("wlan") || name.startsWith("ap") || name.startsWith("eth");
                         java.util.Enumeration<java.net.InetAddress> enumIpAddr = intf.getInetAddresses();
                         while (enumIpAddr.hasMoreElements()) {
                             java.net.InetAddress inetAddress = enumIpAddr.nextElement();
                             if (!inetAddress.isLoopbackAddress() && inetAddress instanceof java.net.Inet4Address) {
-                                return inetAddress.getHostAddress();
+                                String host = inetAddress.getHostAddress();
+                                if (isWifiOrEth) {
+                                    return host;
+                                }
+                                if (fallbackIp.isEmpty()) {
+                                    fallbackIp = host;
+                                }
                             }
                         }
                     }
+                    return fallbackIp;
                 } catch (Exception ex) {
                     ex.printStackTrace();
                 }
@@ -114,6 +134,128 @@ public class MainActivity extends BridgeActivity {
                 }
             }
         }, "AndroidDownloader");
+
+        // Native Remote Two-Way File System Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean hasStoragePermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    return Environment.isExternalStorageManager();
+                } else {
+                    return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                }
+            }
+
+            @JavascriptInterface
+            public void requestStoragePermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    try {
+                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                        intent.setData(Uri.parse("package:" + getPackageName()));
+                        startActivity(intent);
+                    } catch (Exception e) {
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                            startActivity(intent);
+                        } catch (Exception ex) {
+                            ex.printStackTrace();
+                        }
+                    }
+                }
+            }
+
+            @JavascriptInterface
+            public String listDirectory(String subPath) {
+                try {
+                    File root = Environment.getExternalStorageDirectory();
+                    File targetDir = (subPath == null || subPath.trim().isEmpty() || subPath.equals("/") || subPath.equals("."))
+                            ? root
+                            : new File(root, subPath.trim());
+
+                    String canonicalRoot = root.getCanonicalPath();
+                    String canonicalTarget = targetDir.getCanonicalPath();
+                    if (!canonicalTarget.startsWith(canonicalRoot)) {
+                        targetDir = root;
+                    }
+
+                    JSONObject result = new JSONObject();
+                    String relPath = targetDir.getAbsolutePath().substring(root.getAbsolutePath().length());
+                    if (relPath.isEmpty()) relPath = "/";
+                    result.put("currentPath", relPath.replace("\\", "/"));
+
+                    JSONArray items = new JSONArray();
+                    File[] files = targetDir.listFiles();
+                    if (files != null) {
+                        Arrays.sort(files, (a, b) -> {
+                            if (a.isDirectory() && !b.isDirectory()) return -1;
+                            if (!a.isDirectory() && b.isDirectory()) return 1;
+                            return a.getName().compareToIgnoreCase(b.getName());
+                        });
+
+                        for (File f : files) {
+                            if (f.getName().startsWith(".")) continue;
+                            JSONObject item = new JSONObject();
+                            item.put("name", f.getName());
+                            String itemRel = f.getAbsolutePath().substring(root.getAbsolutePath().length()).replace("\\", "/");
+                            item.put("path", itemRel);
+                            item.put("isDirectory", f.isDirectory());
+                            item.put("size", f.isDirectory() ? 0 : f.length());
+                            item.put("lastModified", f.lastModified());
+                            items.put(item);
+                        }
+                    }
+                    result.put("items", items);
+                    return result.toString();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    try {
+                        JSONObject err = new JSONObject();
+                        err.put("error", e.getMessage());
+                        return err.toString();
+                    } catch (Exception ex) {
+                        return "{\"error\":\"" + e.getMessage() + "\"}";
+                    }
+                }
+            }
+
+            @JavascriptInterface
+            public String readFileBase64(String subPath) {
+                try {
+                    File root = Environment.getExternalStorageDirectory();
+                    File targetFile = (subPath != null && !subPath.trim().isEmpty())
+                            ? new File(root, subPath.trim())
+                            : null;
+                    if (targetFile == null || !targetFile.exists() || targetFile.isDirectory()) {
+                        return "";
+                    }
+
+                    String canonicalRoot = root.getCanonicalPath();
+                    String canonicalTarget = targetFile.getCanonicalPath();
+                    if (!canonicalTarget.startsWith(canonicalRoot)) {
+                        return "";
+                    }
+
+                    long maxSafeSize = 150L * 1024 * 1024; // 150 MB safe ceiling
+                    if (targetFile.length() > maxSafeSize) {
+                        return "ERROR:FILE_TOO_LARGE";
+                    }
+
+                    byte[] fileBytes = new byte[(int) targetFile.length()];
+                    FileInputStream fis = new FileInputStream(targetFile);
+                    int bytesRead = 0;
+                    while (bytesRead < fileBytes.length) {
+                        int read = fis.read(fileBytes, bytesRead, fileBytes.length - bytesRead);
+                        if (read == -1) break;
+                        bytesRead += read;
+                    }
+                    fis.close();
+                    return Base64.encodeToString(fileBytes, Base64.NO_WRAP);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return "";
+                }
+            }
+        }, "AndroidFileSystem");
 
         // Native MediaProjection Screen Mirroring Bridge
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -195,6 +337,13 @@ public class MainActivity extends BridgeActivity {
             captureThread = new HandlerThread("ScreenCaptureThread");
             captureThread.start();
             captureHandler = new Handler(captureThread.getLooper());
+
+            mediaProjection.registerCallback(new MediaProjection.Callback() {
+                @Override
+                public void onStop() {
+                    runOnUiThread(() -> stopScreenCaptureInternal());
+                }
+            }, captureHandler);
 
             imageReader = ImageReader.newInstance(fWidth, fHeight, PixelFormat.RGBA_8888, 2);
 

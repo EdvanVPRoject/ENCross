@@ -35,6 +35,18 @@ export const FEATURE_TOGGLES = {
 
   // 7. Input Manual IP Server (Laptop ke Laptop / HP ke Laptop)
   enableManualIpConnect: true,
+
+  // 8. Akses File Dua Arah (Laptop <-> HP)
+  enableRemoteFileExplorer: true,
+
+  // 9. Dukungan Audio pada Webcam & Screen Share
+  enableAudioStream: true,
+
+  // 10. Paste Ctrl+V Langsung untuk Kirim File / Screenshot
+  enableGlobalPaste: true,
+
+  // 11. Riwayat Transfer File pada Sesi Aktif
+  enableTransferHistory: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)
@@ -44,6 +56,9 @@ export const SCRCPY_CONFIG = {
   alwaysOnTop: false,
   maxFps: 60,
   defaultAdbPort: 5555,
+  maxSize: 0,
+  bitRate: '8M',
+  turnScreenOff: false,
 };
 
 // Daftar Tombol Aksi Tambahan yang bisa Anda tambahkan ke Kartu Perangkat
@@ -58,3 +73,4 @@ export const CUSTOM_ACTIONS = [
   //   onClick: (peer) => console.log('Ping to peer:', peer)
   // }
 ];
+

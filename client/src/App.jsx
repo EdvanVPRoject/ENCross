@@ -11,10 +11,12 @@ import { PwaInstallBanner } from './components/PwaInstallBanner';
 import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
 import { ScrcpyModal } from './components/ScrcpyModal';
-import { MessageSquare, X, SwitchCamera } from 'lucide-react';
+import { FileExplorerModal } from './components/FileExplorerModal';
+import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
+import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from './config/features';
 
 export function App() {
   const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
@@ -24,6 +26,7 @@ export function App() {
   const [selfIp, setSelfIp] = useState('');
   const [peers, setPeers] = useState([]);
   const [socket, setSocket] = useState(null);
+  const [pingMs, setPingMs] = useState(null);
 
   // Modals & Drawers
   const [isQrOpen, setIsQrOpen] = useState(false);
@@ -39,6 +42,20 @@ export function App() {
   const [textMessages, setTextMessages] = useState([]);
   const [isSuperseded, setIsSuperseded] = useState(false);
   const [incomingToast, setIncomingToast] = useState(null);
+
+  // Remote Permission & Privacy Confirmation Dialog
+  const [pendingRemoteRequest, setPendingRemoteRequest] = useState(null);
+
+  // Session Transfer History (max 10 items)
+  const [transferHistory, setTransferHistory] = useState([]);
+
+  // Remote File Explorer States
+  const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
+  const [explorerTargetPeer, setExplorerTargetPeer] = useState(null);
+  const [explorerPath, setExplorerPath] = useState('/');
+  const [explorerItems, setExplorerItems] = useState([]);
+  const [explorerLoading, setExplorerLoading] = useState(false);
+  const [explorerError, setExplorerError] = useState(null);
 
   // Screen & Camera Monitoring
   const [incomingStream, setIncomingStream] = useState(null);
@@ -59,6 +76,9 @@ export function App() {
   const isServerIpModalOpenRef = useRef(isServerIpModalOpen);
   const isQrOpenRef = useRef(isQrOpen);
   const isRenameOpenRef = useRef(isRenameOpen);
+  const isScrcpyModalOpenRef = useRef(isScrcpyModalOpen);
+  const isFileExplorerOpenRef = useRef(isFileExplorerOpen);
+  const pendingRemoteRequestRef = useRef(pendingRemoteRequest);
 
   useEffect(() => { incomingStreamRef.current = incomingStream; }, [incomingStream]);
   useEffect(() => { activeSharingPeerIdRef.current = activeSharingPeerId; }, [activeSharingPeerId]);
@@ -68,6 +88,9 @@ export function App() {
   useEffect(() => { isServerIpModalOpenRef.current = isServerIpModalOpen; }, [isServerIpModalOpen]);
   useEffect(() => { isQrOpenRef.current = isQrOpen; }, [isQrOpen]);
   useEffect(() => { isRenameOpenRef.current = isRenameOpen; }, [isRenameOpen]);
+  useEffect(() => { isScrcpyModalOpenRef.current = isScrcpyModalOpen; }, [isScrcpyModalOpen]);
+  useEffect(() => { isFileExplorerOpenRef.current = isFileExplorerOpen; }, [isFileExplorerOpen]);
+  useEffect(() => { pendingRemoteRequestRef.current = pendingRemoteRequest; }, [pendingRemoteRequest]);
 
   useEffect(() => {
     // 1. Parse or assign room ID from URL query
@@ -93,7 +116,7 @@ export function App() {
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
-    // Auto-prompt 2 connection options (Scan QR / Gunakan IP) on mobile startup
+    // Auto-prompt connection options on mobile startup
     if (isMobileDevice) {
       setIsServerIpModalOpen(true);
     }
@@ -105,14 +128,13 @@ export function App() {
 
     const serverUrl = `http://${backendHost}:3001`;
 
-    // Fetch network information (for accurate Hostname & QR Code generation)
+    // Fetch network information
     fetch(`${serverUrl}/api/network-info`)
       .then((res) => res.json())
       .then((data) => {
         if (data.localIps && data.localIps.length > 0) {
           setLocalIp(data.localIps[0].address);
         }
-        // If device hasn't customized name and is host PC, assign real hostname
         const storedName = localStorage.getItem('encross_device_name') || localStorage.getItem('vancross_device_name');
         if (data.serverHostname && (!storedName || storedName.includes('Nova') || storedName.includes('Hyper'))) {
           if (device.deviceType === 'desktop') {
@@ -144,8 +166,24 @@ export function App() {
       if (progressData.completed) {
         playSound('complete');
         triggerHaptic([60, 40, 60]);
+        if (!progressData.cancelled) {
+          setTransferHistory((prev) => [
+            {
+              fileId: progressData.fileId,
+              fileName: progressData.fileName,
+              fileSize: progressData.fileSize,
+              direction: progressData.direction,
+              blobUrl: progressData.blobUrl || null,
+              timestamp: Date.now()
+            },
+            ...prev
+          ].slice(0, 10));
+        }
         if (window.electronAPI) {
-          window.electronAPI.showNotification('Transfer Selesai', `File ${progressData.fileName || ''} berhasil diterima!`);
+          window.electronAPI.showNotification(
+            'Transfer Selesai',
+            `File ${progressData.fileName || ''} berhasil ${progressData.direction === 'upload' ? 'dikirim' : 'diterima'}!`
+          );
         }
       }
     };
@@ -194,22 +232,58 @@ export function App() {
       }
     });
 
-    // Socket Event: Remote peer requested screen mirror (e.g. laptop requesting HP screen)
+    // Socket Event: Remote screen request with privacy check & user gesture modal
     newSocket.on('remote-screen-requested', ({ requesterId }) => {
-      if (requesterId) {
-        playSound('connect');
-        triggerHaptic([40]);
-        executeStream(requesterId, 'screen');
-      }
+      if (!requesterId) return;
+      playSound('connect');
+      triggerHaptic([40]);
+
+      setPeers((currPeers) => {
+        const found = currPeers.find((p) => p.id === requesterId);
+        const name = found?.name || 'Perangkat Lawan';
+        const devId = found?.deviceId;
+
+        // Check if requester is in trusted peers list
+        const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
+        if (devId && trusted.includes(devId)) {
+          executeStream(requesterId, 'screen');
+        } else {
+          setPendingRemoteRequest({
+            requesterId,
+            requesterName: name,
+            requesterDeviceId: devId,
+            mode: 'screen'
+          });
+        }
+        return currPeers;
+      });
     });
 
-    // Socket Event: Remote peer requested camera stream (e.g. laptop requesting HP webcam)
+    // Socket Event: Remote camera request with privacy check & user gesture modal
     newSocket.on('remote-camera-requested', ({ requesterId }) => {
-      if (requesterId) {
-        playSound('connect');
-        triggerHaptic([40]);
-        executeStream(requesterId, 'camera');
-      }
+      if (!requesterId) return;
+      playSound('connect');
+      triggerHaptic([40]);
+
+      setPeers((currPeers) => {
+        const found = currPeers.find((p) => p.id === requesterId);
+        const name = found?.name || 'Perangkat Lawan';
+        const devId = found?.deviceId;
+
+        // Check if requester is in trusted peers list
+        const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
+        if (devId && trusted.includes(devId)) {
+          executeStream(requesterId, 'camera');
+        } else {
+          setPendingRemoteRequest({
+            requesterId,
+            requesterName: name,
+            requesterDeviceId: devId,
+            mode: 'camera'
+          });
+        }
+        return currPeers;
+      });
     });
 
     newSocket.on('camera-facing-changed', ({ facingMode }) => {
@@ -218,7 +292,89 @@ export function App() {
       }
     });
 
-    // Socket Event: Connection Error (Prompt IP for mobile APK)
+    // Remote File System Socket Event Listeners
+    // 1. Peer requests directory listing from this device
+    newSocket.on('fs-list-request', ({ requesterId, dirPath }) => {
+      if (!requesterId) return;
+      if (typeof window !== 'undefined' && window.AndroidFileSystem?.listDirectory) {
+        if (!window.AndroidFileSystem.hasStoragePermission()) {
+          newSocket.emit('fs-list-response', {
+            targetId: requesterId,
+            currentPath: dirPath || '/',
+            items: [],
+            error: 'PERMISSION_REQUIRED'
+          });
+          return;
+        }
+        try {
+          const resStr = window.AndroidFileSystem.listDirectory(dirPath || '/');
+          const data = JSON.parse(resStr);
+          newSocket.emit('fs-list-response', {
+            targetId: requesterId,
+            currentPath: data.currentPath || dirPath || '/',
+            items: data.items || [],
+            error: data.error || null
+          });
+        } catch (e) {
+          newSocket.emit('fs-list-response', {
+            targetId: requesterId,
+            currentPath: dirPath || '/',
+            items: [],
+            error: e.message
+          });
+        }
+      } else {
+        // If running in PC Browser / Desktop: query local PC directory
+        newSocket.emit('fs-read-local-pc-dir', { dirPath: dirPath || '/' }, (res) => {
+          newSocket.emit('fs-list-response', {
+            targetId: requesterId,
+            currentPath: res?.currentPath || dirPath || '/',
+            items: res?.items || [],
+            error: res?.error || null
+          });
+        });
+      }
+    });
+
+    // 2. Peer responds with directory listing
+    newSocket.on('fs-list-response', ({ currentPath, items, error }) => {
+      setExplorerLoading(false);
+      if (error) {
+        setExplorerError(error);
+      } else {
+        setExplorerPath(currentPath || '/');
+        setExplorerItems(items || []);
+        setExplorerError(null);
+      }
+    });
+
+    // 3. Peer requests a file to be sent from this device
+    newSocket.on('fs-pull-file-request', async ({ requesterId, filePath, fileName }) => {
+      if (!requesterId || !filePath) return;
+      if (typeof window !== 'undefined' && window.AndroidFileSystem?.readFileBase64) {
+        try {
+          const b64 = window.AndroidFileSystem.readFileBase64(filePath);
+          if (!b64 || b64.startsWith('ERROR:')) {
+            alert('Gagal membaca file dari penyimpanan: ' + (b64 || 'File tidak dapat diakses'));
+            return;
+          }
+          const byteCharacters = atob(b64);
+          const byteNumbers = new Array(byteCharacters.length);
+          for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+          }
+          const byteArray = new Uint8Array(byteNumbers);
+          const file = new File([byteArray], fileName || 'file', { type: 'application/octet-stream' });
+          if (webrtcManagerRef.current) {
+            await webrtcManagerRef.current.sendFile(requesterId, file);
+          }
+        } catch (err) {
+          console.error('[RemoteFS] Error sending requested file:', err);
+        }
+      }
+    });
+
+    // Socket Event: Connection Error
     newSocket.on('connect_error', () => {
       if (isMobileDevice && isLocalhost) {
         setIsServerIpModalOpen(true);
@@ -235,7 +391,7 @@ export function App() {
       });
     });
 
-    // Socket Event: Room Peers received (filter out own device)
+    // Socket Event: Room Peers received
     newSocket.on('room-peers', ({ self: assignedSelf, peers: initialPeers }) => {
       if (assignedSelf) {
         device.deviceId = assignedSelf.deviceId;
@@ -255,14 +411,11 @@ export function App() {
 
     // Socket Event: Another peer joined
     newSocket.on('peer-joined', (newPeer) => {
-      // Ignore if this is another tab/browser of the same physical device
       if (newPeer.deviceId === device.deviceId) return;
-
       playSound('connect');
       triggerHaptic([30]);
 
       setPeers((prev) => {
-        // If there was an existing socket for this physical device, clean up WebRTC
         const existing = prev.find((p) => p.deviceId === newPeer.deviceId);
         if (existing && existing.id !== newPeer.id) {
           rtcManager.closePeer(existing.id);
@@ -285,7 +438,7 @@ export function App() {
       rtcManager.closePeer(id);
     });
 
-    // Socket Event: This tab was superseded by another tab/browser on this device
+    // Socket Event: Tab superseded
     newSocket.on('tab-superseded', () => {
       console.warn('Sesi dialihkan ke tab/browser lain pada perangkat ini.');
       setIsSuperseded(true);
@@ -297,7 +450,6 @@ export function App() {
       triggerHaptic([40, 60]);
       setTextMessages((prev) => [...prev, { ...msg, isSelf: false }]);
 
-      // Match sender to update textTargetPeer so user can easily reply
       setPeers((currPeers) => {
         const sender = currPeers.find(
           (p) => p.id === msg.senderId || (msg.senderDeviceId && p.deviceId === msg.senderDeviceId)
@@ -308,7 +460,6 @@ export function App() {
         return currPeers;
       });
 
-      // Do NOT auto-open drawer. Show interactive pop-up notification if chat drawer is closed.
       if (!isTextSyncOpenRef.current) {
         setIncomingToast(msg);
         setTimeout(() => {
@@ -327,8 +478,66 @@ export function App() {
     };
   }, []);
 
+  // Periodic latency measurement (Ping check)
+  useEffect(() => {
+    if (!socket) return;
+    const interval = setInterval(() => {
+      if (socket.connected) {
+        const start = Date.now();
+        socket.emit('ping-check', () => {
+          setPingMs(Date.now() - start);
+        });
+      }
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [socket]);
+
+  // Global Paste Listener (Ctrl+V) for Quick File / Screenshot Send
+  useEffect(() => {
+    if (!FEATURE_TOGGLES.enableGlobalPaste) return;
+    const handlePaste = (e) => {
+      const activeTag = document.activeElement?.tagName?.toLowerCase();
+      if (activeTag === 'input' || activeTag === 'textarea') return;
+
+      const items = e.clipboardData?.items;
+      if (!items || peers.length === 0) return;
+
+      const files = [];
+      for (let i = 0; i < items.length; i++) {
+        if (items[i].kind === 'file') {
+          const file = items[i].getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        e.preventDefault();
+        const target = textTargetPeer?.id || peers[0]?.id;
+        if (target) {
+          triggerHaptic([35]);
+          handleSendFile(target, files);
+        }
+      }
+    };
+
+    window.addEventListener('paste', handlePaste);
+    return () => window.removeEventListener('paste', handlePaste);
+  }, [peers, textTargetPeer]);
+
   // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
   const handleBackStep = () => {
+    if (pendingRemoteRequestRef.current) {
+      setPendingRemoteRequest(null);
+      return true;
+    }
+    if (isFileExplorerOpenRef.current) {
+      setIsFileExplorerOpen(false);
+      return true;
+    }
+    if (isScrcpyModalOpenRef.current) {
+      setIsScrcpyModalOpen(false);
+      return true;
+    }
     if (activeSharingPeerIdRef.current) {
       if (webrtcManagerRef.current) {
         webrtcManagerRef.current.stopScreenShare(activeSharingPeerIdRef.current);
@@ -374,17 +583,13 @@ export function App() {
     let backListener = null;
 
     const setupMobileSystem = async () => {
-      // 1. Configure Capacitor StatusBar so it doesn't overlay WebView and matches dark theme
       try {
         const { StatusBar, Style } = await import('@capacitor/status-bar');
         await StatusBar.setOverlaysWebView({ overlay: false });
         await StatusBar.setStyle({ style: Style.Dark });
         await StatusBar.setBackgroundColor({ color: '#09090b' });
-      } catch {
-        // Not running in native Capacitor
-      }
+      } catch {}
 
-      // 2. Configure Capacitor Hardware Back Button
       try {
         const { App: CapApp } = await import('@capacitor/app');
         backListener = await CapApp.addListener('backButton', () => {
@@ -393,14 +598,11 @@ export function App() {
             CapApp.exitApp();
           }
         });
-      } catch {
-        // Not running in native Capacitor
-      }
+      } catch {}
     };
 
     setupMobileSystem();
 
-    // 3. Mobile Browser Popstate handler & Native Android bridge
     const handlePopState = () => {
       handleBackStep();
     };
@@ -420,6 +622,9 @@ export function App() {
   useEffect(() => {
     const isAnyModalOpen =
       Boolean(incomingStream) ||
+      Boolean(pendingRemoteRequest) ||
+      isFileExplorerOpen ||
+      isScrcpyModalOpen ||
       isTextSyncOpen ||
       Boolean(activeTransfer) ||
       isSourceModalOpen ||
@@ -434,6 +639,9 @@ export function App() {
     }
   }, [
     incomingStream,
+    pendingRemoteRequest,
+    isFileExplorerOpen,
+    isScrcpyModalOpen,
     isTextSyncOpen,
     activeTransfer,
     isSourceModalOpen,
@@ -453,7 +661,7 @@ export function App() {
     }
   };
 
-  // Save Server IP (for mobile APK & Laptop-to-Laptop connection)
+  // Save Server IP
   const handleSaveServerIp = (newIp) => {
     if (!newIp || newIp === 'localhost' || newIp === '127.0.0.1') {
       localStorage.removeItem('encross_server_ip');
@@ -476,14 +684,18 @@ export function App() {
     }
   };
 
-  // Send File Handler
-  const handleSendFile = async (peerId, file) => {
+  // Send File Handler with Multi-File Queue support
+  const handleSendFile = async (peerId, fileOrFiles) => {
     if (!webrtcManagerRef.current) return;
-    try {
-      await webrtcManagerRef.current.sendFile(peerId, file);
-    } catch (err) {
-      console.error('File send error:', err);
-      alert('Gagal mengirim file: ' + err.message);
+    const files = Array.isArray(fileOrFiles) ? fileOrFiles : [fileOrFiles];
+    for (const file of files) {
+      try {
+        await webrtcManagerRef.current.sendFile(peerId, file);
+      } catch (err) {
+        console.error('File send error:', err);
+        alert('Gagal mengirim file ' + (file.name || '') + ': ' + err.message);
+        break;
+      }
     }
   };
 
@@ -513,7 +725,8 @@ export function App() {
   const executeStream = async (peerId, mode = 'screen') => {
     if (!webrtcManagerRef.current) return;
     try {
-      const stream = await webrtcManagerRef.current.startScreenShare(peerId, mode);
+      const includeAudio = Boolean(FEATURE_TOGGLES.enableAudioStream);
+      const stream = await webrtcManagerRef.current.startScreenShare(peerId, mode, includeAudio);
       setActiveSharingPeerId(peerId);
       setActiveSharingMode(mode);
       setLocalBroadcastStream(stream);
@@ -526,6 +739,27 @@ export function App() {
         alert('Info Siaran: ' + err.message);
       }
     }
+  };
+
+  // Allow or Deny Remote Stream Request
+  const handleAllowRemoteRequest = (alwaysTrust = false) => {
+    if (!pendingRemoteRequest) return;
+    triggerHaptic([35]);
+    const { requesterId, requesterDeviceId, mode } = pendingRemoteRequest;
+    if (alwaysTrust && requesterDeviceId) {
+      const current = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
+      if (!current.includes(requesterDeviceId)) {
+        current.push(requesterDeviceId);
+        localStorage.setItem('encross_trusted_peers', JSON.stringify(current));
+      }
+    }
+    setPendingRemoteRequest(null);
+    executeStream(requesterId, mode);
+  };
+
+  const handleDenyRemoteRequest = () => {
+    triggerHaptic([25]);
+    setPendingRemoteRequest(null);
   };
 
   // Screen / Camera Share Handler (Toggle start/stop)
@@ -545,7 +779,6 @@ export function App() {
       return;
     }
 
-    // On mobile devices, prompt user to choose Screen or Camera if not explicitly selected
     if (selfInfo?.deviceType === 'mobile') {
       setPendingTargetPeerId(peerId);
       setIsSourceModalOpen(true);
@@ -576,28 +809,126 @@ export function App() {
     socket.emit('request-camera-switch', { targetId });
   };
 
-  // Remote viewer request peer to start screen mirror (e.g. laptop requesting HP screen)
   const handleRequestRemoteScreen = (targetId) => {
     if (!socket || !targetId) return;
     triggerHaptic([30]);
     socket.emit('request-remote-screen', { targetId });
   };
 
-  // Remote viewer request peer to start camera stream (e.g. laptop requesting HP webcam)
   const handleRequestRemoteCamera = (targetId) => {
     if (!socket || !targetId) return;
     triggerHaptic([30]);
     socket.emit('request-remote-camera', { targetId });
   };
 
-  // Open Scrcpy Phone Mirroring Hub modal
   const handleOpenScrcpy = (peer) => {
     triggerHaptic([30]);
     setScrcpyTargetPeer(peer);
     setIsScrcpyModalOpen(true);
   };
 
-  // Open Chat Drawer from Floating Notification Pop-up
+  // Remote File Explorer Handlers
+  const handleOpenFileExplorer = (peer) => {
+    triggerHaptic([30]);
+    setExplorerTargetPeer(peer);
+    setIsFileExplorerOpen(true);
+    setExplorerLoading(true);
+    setExplorerError(null);
+    setExplorerPath('/');
+    setExplorerItems([]);
+
+    const isPeerPc = peer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(peer.os);
+
+    if (isPeerPc && socket) {
+      socket.emit('fs-read-local-pc-dir', { dirPath: '/' }, (res) => {
+        setExplorerLoading(false);
+        if (res?.error) {
+          setExplorerError(res.error);
+        } else {
+          setExplorerPath(res?.currentPath || '/');
+          setExplorerItems(res?.items || []);
+        }
+      });
+    } else if (socket) {
+      socket.emit('fs-list-request', { targetId: peer.id, dirPath: '/' });
+    }
+  };
+
+  const handleExplorerNavigate = (subPath) => {
+    if (!explorerTargetPeer || !socket) return;
+    setExplorerLoading(true);
+    setExplorerError(null);
+
+    const isPeerPc = explorerTargetPeer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(explorerTargetPeer.os);
+
+    if (isPeerPc) {
+      socket.emit('fs-read-local-pc-dir', { dirPath: subPath }, (res) => {
+        setExplorerLoading(false);
+        if (res?.error) {
+          setExplorerError(res.error);
+        } else {
+          setExplorerPath(res?.currentPath || subPath);
+          setExplorerItems(res?.items || []);
+        }
+      });
+    } else {
+      socket.emit('fs-list-request', { targetId: explorerTargetPeer.id, dirPath: subPath });
+    }
+  };
+
+  const handleExplorerRefresh = () => {
+    handleExplorerNavigate(explorerPath || '/');
+  };
+
+  const handleExplorerPullFile = (item) => {
+    if (!explorerTargetPeer || !item) return;
+    triggerHaptic([35]);
+
+    const isPeerPc = explorerTargetPeer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(explorerTargetPeer.os);
+
+    if (isPeerPc) {
+      // Download directly via high-speed HTTP endpoint from PC host
+      const host = localIp || window.location.hostname || 'localhost';
+      const downloadUrl = `http://${host}:3001/api/pc-files/download?path=${encodeURIComponent(item.path)}`;
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = item.name;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+    } else if (socket) {
+      // Pull file from Android phone via WebRTC DataChannel
+      socket.emit('fs-pull-file-request', {
+        targetId: explorerTargetPeer.id,
+        filePath: item.path,
+        fileName: item.name
+      });
+      alert(`Meminta file "${item.name}" dari ${explorerTargetPeer.name}... Transfer akan otomatis dimulai.`);
+    }
+  };
+
+  const handleRequestStoragePermission = () => {
+    if (typeof window !== 'undefined' && window.AndroidFileSystem?.requestStoragePermission) {
+      window.AndroidFileSystem.requestStoragePermission();
+    } else {
+      alert('Buka Pengaturan di HP Anda dan aktifkan "Izin Pengelolaan Semua File" untuk aplikasi ENCross.');
+    }
+  };
+
+  // Open Downloads/ENCross folder (Electron)
+  const handleOpenFolder = async () => {
+    if (window.electronAPI?.openEncrossFolder) {
+      await window.electronAPI.openEncrossFolder();
+    } else {
+      alert('File tersimpan di folder Downloads/ENCross pada perangkat Anda.');
+    }
+  };
+
+  const handleClearTransferHistory = () => {
+    triggerHaptic([25]);
+    setTransferHistory([]);
+  };
+
   const handleOpenChatFromToast = () => {
     triggerHaptic([30]);
     if (incomingToast) {
@@ -632,10 +963,9 @@ export function App() {
         onOpenConnect={() => setIsServerIpModalOpen(true)}
       />
 
-      {/* Floating Incoming Text Pop-up Notification */}
+      {/* Floating Incoming Text Pop-up Notification (top-16 to avoid blocking Navbar) */}
       {incomingToast && (
-        <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown">
-          {/* Clickable Message Area to Open Chat */}
+        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown">
           <div
             onClick={handleOpenChatFromToast}
             className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 cursor-pointer group select-none"
@@ -650,7 +980,7 @@ export function App() {
                 <p className="text-[11px] font-semibold text-zinc-300 truncate group-hover:text-white transition">
                   Pesan dari {incomingToast.senderName}
                 </p>
-                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono">
+                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
                   Baru
                 </span>
               </div>
@@ -660,17 +990,13 @@ export function App() {
             </div>
           </div>
 
-          {/* Action Buttons */}
           <div className="flex items-center gap-1.5 shrink-0">
-            {/* Open / Balas Button */}
             <button
               onClick={handleOpenChatFromToast}
               className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
             >
               <span>Buka</span>
             </button>
-
-            {/* Quick Copy Button */}
             <button
               onClick={() => {
                 navigator.clipboard.writeText(incomingToast.text);
@@ -682,8 +1008,6 @@ export function App() {
             >
               Salin
             </button>
-
-            {/* Dismiss Button */}
             <button
               onClick={() => setIncomingToast(null)}
               title="Tutup notifikasi"
@@ -711,9 +1035,63 @@ export function App() {
         </div>
       )}
 
+      {/* Interactive Remote Request Confirmation Modal (Privacy & User Gesture Fix) */}
+      {pendingRemoteRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
+          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative text-left">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+                {pendingRemoteRequest.mode === 'camera' ? (
+                  <Camera className="w-6 h-6" />
+                ) : (
+                  <Monitor className="w-6 h-6" />
+                )}
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  Permintaan Akses {pendingRemoteRequest.mode === 'camera' ? 'Kamera HP' : 'Layar'}
+                </h3>
+                <p className="text-xs text-zinc-400">Konfirmasi Izin Privasi</p>
+              </div>
+            </div>
+
+            <p className="text-xs text-zinc-300 leading-relaxed mb-5">
+              <strong className="text-white">{pendingRemoteRequest.requesterName}</strong> meminta izin untuk mengakses{' '}
+              <strong className="text-emerald-400">{pendingRemoteRequest.mode === 'camera' ? 'Kamera (Webcam)' : 'Layar Anda'}</strong>.
+              Apakah Anda mengizinkan siaran langsung ini?
+            </p>
+
+            <div className="flex flex-col sm:flex-row gap-2">
+              <button
+                onClick={() => handleAllowRemoteRequest(false)}
+                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm"
+              >
+                <Check className="w-4 h-4" />
+                <span>Izinkan</span>
+              </button>
+
+              <button
+                onClick={() => handleAllowRemoteRequest(true)}
+                className="flex-1 py-2.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
+                title="Jangan tanya lagi untuk perangkat ini"
+              >
+                <Shield className="w-4 h-4 text-emerald-400" />
+                <span>Selalu Percayai</span>
+              </button>
+
+              <button
+                onClick={handleDenyRemoteRequest}
+                className="py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-zinc-800 active:scale-[0.98]"
+              >
+                Tolak
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Main Workspace */}
       <main className="flex-1 flex flex-col justify-center py-2">
-        {/* Android PWA Install Banner (Only rendered on mobile) */}
         <PwaInstallBanner selfInfo={selfInfo} />
 
         <PeersRadar
@@ -740,6 +1118,11 @@ export function App() {
           onOpenQR={() => setIsQrOpen(true)}
           isMobile={isMobileDevice}
           onOpenConnect={() => setIsServerIpModalOpen(true)}
+          onOpenFileExplorer={handleOpenFileExplorer}
+          pingMs={pingMs}
+          transferHistory={transferHistory}
+          onClearTransferHistory={handleClearTransferHistory}
+          onOpenFolder={handleOpenFolder}
         />
       </main>
 
@@ -748,6 +1131,21 @@ export function App() {
         isOpen={isScrcpyModalOpen}
         onClose={() => setIsScrcpyModalOpen(false)}
         targetPeer={scrcpyTargetPeer}
+      />
+
+      {/* Two-Way Remote File Explorer Modal */}
+      <FileExplorerModal
+        isOpen={isFileExplorerOpen}
+        onClose={() => setIsFileExplorerOpen(false)}
+        targetPeer={explorerTargetPeer}
+        currentPath={explorerPath}
+        items={explorerItems}
+        loading={explorerLoading}
+        error={explorerError}
+        onNavigate={handleExplorerNavigate}
+        onRefresh={handleExplorerRefresh}
+        onPullFile={handleExplorerPullFile}
+        onRequestPermission={handleRequestStoragePermission}
       />
 
       {/* Stream Source Selector for Mobile */}
@@ -761,7 +1159,7 @@ export function App() {
         }}
       />
 
-      {/* Server IP Config Modal for Android APK & Laptop-to-Laptop */}
+      {/* Server IP Config Modal */}
       <ServerIpModal
         isOpen={isServerIpModalOpen}
         onClose={() => setIsServerIpModalOpen(false)}
@@ -778,7 +1176,7 @@ export function App() {
         onSave={handleSaveRename}
       />
 
-      {/* QR Code Modal for Phone Connection & Other Devices */}
+      {/* QR Code Modal */}
       <QRCodeModal
         isOpen={isQrOpen}
         onClose={() => setIsQrOpen(false)}
@@ -806,7 +1204,6 @@ export function App() {
       {/* Floating Camera Broadcaster Bar when Camera Streaming is Active */}
       {activeSharingPeerId && activeSharingMode === 'camera' && (
         <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700/80 rounded-2xl shadow-2xl p-2 sm:p-2.5 flex items-center gap-3 backdrop-blur-md max-w-[94vw] animate-in fade-in slide-in-from-bottom-3 duration-200">
-          {/* Mini Camera Preview */}
           <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-zinc-700 shrink-0 relative">
             <video
               ref={(el) => {
@@ -822,8 +1219,7 @@ export function App() {
             <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
           </div>
 
-          {/* Info & Mode */}
-          <div className="min-w-0 pr-1">
+          <div className="min-w-0 pr-1 text-left">
             <div className="flex items-center gap-1.5">
               <span className="text-xs font-semibold text-white">Siaran Kamera HP</span>
               <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1 rounded">
@@ -835,7 +1231,6 @@ export function App() {
             </p>
           </div>
 
-          {/* Switch Camera Button */}
           <button
             onClick={handleSwitchCamera}
             className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-emerald-400 hover:text-emerald-300 border border-zinc-700/70 text-xs font-semibold transition cursor-pointer shrink-0"
@@ -845,7 +1240,6 @@ export function App() {
             <span className="text-[11px]">Ganti Kamera</span>
           </button>
 
-          {/* Stop Button */}
           <button
             onClick={() => handleStartScreenShare(activeSharingPeerId)}
             className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
@@ -872,9 +1266,7 @@ export function App() {
 
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">
-        <p>
-          ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage
-        </p>
+        <p>ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage</p>
         <p className="text-[10px] text-zinc-400">
           Dibuat & Dikembangkan oleh <span className="text-emerald-400 font-semibold">Edvan</span> (<a href="https://github.com/EdvanVPRoject/ENCross" target="_blank" rel="noreferrer" className="hover:text-emerald-300 underline underline-offset-2">EdvanVPRoject</a>)
         </p>

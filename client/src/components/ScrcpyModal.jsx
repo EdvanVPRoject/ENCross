@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, MonitorPlay, Wifi, RefreshCw, X, CheckCircle, AlertTriangle, Play, Square, Usb, HelpCircle, ChevronDown, ChevronUp } from 'lucide-react';
+import { Smartphone, MonitorPlay, Wifi, RefreshCw, X, CheckCircle, AlertTriangle, Play, Square, Usb, HelpCircle, ChevronDown, ChevronUp, Sliders, KeyRound } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
+import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
 
 export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
   const [loading, setLoading] = useState(false);
@@ -8,7 +9,15 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [showGuide, setShowGuide] = useState(false);
+  const [showPairing, setShowPairing] = useState(false);
   const [targetIp, setTargetIp] = useState('');
+  const [pairingIpPort, setPairingIpPort] = useState('');
+  const [pairingCode, setPairingCode] = useState('');
+
+  // Scrcpy Quality & Battery Settings
+  const [maxSize, setMaxSize] = useState(SCRCPY_CONFIG?.maxSize || 0);
+  const [bitRate, setBitRate] = useState(SCRCPY_CONFIG?.bitRate || '8M');
+  const [turnScreenOff, setTurnScreenOff] = useState(SCRCPY_CONFIG?.turnScreenOff || false);
 
   const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
 
@@ -48,7 +57,10 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
       const res = await window.electronAPI.startScrcpy({
         deviceId: deviceSerial,
         ip: !deviceSerial ? targetIp : null,
-        stayAwake: true
+        stayAwake: true,
+        maxSize: Number(maxSize) || 0,
+        bitRate: bitRate || '8M',
+        turnScreenOff: Boolean(turnScreenOff)
       });
 
       if (res.success) {
@@ -59,6 +71,30 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
       }
     } catch (err) {
       setErrorMsg(err.message || 'Kesalahan saat menjalankan Scrcpy.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handlePairWifi = async () => {
+    if (!pairingIpPort.trim() || !pairingCode.trim()) {
+      setErrorMsg('Masukkan IP:Port dan Kode Pairing 6 digit');
+      return;
+    }
+    triggerHaptic([30]);
+    setLoading(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+    try {
+      const res = await window.electronAPI.pairAdbWifi(pairingIpPort.trim(), pairingCode.trim());
+      if (res.success) {
+        setSuccessMsg(`Pairing nirkabel ke ${pairingIpPort} berhasil! Perangkat telah dipasangkan.`);
+        refreshStatus();
+      } else {
+        setErrorMsg(`Gagal pairing: ${res.error || 'Periksa IP:Port dan kode pairing di HP'}`);
+      }
+    } catch (err) {
+      setErrorMsg(err.message);
     } finally {
       setLoading(false);
     }
@@ -172,22 +208,73 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
 
         {/* Notifications */}
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs mb-4 flex items-center gap-2">
-            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400" />
-            <span className="truncate">{errorMsg}</span>
+          <div className="p-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-xs mb-4 flex items-start gap-2">
+            <AlertTriangle className="w-4 h-4 shrink-0 text-red-400 mt-0.5" />
+            <span className="break-words leading-relaxed flex-1">{errorMsg}</span>
           </div>
         )}
 
         {successMsg && (
-          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs mb-4 flex items-center gap-2">
-            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400" />
-            <span className="truncate">{successMsg}</span>
+          <div className="p-3 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-300 text-xs mb-4 flex items-start gap-2">
+            <CheckCircle className="w-4 h-4 shrink-0 text-emerald-400 mt-0.5" />
+            <span className="break-words leading-relaxed flex-1">{successMsg}</span>
           </div>
         )}
 
         {/* Device Status & Mirroring Control */}
         {isElectron && (
           <div className="space-y-4">
+            {/* Scrcpy Quality & Battery Configuration */}
+            <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/90 space-y-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">
+                <Sliders className="w-4 h-4 text-sky-400" />
+                <span>Pengaturan Kualitas & Performa Scrcpy</span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                {/* Max Resolution */}
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">Resolusi Layar:</label>
+                  <select
+                    value={maxSize}
+                    onChange={(e) => setMaxSize(Number(e.target.value))}
+                    className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white focus:outline-hidden focus:border-sky-500"
+                  >
+                    <option value={0}>Asli (Default)</option>
+                    <option value={1080}>1080p (FHD)</option>
+                    <option value={720}>720p (HD)</option>
+                  </select>
+                </div>
+
+                {/* Bitrate */}
+                <div>
+                  <label className="text-[11px] text-zinc-400 block mb-1">Bitrate Video:</label>
+                  <select
+                    value={bitRate}
+                    onChange={(e) => setBitRate(e.target.value)}
+                    className="w-full px-2.5 py-1.5 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white focus:outline-hidden focus:border-sky-500"
+                  >
+                    <option value="4M">4 Mbps (Hemat Data)</option>
+                    <option value="8M">8 Mbps (Standar Mulus)</option>
+                    <option value="16M">16 Mbps (Ultra Jernih)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Turn Screen Off Checkbox */}
+              <label className="flex items-center gap-2 cursor-pointer pt-1 select-none">
+                <input
+                  type="checkbox"
+                  checked={turnScreenOff}
+                  onChange={(e) => setTurnScreenOff(e.target.checked)}
+                  className="rounded border-zinc-700 text-sky-500 focus:ring-sky-500/20 bg-zinc-900"
+                />
+                <span className="text-xs text-zinc-300">
+                  Matikan Layar Fisik HP saat Mirroring (Hemat Baterai)
+                </span>
+              </label>
+            </div>
+
             {/* Status bar */}
             <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-950 border border-zinc-800 text-xs">
               <div className="flex items-center gap-2">
@@ -311,6 +398,51 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
                   <Square className="w-3 h-3 fill-current" />
                   <span>Hentikan Scrcpy</span>
                 </button>
+              )}
+            </div>
+
+            {/* Android 11+ Wireless Pairing Section */}
+            <div className="border-t border-zinc-800 pt-3">
+              <button
+                onClick={() => setShowPairing(!showPairing)}
+                className="w-full flex items-center justify-between text-xs text-zinc-300 hover:text-white transition cursor-pointer py-1"
+              >
+                <span className="flex items-center gap-1.5 font-medium">
+                  <KeyRound className="w-3.5 h-3.5 text-sky-400" />
+                  <span>Pairing Nirkabel Android 11+ (Kode 6 Digit)</span>
+                </span>
+                {showPairing ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
+              </button>
+
+              {showPairing && (
+                <div className="mt-2.5 p-3.5 rounded-xl bg-zinc-950/90 border border-zinc-800 space-y-2.5 text-xs">
+                  <p className="text-[11px] text-zinc-400 leading-relaxed">
+                    Buka <em>Opsi Pengembang &gt; Debugging Nirkabel &gt; Sambungkan perangkat dengan kode pemasangan</em> di HP Anda, lalu masukkan IP:Port dan kode yang tertera:
+                  </p>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input
+                      type="text"
+                      value={pairingIpPort}
+                      onChange={(e) => setPairingIpPort(e.target.value)}
+                      placeholder="IP:Port (cth: 192.168.1.5:37281)"
+                      className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white placeholder-zinc-500 font-mono focus:outline-hidden focus:border-sky-500"
+                    />
+                    <input
+                      type="text"
+                      value={pairingCode}
+                      onChange={(e) => setPairingCode(e.target.value)}
+                      placeholder="Kode 6 Digit (cth: 123456)"
+                      className="px-3 py-2 bg-zinc-900 border border-zinc-700 rounded-lg text-xs text-white placeholder-zinc-500 font-mono focus:outline-hidden focus:border-sky-500"
+                    />
+                  </div>
+                  <button
+                    onClick={handlePairWifi}
+                    disabled={loading}
+                    className="w-full py-2 bg-sky-600 hover:bg-sky-500 active:scale-[0.98] text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm"
+                  >
+                    Pasangkan (Pair) via Wi-Fi
+                  </button>
+                </div>
               )}
             </div>
 

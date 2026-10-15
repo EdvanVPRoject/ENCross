@@ -4,7 +4,10 @@ title ENCross - Master Build & Update Tool
 color 0B
 
 :: Konfigurasi Path Java untuk Android Gradle
-if exist "C:\Program Files\Android\Android Studio\jbr" (
+if exist "%USERPROFILE%\.jdks\jbr-21.0.11" (
+    set "JAVA_HOME=%USERPROFILE%\.jdks\jbr-21.0.11"
+    set "PATH=!JAVA_HOME!\bin;!PATH!"
+) else if exist "C:\Program Files\Android\Android Studio\jbr" (
     set "JAVA_HOME=C:\Program Files\Android\Android Studio\jbr"
     set "PATH=!JAVA_HOME!\bin;!PATH!"
 )

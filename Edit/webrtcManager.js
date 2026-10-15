@@ -268,6 +268,8 @@ export class WebRTCManager {
 
   setupDataChannel(channel, peerId) {
     channel.binaryType = 'arraybuffer';
+    // 1 MB threshold for smooth backpressure handling without stutter
+    channel.bufferedAmountLowThreshold = 1024 * 1024;
 
     channel.onopen = () => {
       console.log(`[DataChannel] Open with peer ${peerId}`);
@@ -312,6 +314,25 @@ export class WebRTCManager {
               peerId,
               completed: false
             });
+          }
+        } else if (msg.type === 'file-cancel') {
+          // File cancelled by sender
+          const incoming = this.incomingFiles.get(msg.fileId);
+          if (incoming) {
+            this.incomingFiles.delete(msg.fileId);
+            if (this.onTransferProgress) {
+              this.onTransferProgress({
+                fileId: msg.fileId,
+                fileName: incoming.meta.name,
+                fileSize: incoming.meta.size,
+                progress: 0,
+                speed: 'Dibatalkan',
+                direction: 'download',
+                peerId,
+                completed: true,
+                cancelled: true
+              });
+            }
           }
         } else if (msg.type === 'file-end') {
           // File completed
@@ -377,6 +398,19 @@ export class WebRTCManager {
     }
   }
 
+  // Cancel an active file transfer
+  cancelTransfer(fileId, peerId) {
+    if (this.activeTransfers.has(fileId)) {
+      this.activeTransfers.get(fileId).cancelled = true;
+    }
+    const peerObj = peerId ? this.peers.get(peerId) : null;
+    if (peerObj?.dataChannel && peerObj.dataChannel.readyState === 'open') {
+      try {
+        peerObj.dataChannel.send(JSON.stringify({ type: 'file-cancel', fileId }));
+      } catch (_) {}
+    }
+  }
+
   // Send a file to a peer with chunking & backpressure
   async sendFile(peerId, file) {
     const peerObj = this.peers.get(peerId);
@@ -392,6 +426,7 @@ export class WebRTCManager {
 
     const fileId = 'file_' + Math.random().toString(36).substring(2, 10);
     const startTime = Date.now();
+    this.activeTransfers.set(fileId, { cancelled: false, peerId });
 
     // 1. Send metadata header
     channel.send(JSON.stringify({
@@ -420,6 +455,29 @@ export class WebRTCManager {
 
     // 2. Stream file chunks with backpressure
     while (offset < file.size) {
+      // Check if transfer was cancelled by user
+      const transferState = this.activeTransfers.get(fileId);
+      if (transferState && transferState.cancelled) {
+        this.activeTransfers.delete(fileId);
+        try {
+          channel.send(JSON.stringify({ type: 'file-cancel', fileId }));
+        } catch (_) {}
+        if (this.onTransferProgress) {
+          this.onTransferProgress({
+            fileId,
+            fileName: file.name,
+            fileSize: file.size,
+            progress: 0,
+            speed: 'Dibatalkan',
+            direction: 'upload',
+            peerId,
+            completed: true,
+            cancelled: true
+          });
+        }
+        return;
+      }
+
       // Check backpressure buffer
       if (channel.bufferedAmount > BUFFER_THRESHOLD) {
         await new Promise((resolve) => {
@@ -462,6 +520,7 @@ export class WebRTCManager {
       type: 'file-end',
       fileId
     }));
+    this.activeTransfers.delete(fileId);
 
     if (this.onTransferProgress) {
       this.onTransferProgress({
@@ -478,7 +537,7 @@ export class WebRTCManager {
   }
 
   // Phase 4: Screen Sharing / Live Video Stream
-  async startScreenShare(peerId, mode = 'screen') {
+  async startScreenShare(peerId, mode = 'screen', includeAudio = false) {
     const pc = this.getOrCreatePeerConnection(peerId);
     const peerObj = this.peers.get(peerId);
 
@@ -492,6 +551,7 @@ export class WebRTCManager {
     // Check if camera mode is requested or screen share
     if (mode === 'camera') {
       this.currentFacingMode = isMobile ? 'environment' : 'user';
+      const audioOption = Boolean(includeAudio);
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -499,19 +559,27 @@ export class WebRTCManager {
             width: { ideal: 1280 },
             height: { ideal: 720 }
           },
-          audio: false
+          audio: audioOption
         });
       } catch (camErr) {
         try {
           stream = await navigator.mediaDevices.getUserMedia({
             video: { facingMode: this.currentFacingMode },
-            audio: false
+            audio: audioOption
           });
         } catch (retryErr) {
-          stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-          });
+          try {
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: audioOption
+            });
+          } catch (retryAudioErr) {
+            // Fallback without audio if mic was denied
+            stream = await navigator.mediaDevices.getUserMedia({
+              video: true,
+              audio: false
+            });
+          }
         }
       }
       try {
@@ -530,13 +598,27 @@ export class WebRTCManager {
         try {
           stream = await navigator.mediaDevices.getDisplayMedia({
             video: true,
-            audio: false
+            audio: Boolean(includeAudio)
           });
         } catch (dispErr) {
-          if (dispErr.name === 'NotAllowedError') {
-            throw new Error('Izin berbagi layar dibatalkan.');
+          if (includeAudio) {
+            try {
+              stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: false
+              });
+            } catch (fallbackErr) {
+              if (fallbackErr.name === 'NotAllowedError') {
+                throw new Error('Izin berbagi layar dibatalkan.');
+              }
+              throw new Error('Gagal memulai mirroring layar: ' + (fallbackErr.message || 'Tidak didukung'));
+            }
+          } else {
+            if (dispErr.name === 'NotAllowedError') {
+              throw new Error('Izin berbagi layar dibatalkan.');
+            }
+            throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
           }
-          throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
         }
       } else {
         throw new Error('Mirroring Layar dari HP dibatasi oleh sistem Android WebView. Gunakan aplikasi ENCross APK untuk siaran layar via MediaProjection.');
@@ -548,15 +630,15 @@ export class WebRTCManager {
     this.activeSharePeerId = peerId;
     this.activeShareMode = mode;
 
-    // Remove old video senders if any
+    // Remove old video & audio senders if any
     const existingSenders = pc.getSenders();
     existingSenders.forEach((sender) => {
-      if (sender.track && sender.track.kind === 'video') {
+      if (sender.track && (sender.track.kind === 'video' || sender.track.kind === 'audio')) {
         try { pc.removeTrack(sender); } catch(e) {}
       }
     });
 
-    // Add track to PeerConnection
+    // Add tracks to PeerConnection
     stream.getTracks().forEach((track) => {
       pc.addTrack(track, stream);
     });
@@ -697,6 +779,17 @@ export class WebRTCManager {
       await videoSender.replaceTrack(newVideoTrack);
     } else {
       pc.addTrack(newVideoTrack, newStream);
+      try {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        this.socket.emit('signal-offer', {
+          targetId,
+          offer,
+          metadata: { isScreenShare: true, mode: 'camera' }
+        });
+      } catch (negErr) {
+        console.warn('[Camera] SDP renegotiation warning:', negErr);
+      }
     }
 
     peerObj.localStream = newStream;

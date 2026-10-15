@@ -1,8 +1,8 @@
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
-const { exec, spawn } = require('child_process');
+const { execFile, spawn, exec } = require('child_process');
 const { startServer, getLocalIpAddresses } = require('./server');
 
 let mainWindow = null;
@@ -313,6 +313,22 @@ function getEncrossSubfolder(fileName = '', mimeType = '') {
   return '';
 }
 
+// Helper to safely sanitize filename and prevent overwrite with automatic numbering (1), (2)
+function getUniqueSafeFilePath(targetDir, rawFileName) {
+  const safeName = path.basename(rawFileName || 'file');
+  let finalPath = path.join(targetDir, safeName);
+  if (!fs.existsSync(finalPath)) {
+    return finalPath;
+  }
+  const ext = path.extname(safeName);
+  const base = path.basename(safeName, ext);
+  let counter = 1;
+  while (fs.existsSync(path.join(targetDir, `${base} (${counter})${ext}`))) {
+    counter++;
+  }
+  return path.join(targetDir, `${base} (${counter})${ext}`);
+}
+
 ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeType }) => {
   try {
     const subfolder = getEncrossSubfolder(fileName, mimeType);
@@ -325,7 +341,8 @@ ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeTyp
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    const filePath = path.join(targetDir, fileName);
+    const filePath = getUniqueSafeFilePath(targetDir, fileName);
+    const finalFileName = path.basename(filePath);
     const buffer = Buffer.from(base64Data, 'base64');
     fs.writeFileSync(filePath, buffer);
 
@@ -334,12 +351,12 @@ ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeTyp
       const iconPath = path.join(__dirname, 'assets/icon.png');
       new Notification({
         title: 'File Diterima',
-        body: `Disimpan di ${relFolder}/${fileName}`,
+        body: `Disimpan di ${relFolder}/${finalFileName}`,
         icon: nativeImage.createFromPath(iconPath)
       }).show();
     }
 
-    return { success: true, path: filePath, relFolder };
+    return { success: true, path: filePath, relFolder, fileName: finalFileName };
   } catch (err) {
     console.error('[Electron] Error saving file to ENCross folder:', err);
     return { success: false, error: err.message };
@@ -371,11 +388,11 @@ function parseAdbDevices(stdout) {
 
 ipcMain.handle('get-scrcpy-status', async () => {
   return new Promise((resolve) => {
-    exec('scrcpy --version', (sErr, sOut) => {
+    execFile('scrcpy', ['--version'], (sErr, sOut) => {
       const isScrcpyAvailable = !sErr && Boolean(sOut && sOut.includes('scrcpy'));
       const scrcpyVersion = isScrcpyAvailable ? (sOut.match(/scrcpy\s+([^\s]+)/)?.[1] || '4.1') : null;
 
-      exec('adb devices -l', (aErr, aOut) => {
+      execFile('adb', ['devices', '-l'], (aErr, aOut) => {
         const isAdbAvailable = !aErr;
         const devices = (!aErr && aOut) ? parseAdbDevices(aOut) : [];
         resolve({
@@ -391,7 +408,15 @@ ipcMain.handle('get-scrcpy-status', async () => {
 });
 
 ipcMain.handle('start-scrcpy', async (_, options = {}) => {
-  const { deviceId, ip, stayAwake = true, alwaysOnTop = false } = options;
+  const {
+    deviceId,
+    ip,
+    stayAwake = true,
+    alwaysOnTop = false,
+    maxSize = 0,
+    bitRate = '8M',
+    turnScreenOff = false
+  } = options;
 
   if (activeScrcpyProcess && !activeScrcpyProcess.killed) {
     try {
@@ -403,11 +428,15 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   const args = ['--window-title=ENCross - Layar HP'];
   if (stayAwake) args.push('--stay-awake');
   if (alwaysOnTop) args.push('--always-on-top');
+  if (maxSize && Number(maxSize) > 0) args.push(`--max-size=${Number(maxSize)}`);
+  if (bitRate && typeof bitRate === 'string') args.push(`--video-bit-rate=${bitRate}`);
+  if (turnScreenOff) args.push('--turn-screen-off');
 
   if (deviceId) {
     args.push('-s', deviceId);
   } else if (ip) {
-    args.push(`--tcpip=${ip}:5555`);
+    const cleanIp = String(ip).trim();
+    args.push(`--tcpip=${cleanIp}:5555`);
   }
 
   return new Promise((resolve) => {
@@ -466,11 +495,25 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   });
 });
 
-ipcMain.handle('connect-adb-tcpip', async (_, { ip, port = 5555 }) => {
-  if (!ip) return { success: false, error: 'Alamat IP diperlukan' };
-  const target = `${ip}:${port}`;
+ipcMain.handle('connect-adb-tcpip', async (_, arg1, arg2) => {
+  let ip = '';
+  let port = 5555;
+  if (arg1 && typeof arg1 === 'object') {
+    ip = arg1.ip;
+    port = arg1.port || 5555;
+  } else {
+    ip = arg1;
+    port = arg2 || 5555;
+  }
+
+  if (!ip || typeof ip !== 'string') return { success: false, error: 'Alamat IP diperlukan' };
+  const target = `${ip.trim()}:${port}`;
+  if (!/^[0-9a-zA-Z.:-]+$/.test(target)) {
+    return { success: false, error: 'Format IP/Port tidak valid' };
+  }
+
   return new Promise((resolve) => {
-    exec(`adb connect ${target}`, (err, stdout, stderr) => {
+    execFile('adb', ['connect', target], (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
       const isConnected = out.includes('connected to') && !out.includes('cannot connect') && !out.includes('failed');
       resolve({
@@ -482,9 +525,15 @@ ipcMain.handle('connect-adb-tcpip', async (_, { ip, port = 5555 }) => {
   });
 });
 
-ipcMain.handle('enable-adb-tcpip', async (_, { port = 5555 }) => {
+ipcMain.handle('enable-adb-tcpip', async (_, arg1) => {
+  let port = 5555;
+  if (arg1 && typeof arg1 === 'object') {
+    port = arg1.port || 5555;
+  } else if (arg1) {
+    port = arg1;
+  }
   return new Promise((resolve) => {
-    exec(`adb tcpip ${port}`, (err, stdout, stderr) => {
+    execFile('adb', ['tcpip', String(port)], (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
       if (err) {
         return resolve({ success: false, error: out || err.message });
@@ -492,6 +541,52 @@ ipcMain.handle('enable-adb-tcpip', async (_, { port = 5555 }) => {
       resolve({ success: true, output: out.trim() });
     });
   });
+});
+
+ipcMain.handle('pair-adb-wifi', async (_, arg1, arg2) => {
+  let ipPort = '';
+  let code = '';
+  if (arg1 && typeof arg1 === 'object') {
+    ipPort = arg1.ipPort || '';
+    code = arg1.code || '';
+  } else {
+    ipPort = arg1 || '';
+    code = arg2 || '';
+  }
+
+  if (!ipPort || !code) {
+    return { success: false, error: 'IP:Port dan Kode Pairing diperlukan.' };
+  }
+  const cleanTarget = String(ipPort).trim();
+  const cleanCode = String(code).trim();
+  if (!/^[0-9a-zA-Z.:-]+$/.test(cleanTarget) || !/^[0-9]+$/.test(cleanCode)) {
+    return { success: false, error: 'Karakter input pairing tidak valid.' };
+  }
+
+  return new Promise((resolve) => {
+    execFile('adb', ['pair', cleanTarget, cleanCode], (err, stdout, stderr) => {
+      const out = (stdout || '') + (stderr || '');
+      const isSuccess = out.toLowerCase().includes('successfully paired');
+      resolve({
+        success: isSuccess,
+        output: out.trim(),
+        error: isSuccess ? null : out.trim()
+      });
+    });
+  });
+});
+
+ipcMain.handle('open-encross-folder', async () => {
+  try {
+    const encrossDir = path.join(app.getPath('downloads'), 'ENCross');
+    if (!fs.existsSync(encrossDir)) {
+      fs.mkdirSync(encrossDir, { recursive: true });
+    }
+    await shell.openPath(encrossDir);
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 ipcMain.handle('stop-scrcpy', async () => {
@@ -560,7 +655,7 @@ if (!gotTheLock) {
         fs.mkdirSync(targetDir, { recursive: true });
       }
 
-      const filePath = path.join(targetDir, fileName);
+      const filePath = getUniqueSafeFilePath(targetDir, fileName);
       item.setSavePath(filePath);
     });
 
