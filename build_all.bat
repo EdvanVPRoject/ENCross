@@ -3,7 +3,8 @@ setlocal enabledelayedexpansion
 title ENCross - Master Build & Update Tool
 color 0B
 
-:: Konfigurasi Path Java untuk Android Gradle
+:: Konfigurasi Path Java dan Android SDK untuk Android Gradle
+if exist "%LOCALAPPDATA%\Android\Sdk" set "ANDROID_HOME=%LOCALAPPDATA%\Android\Sdk"
 if exist "%USERPROFILE%\.jdks\jbr-21.0.11" (
     set "JAVA_HOME=%USERPROFILE%\.jdks\jbr-21.0.11"
     set "PATH=!JAVA_HOME!\bin;!PATH!"
@@ -76,7 +77,7 @@ echo.
 echo ========================================================
 echo  [2/3] Menyinkronkan Web Assets ke Android Capacitor...
 echo ========================================================
-call npx.cmd cap copy android
+call npx.cmd cap sync android
 if %errorlevel% neq 0 (
     color 0C
     echo [ERROR] Capacitor Copy gagal!
@@ -164,7 +165,7 @@ echo.
 echo ========================================================
 echo  [2/4] Sinkronisasi Assets ke Android Capacitor...
 echo ========================================================
-call npx.cmd cap copy android
+call npx.cmd cap sync android
 
 echo.
 echo ========================================================
@@ -220,3 +221,5 @@ goto MENU
 
 :EXIT
 exit /b 0
+
+
