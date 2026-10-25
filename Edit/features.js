@@ -71,6 +71,9 @@ export const FEATURE_TOGGLES = {
 
   // 19. Kirim Seluruh Folder (Folder Transfer with Directory Structure)
   enableFolderTransfer: true,
+
+  // 20. Wireless PC Microphone (HP Jadi Mic Eksternal Laptop)
+  enableWirelessMic: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

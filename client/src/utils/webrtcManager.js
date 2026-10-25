@@ -1,4 +1,4 @@
-﻿// WebRTC PeerConnection & DataChannel Manager for ENCross
+// WebRTC PeerConnection & DataChannel Manager for ENCross
 
 const ICE_SERVERS = {
   iceServers: [
@@ -634,8 +634,24 @@ export class WebRTCManager {
     const isMobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
     let stream;
 
-    // Check if camera mode is requested or screen share
-    if (mode === 'camera') {
+    // Check if mic mode, camera mode, or screen share is requested
+    if (mode === 'mic') {
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          },
+          video: false
+        });
+      } catch (micErr) {
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: true,
+          video: false
+        });
+      }
+    } else if (mode === 'camera') {
       this.currentFacingMode = isMobile ? 'environment' : 'user';
       const audioOption = Boolean(includeAudio);
       try {
@@ -729,10 +745,13 @@ export class WebRTCManager {
       pc.addTrack(track, stream);
     });
 
-    // Handle user clicking "Stop Sharing" on browser banner
-    stream.getVideoTracks()[0].onended = () => {
-      this.stopScreenShare(peerId);
-    };
+    // Handle user clicking "Stop Sharing" on browser banner or track ended
+    const primaryTrack = stream.getVideoTracks()[0] || stream.getAudioTracks()[0];
+    if (primaryTrack) {
+      primaryTrack.onended = () => {
+        this.stopScreenShare(peerId);
+      };
+    }
 
     // Renegotiate offer
     const offer = await pc.createOffer();

@@ -33,6 +33,7 @@ import android.util.DisplayMetrics;
 import android.webkit.JavascriptInterface;
 import android.widget.Toast;
 import androidx.core.content.ContextCompat;
+import androidx.core.app.ActivityCompat;
 import com.getcapacitor.BridgeActivity;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -122,6 +123,20 @@ public class MainActivity extends BridgeActivity {
                     ex.printStackTrace();
                 }
                 return "";
+            }
+
+            @JavascriptInterface
+            public boolean isAudioPermissionGranted() {
+                return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.RECORD_AUDIO) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+            }
+
+            @JavascriptInterface
+            public void requestAudioPermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    runOnUiThread(() -> {
+                        ActivityCompat.requestPermissions(MainActivity.this, new String[]{android.Manifest.permission.RECORD_AUDIO}, 2002);
+                    });
+                }
             }
 
             @JavascriptInterface

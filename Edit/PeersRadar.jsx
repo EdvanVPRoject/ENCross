@@ -25,7 +25,8 @@ import {
   BatteryCharging,
   BatteryWarning,
   BellRing,
-  FolderUp
+  FolderUp,
+  Mic
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -45,6 +46,7 @@ export function PeersRadar({
   onStartScreenShare,
   onRequestRemoteScreen,
   onRequestRemoteCamera,
+  onRequestRemoteMic,
   onOpenScrcpy,
   onOpenQR,
   isMobile,
@@ -356,36 +358,82 @@ export function PeersRadar({
 
           {/* Baris Ketiga: Khusus jika peer adalah HP dilihat dari Laptop/PC */}
           {!isMobile && isPeerMobile && (
-            <div className="grid grid-cols-2 gap-2 pt-0.5">
-              {/* Scrcpy 60 FPS Native */}
-              {FEATURE_TOGGLES.enableScrcpyMirror !== false && (
-                <button
-                  onClick={() => {
-                    triggerHaptic([30]);
-                    if (onOpenScrcpy) onOpenScrcpy(peer);
-                  }}
-                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer active:scale-[0.98]"
-                  title="Mirror layar HP dengan mouse & keyboard (60 FPS Native)"
-                >
-                  <Smartphone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
-                  <span className="truncate">Scrcpy 60 FPS</span>
-                </button>
-              )}
+            <div className="flex flex-col gap-2 pt-0.5">
+              <div className="grid grid-cols-2 gap-2">
+                {/* Scrcpy 60 FPS Native */}
+                {FEATURE_TOGGLES.enableScrcpyMirror !== false && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([30]);
+                      if (onOpenScrcpy) onOpenScrcpy(peer);
+                    }}
+                    className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35 transition cursor-pointer active:scale-[0.98]"
+                    title="Mirror layar HP dengan mouse & keyboard (60 FPS Native)"
+                  >
+                    <Smartphone className="w-3.5 h-3.5 text-sky-400 shrink-0" />
+                    <span className="truncate">Scrcpy 60 FPS</span>
+                  </button>
+                )}
 
-              {/* Webcam HP */}
-              {FEATURE_TOGGLES.enableWirelessWebcam !== false && (
-                <button
-                  onClick={() => {
-                    triggerHaptic([30]);
-                    if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
-                  }}
-                  className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 transition cursor-pointer active:scale-[0.98]"
-                  title="Jadikan kamera ponsel ini sebagai webcam nirkabel PC"
-                >
-                  <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                  <span className="truncate">Webcam HP</span>
-                </button>
-              )}
+                {/* Webcam HP */}
+                {FEATURE_TOGGLES.enableWirelessWebcam !== false && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([30]);
+                      if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
+                    }}
+                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${
+                      activeSharingPeerId === peer.id && activeSharingMode === 'camera'
+                        ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                        : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
+                    }`}
+                    title="Jadikan kamera ponsel ini sebagai webcam nirkabel PC"
+                  >
+                    <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                    <span className="truncate">
+                      {activeSharingPeerId === peer.id && activeSharingMode === 'camera' ? 'Stop Cam' : 'Webcam HP'}
+                    </span>
+                  </button>
+                )}
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                {/* Wireless Mic HP */}
+                {FEATURE_TOGGLES.enableWirelessMic !== false && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([30]);
+                      if (onRequestRemoteMic) onRequestRemoteMic(peer.id);
+                    }}
+                    className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${
+                      activeSharingPeerId === peer.id && activeSharingMode === 'mic'
+                        ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                        : 'bg-teal-500/10 hover:bg-teal-500/20 text-teal-300 border border-teal-500/30'
+                    }`}
+                    title="Gunakan mikrofon ponsel ini sebagai mic eksternal laptop"
+                  >
+                    <Mic className="w-3.5 h-3.5 text-teal-400 shrink-0" />
+                    <span className="truncate">
+                      {activeSharingPeerId === peer.id && activeSharingMode === 'mic' ? 'Stop Mic' : 'Mic HP'}
+                    </span>
+                  </button>
+                )}
+
+                {/* Deringkan HP */}
+                {FEATURE_TOGGLES.enableRingPhone !== false && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([35]);
+                      if (onRingDevice) onRingDevice(peer.id);
+                    }}
+                    className="flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 transition cursor-pointer active:scale-[0.98]"
+                    title="Bunyikan alarm suara kencang di HP jika lupa menaruh"
+                  >
+                    <BellRing className="w-3.5 h-3.5 text-red-400 shrink-0" />
+                    <span className="truncate">Deringkan HP</span>
+                  </button>
+                )}
+              </div>
             </div>
           )}
 

@@ -393,6 +393,16 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
+    socket.on('request-remote-mic', ({ targetId }) => {
+      if (targetId) {
+        io.to(targetId).emit('remote-mic-requested', {
+          requesterId: socket.id,
+          requesterName: peerData?.name || 'PC',
+          requesterDeviceId: deviceKey
+        });
+      }
+    });
+
     socket.on('camera-facing-changed', ({ targetId, facingMode }) => {
       if (targetId) {
         io.to(targetId).emit('camera-facing-changed', { senderId: socket.id, facingMode });

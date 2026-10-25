@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Navbar } from './components/Navbar';
 import { QRCodeModal } from './components/QRCodeModal';
@@ -13,8 +13,9 @@ import { ServerIpModal } from './components/ServerIpModal';
 import { ScrcpyModal } from './components/ScrcpyModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
 import { MediaStreamingModal } from './components/MediaStreamingModal';
+import { WirelessMicModal } from './components/WirelessMicModal';
 import { TouchpadModal } from './components/TouchpadModal';
-import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing } from 'lucide-react';
+import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -296,6 +297,33 @@ export function App() {
             requesterName: name,
             requesterDeviceId: devId,
             mode: 'camera'
+          });
+        }
+        return currPeers;
+      });
+    });
+
+    // Socket Event: Remote peer requested this phone to become wireless microphone
+    newSocket.on('remote-mic-requested', ({ requesterId, requesterName, requesterDeviceId }) => {
+      if (!requesterId) return;
+      playSound('request');
+      triggerHaptic([40, 60, 40]);
+
+      setPeers((currPeers) => {
+        const found = currPeers.find((p) => p.id === requesterId);
+        const name = requesterName || found?.name || 'Laptop';
+        const devId = requesterDeviceId || found?.deviceId;
+
+        // Check if requester is in trusted peers list
+        const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
+        if (devId && trusted.includes(devId)) {
+          executeStream(requesterId, 'mic');
+        } else {
+          setPendingRemoteRequest({
+            requesterId,
+            requesterName: name,
+            requesterDeviceId: devId,
+            mode: 'mic'
           });
         }
         return currPeers;
@@ -1053,6 +1081,12 @@ export function App() {
     socket.emit('request-remote-camera', { targetId });
   };
 
+  const handleRequestRemoteMic = (targetId) => {
+    if (!socket || !targetId) return;
+    triggerHaptic([30]);
+    socket.emit('request-remote-mic', { targetId });
+  };
+
   const handleOpenScrcpy = (peer) => {
     triggerHaptic([30]);
     setScrcpyTargetPeer(peer);
@@ -1273,7 +1307,9 @@ export function App() {
           <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative text-left">
             <div className="flex items-center gap-3 mb-4">
               <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
-                {pendingRemoteRequest.mode === 'camera' ? (
+                {pendingRemoteRequest.mode === 'mic' ? (
+                  <Mic className="w-6 h-6 text-teal-400" />
+                ) : pendingRemoteRequest.mode === 'camera' ? (
                   <Camera className="w-6 h-6" />
                 ) : (
                   <Monitor className="w-6 h-6" />
@@ -1281,7 +1317,7 @@ export function App() {
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">
-                  Permintaan Akses {pendingRemoteRequest.mode === 'camera' ? 'Kamera HP' : 'Layar'}
+                  Permintaan Akses {pendingRemoteRequest.mode === 'mic' ? 'Mikrofon HP' : pendingRemoteRequest.mode === 'camera' ? 'Kamera HP' : 'Layar'}
                 </h3>
                 <p className="text-xs text-zinc-400">Konfirmasi Izin Privasi</p>
               </div>
@@ -1289,7 +1325,13 @@ export function App() {
 
             <p className="text-xs text-zinc-300 leading-relaxed mb-5">
               <strong className="text-white">{pendingRemoteRequest.requesterName}</strong> meminta izin untuk mengakses{' '}
-              <strong className="text-emerald-400">{pendingRemoteRequest.mode === 'camera' ? 'Kamera (Webcam)' : 'Layar Anda'}</strong>.
+              <strong className="text-emerald-400">
+                {pendingRemoteRequest.mode === 'mic'
+                  ? 'Mikrofon HP Anda sebagai Mic Eksternal Laptop'
+                  : pendingRemoteRequest.mode === 'camera'
+                  ? 'Kamera (Webcam)'
+                  : 'Layar Anda'}
+              </strong>.
               Apakah Anda mengizinkan siaran langsung ini?
             </p>
 
@@ -1346,6 +1388,7 @@ export function App() {
           onStartScreenShare={handleStartScreenShare}
           onRequestRemoteScreen={handleRequestRemoteScreen}
           onRequestRemoteCamera={handleRequestRemoteCamera}
+          onRequestRemoteMic={handleRequestRemoteMic}
           onOpenScrcpy={handleOpenScrcpy}
           onOpenQR={() => setIsQrOpen(true)}
           isMobile={isMobileDevice}
@@ -1484,18 +1527,74 @@ export function App() {
         </div>
       )}
 
-      {/* Live Remote Screen / Camera Monitoring Modal */}
+      {/* Floating Wireless Mic Broadcaster Bar when Mic Streaming is Active on Phone */}
+      {activeSharingPeerId && activeSharingMode === 'mic' && (
+        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-teal-500/40 rounded-2xl shadow-2xl p-2.5 sm:p-3 flex items-center gap-3 backdrop-blur-md max-w-[94vw] animate-in fade-in slide-in-from-bottom-3 duration-200">
+          <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0">
+            <Mic className="w-5 h-5 animate-pulse" />
+          </div>
+
+          <div className="min-w-0 pr-1 text-left">
+            <div className="flex items-center gap-1.5">
+              <span className="text-xs font-semibold text-white">Mic HP Aktif (PC Mic)</span>
+              <span className="text-[10px] font-mono text-teal-300 bg-teal-500/15 border border-teal-500/30 px-1 rounded">
+                BROADCAST
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-400 truncate">
+              Siaran ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Laptop'}
+            </p>
+          </div>
+
+          <button
+            onClick={() => {
+              if (localBroadcastStream) {
+                const audioTrack = localBroadcastStream.getAudioTracks()[0];
+                if (audioTrack) {
+                  audioTrack.enabled = !audioTrack.enabled;
+                  triggerHaptic([20]);
+                }
+              }
+            }}
+            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold transition cursor-pointer shrink-0"
+            title="Mute / Unmute Mic"
+          >
+            <MicOff className="w-4 h-4" />
+          </button>
+
+          <button
+            onClick={() => handleStartScreenShare(activeSharingPeerId)}
+            className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
+            title="Hentikan Mic"
+          >
+            <X className="w-4 h-4" />
+          </button>
+        </div>
+      )}
+
+      {/* Live Remote Screen / Camera Monitoring Modal or Wireless Mic Modal */}
       {incomingStream && (
-        <ScreenViewModal
-          stream={incomingStream}
-          senderName={screenSenderName}
-          mode={incomingStreamMode}
-          onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
-          onClose={() => {
-            setIncomingStream(null);
-            setIncomingStreamPeerId(null);
-          }}
-        />
+        incomingStreamMode === 'mic' ? (
+          <WirelessMicModal
+            stream={incomingStream}
+            senderName={screenSenderName}
+            onClose={() => {
+              setIncomingStream(null);
+              setIncomingStreamPeerId(null);
+            }}
+          />
+        ) : (
+          <ScreenViewModal
+            stream={incomingStream}
+            senderName={screenSenderName}
+            mode={incomingStreamMode}
+            onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+            onClose={() => {
+              setIncomingStream(null);
+              setIncomingStreamPeerId(null);
+            }}
+          />
+        )
       )}
 
             {/* Virtual Touchpad & Numpad Modal */}
