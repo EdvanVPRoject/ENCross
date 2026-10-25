@@ -69,5 +69,5 @@ Semua file program penting ini ditempatkan **langsung di dalam folder `Edit/`** 
 
 ### 💡 Cara Menerapkan & Mengompilasi Proyek:
 File-file di folder `Edit/` ini selalu disinkronkan dengan file aktif di proyek. Anda dapat menjalankan:
-- **`build_all.bat`** di direktori utama `vancross/` untuk otomatis mengompilasi frontend React, menyinkronkan aset Capacitor Android, dan mem-build APK (`release/ENCross.apk`).
+- **`build_all.bat`** di direktori utama `encross/` untuk otomatis mengompilasi frontend React, menyinkronkan aset Capacitor Android, dan mem-build APK (`release/ENCross.apk`).
 - Atau `npm run build` di dalam folder `client/`.
