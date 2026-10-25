@@ -15,7 +15,8 @@ import {
   Music,
   FileCode,
   FileArchive,
-  ChevronRight
+  ChevronRight,
+  Play
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
@@ -30,6 +31,7 @@ export function FileExplorerModal({
   onNavigate,
   onRefresh,
   onPullFile,
+  onStreamMedia,
   onRequestPermission
 }) {
   if (!isOpen) return null;
@@ -77,6 +79,11 @@ export function FileExplorerModal({
       return <FileCode className="w-4 h-4 text-blue-400 shrink-0" />;
     }
     return <FileText className="w-4 h-4 text-zinc-400 shrink-0" />;
+  };
+
+  const isMediaFile = (fileName = '') => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    return ['mp4', 'mkv', 'mov', 'webm', 'avi', '3gp', 'ts', 'mp3', 'wav', 'ogg', 'm4a', 'flac', 'aac', 'opus'].includes(ext);
   };
 
   const handleGoUp = () => {
@@ -301,17 +308,32 @@ export function FileExplorerModal({
                         <ChevronRight className="w-4 h-4" />
                       </button>
                     ) : (
-                      <button
-                        onClick={() => {
-                          triggerHaptic([35]);
-                          if (onPullFile) onPullFile(item);
-                        }}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-semibold text-xs transition cursor-pointer shadow-sm"
-                        title="Tarik & simpan file ini ke perangkat Anda"
-                      >
-                        <Download className="w-3.5 h-3.5" />
-                        <span className="hidden sm:inline">Ambil File</span>
-                      </button>
+                      <div className="flex items-center gap-1.5">
+                        {isMediaFile(item.name) && (
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              if (onStreamMedia) onStreamMedia(item);
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-purple-600 hover:bg-purple-500 active:scale-[0.98] text-white font-semibold text-xs transition cursor-pointer shadow-sm"
+                            title="Putar streaming langsung tanpa unduh"
+                          >
+                            <Play className="w-3.5 h-3.5 fill-current" />
+                            <span className="hidden sm:inline">Putar</span>
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            triggerHaptic([35]);
+                            if (onPullFile) onPullFile(item);
+                          }}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white font-semibold text-xs transition cursor-pointer shadow-sm"
+                          title="Tarik & simpan file ini ke perangkat Anda"
+                        >
+                          <Download className="w-3.5 h-3.5" />
+                          <span className="hidden sm:inline">Ambil File</span>
+                        </button>
+                      </div>
                     )}
                   </div>
                 </div>

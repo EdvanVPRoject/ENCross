@@ -14,14 +14,16 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
 
   const handleDownloadBlob = () => {
     const fileName = transfer.fileName || 'file';
+    const relativePath = transfer.relativePath || transfer.fileName || '';
 
-    // 1. Desktop (Electron) Direct Save to Downloads/ENCross/{subfolder}
+    // 1. Desktop (Electron) Direct Save to Downloads/ENCross/{subfolder or directory tree}
     if (window.electronAPI?.saveFileToEncross && transfer.blob) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64Data = reader.result.split(',')[1];
         window.electronAPI.saveFileToEncross({
           fileName,
+          relativePath,
           base64Data,
           mimeType: transfer.mimeType || transfer.blob?.type
         });
@@ -30,12 +32,18 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
       return;
     }
 
-    // 2. Android Native App Direct Save to Downloads/ENCross/{subfolder}
+    // 2. Android Native App Direct Save to Downloads/ENCross/{subfolder or directory tree}
     if (window.AndroidDownloader?.saveToEncross && transfer.blob) {
       const reader = new FileReader();
       reader.onloadend = () => {
         const base64Data = reader.result.split(',')[1];
-        const success = window.AndroidDownloader.saveToEncross(fileName, base64Data, subfolder);
+        let targetSubfolder = subfolder;
+        if (relativePath && relativePath.includes('/')) {
+          const parts = relativePath.split('/');
+          parts.pop();
+          targetSubfolder = parts.join('/');
+        }
+        const success = window.AndroidDownloader.saveToEncross(fileName, base64Data, targetSubfolder);
         if (!success) {
           triggerBrowserDownload();
         }
@@ -94,6 +102,11 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
             <h4 className="text-xs font-semibold text-white truncate">
               {transfer.fileName}
             </h4>
+            {transfer.relativePath && transfer.relativePath.includes('/') && (
+              <div className="text-[10px] text-amber-400 font-mono truncate">
+                📁 {transfer.relativePath}
+              </div>
+            )}
             <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-0.5 font-mono">
               <span>{formatBytes(transfer.fileSize || 0)}</span>
               <span>•</span>

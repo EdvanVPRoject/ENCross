@@ -115,6 +115,112 @@ app.get('/api/pc-files/download', (req, res) => {
   }
 });
 
+// HTTP Range Request endpoint for instant media streaming (video & audio)
+app.get('/api/pc-files/stream', (req, res) => {
+  try {
+    const rawPath = req.query.path;
+    if (!rawPath) {
+      return res.status(400).send('Parameter path tidak valid.');
+    }
+    const safePath = resolveSafePcPath(rawPath);
+    if (!fs.existsSync(safePath) || fs.statSync(safePath).isDirectory()) {
+      return res.status(404).send('File media tidak ditemukan di PC Host.');
+    }
+
+    const stat = fs.statSync(safePath);
+    const fileSize = stat.size;
+    const range = req.headers.range;
+
+    const ext = path.extname(safePath).toLowerCase();
+    const mimeTypes = {
+      '.mp4': 'video/mp4',
+      '.mkv': 'video/x-matroska',
+      '.webm': 'video/webm',
+      '.mov': 'video/quicktime',
+      '.avi': 'video/x-msvideo',
+      '.3gp': 'video/3gpp',
+      '.ts': 'video/mp2t',
+      '.mp3': 'audio/mpeg',
+      '.wav': 'audio/wav',
+      '.ogg': 'audio/ogg',
+      '.m4a': 'audio/mp4',
+      '.aac': 'audio/aac',
+      '.flac': 'audio/flac',
+      '.opus': 'audio/opus'
+    };
+    const contentType = mimeTypes[ext] || 'application/octet-stream';
+
+    res.setHeader('Accept-Ranges', 'bytes');
+    res.setHeader('Access-Control-Allow-Origin', '*');
+
+    if (range) {
+      const parts = range.replace(/bytes=/, '').split('-');
+      const start = parseInt(parts[0], 10);
+      const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1;
+
+      if (start >= fileSize) {
+        res.status(416).setHeader('Content-Range', `bytes */${fileSize}`);
+        return res.end();
+      }
+
+      const chunksize = end - start + 1;
+      const file = fs.createReadStream(safePath, { start, end });
+      res.writeHead(206, {
+        'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+        'Content-Length': chunksize,
+        'Content-Type': contentType,
+      });
+      file.pipe(res);
+    } else {
+      res.writeHead(200, {
+        'Content-Length': fileSize,
+        'Content-Type': contentType,
+      });
+      fs.createReadStream(safePath).pipe(res);
+    }
+  } catch (err) {
+    return res.status(500).send('Gagal streaming file: ' + err.message);
+  }
+});
+
+// HTTP Proxy Endpoint for Phone Media Streaming (Fallback if direct phone port 8088 is blocked)
+app.get('/api/media-stream-proxy', (req, res) => {
+  const targetIp = req.query.targetIp;
+  const targetPort = parseInt(req.query.targetPort, 10) || 8088;
+  const rawPath = req.query.path;
+
+  if (!targetIp || !rawPath) {
+    return res.status(400).send('Parameter targetIp dan path wajib diisi.');
+  }
+
+  const options = {
+    hostname: targetIp,
+    port: targetPort,
+    path: `/stream?path=${encodeURIComponent(rawPath)}`,
+    method: 'GET',
+    headers: {}
+  };
+
+  if (req.headers.range) {
+    options.headers.range = req.headers.range;
+  }
+
+  const proxyReq = http.request(options, (proxyRes) => {
+    res.writeHead(proxyRes.statusCode, proxyRes.headers);
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on('error', (err) => {
+    console.error('[MediaProxy] Error connecting to phone stream:', err.message);
+    if (!res.headersSent) {
+      res.status(502).send('Gagal menghubungi server stream HP: ' + err.message);
+    }
+  });
+
+  proxyReq.end();
+});
+
+
 // SPA fallback for direct web browser navigation
 app.use((req, res, next) => {
   if (req.method !== 'GET') return next();

@@ -304,8 +304,7 @@ export class WebRTCManager {
             peerId
           });
 
-          if (transferState) transferState.lastProgress = progress;
-        if (this.onTransferProgress) {
+          if (this.onTransferProgress) {
             this.onTransferProgress({
               fileId: msg.fileId,
               fileName: msg.name,
@@ -321,11 +320,11 @@ export class WebRTCManager {
           const incoming = this.incomingFiles.get(msg.fileId);
           if (incoming) {
             incoming.isPaused = true;
-            if (transferState) transferState.lastProgress = progress;
-        if (this.onTransferProgress) {
+            if (this.onTransferProgress) {
               this.onTransferProgress({
                 fileId: msg.fileId,
                 fileName: incoming.meta.name,
+                relativePath: incoming.meta.relativePath || incoming.meta.name,
                 fileSize: incoming.meta.size,
                 progress: incoming.lastProgress || 0,
                 speed: 'Dijeda',
@@ -350,8 +349,7 @@ export class WebRTCManager {
           const incoming = this.incomingFiles.get(msg.fileId);
           if (incoming) {
             this.incomingFiles.delete(msg.fileId);
-            if (transferState) transferState.lastProgress = progress;
-        if (this.onTransferProgress) {
+            if (this.onTransferProgress) {
               this.onTransferProgress({
                 fileId: msg.fileId,
                 fileName: incoming.meta.name,
@@ -372,8 +370,7 @@ export class WebRTCManager {
             const blob = new Blob(incoming.chunks, { type: incoming.meta.mimeType || 'application/octet-stream' });
             const blobUrl = URL.createObjectURL(blob);
 
-            if (transferState) transferState.lastProgress = progress;
-        if (this.onTransferProgress) {
+            if (this.onTransferProgress) {
               this.onTransferProgress({
                 fileId: msg.fileId,
                 fileName: incoming.meta.name,
@@ -414,7 +411,6 @@ export class WebRTCManager {
         const bytesPerSec = incoming.receivedBytes / elapsedSec;
         const progress = Math.min(Math.round((incoming.receivedBytes / incoming.meta.size) * 100), 99);
 
-        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,
@@ -552,7 +548,6 @@ export class WebRTCManager {
         try {
           channel.send(JSON.stringify({ type: 'file-cancel', fileId }));
         } catch (_) {}
-        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,
@@ -591,7 +586,6 @@ export class WebRTCManager {
         const bytesPerSec = offset / elapsedSec;
         const progress = Math.min(Math.round((offset / file.size) * 100), 99);
 
-        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,

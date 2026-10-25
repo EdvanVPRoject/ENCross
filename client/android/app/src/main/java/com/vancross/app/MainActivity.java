@@ -43,6 +43,17 @@ import java.io.FileOutputStream;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.InputStreamReader;
+import java.io.BufferedReader;
+import java.io.RandomAccessFile;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class MainActivity extends BridgeActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 2001;
@@ -50,6 +61,7 @@ public class MainActivity extends BridgeActivity {
     private MediaProjectionManager projectionManager;
     private MediaProjection mediaProjection;
     private VirtualDisplay virtualDisplay;
+    private MediaStreamServer mediaStreamServer;
     private ImageReader imageReader;
     private HandlerThread captureThread;
     private Handler captureHandler;
@@ -68,6 +80,14 @@ public class MainActivity extends BridgeActivity {
         getWindow().setStatusBarColor(Color.parseColor("#09090b"));
         getWindow().setNavigationBarColor(Color.parseColor("#09090b"));
         findViewById(android.R.id.content).setBackgroundColor(Color.parseColor("#09090b"));
+
+        // Start embedded HTTP media range stream server on port 8088
+        try {
+            mediaStreamServer = new MediaStreamServer();
+            mediaStreamServer.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
 
         // Native Downloader & Device Info Bridge
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -306,6 +326,11 @@ public class MainActivity extends BridgeActivity {
             @JavascriptInterface
             public void stopRinging() {
                 MainActivity.this.stopRinging();
+        if (mediaStreamServer != null) {
+            try {
+                mediaStreamServer.stop();
+            } catch (Exception ignored) {}
+        }
             }
         }, "AndroidRinger");
 
@@ -764,6 +789,207 @@ public class MainActivity extends BridgeActivity {
         }
         super.onBackPressed();
     }
+
+    // =========================================================================
+    // Embedded Lightweight HTTP Range Streaming Server for Media (Video / Audio)
+    // Port 8088 - Runs on background daemon thread, handles instant seek and partial content
+    // =========================================================================
+    private class MediaStreamServer {
+        private final int port = 8088;
+        private ServerSocket serverSocket;
+        private volatile boolean isRunning = false;
+        private Thread serverThread;
+        private final ExecutorService executor = Executors.newCachedThreadPool();
+
+        public void start() {
+            if (isRunning) return;
+            isRunning = true;
+            serverThread = new Thread(() -> {
+                try {
+                    serverSocket = new ServerSocket(port);
+                    while (isRunning && serverSocket != null && !serverSocket.isClosed()) {
+                        Socket clientSocket = serverSocket.accept();
+                        executor.submit(() -> handleClient(clientSocket));
+                    }
+                } catch (Exception ignored) {
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+        }
+
+        public void stop() {
+            isRunning = false;
+            try {
+                if (serverSocket != null && !serverSocket.isClosed()) {
+                    serverSocket.close();
+                }
+            } catch (Exception ignored) {}
+            try {
+                executor.shutdownNow();
+            } catch (Exception ignored) {}
+        }
+
+        private void handleClient(Socket socket) {
+            try {
+                socket.setSoTimeout(30000);
+                InputStream is = socket.getInputStream();
+                OutputStream os = socket.getOutputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+                String requestLine = reader.readLine();
+                if (requestLine == null || requestLine.isEmpty()) {
+                    socket.close();
+                    return;
+                }
+
+                String[] parts = requestLine.split(" ");
+                if (parts.length < 2) {
+                    socket.close();
+                    return;
+                }
+                String method = parts[0];
+                String uri = parts[1];
+
+                String rangeHeader = null;
+                String headerLine;
+                while ((headerLine = reader.readLine()) != null && !headerLine.isEmpty()) {
+                    if (headerLine.toLowerCase().startsWith("range:")) {
+                        rangeHeader = headerLine.substring(6).trim();
+                    }
+                }
+
+                if ("OPTIONS".equalsIgnoreCase(method)) {
+                    String corsResponse = "HTTP/1.1 200 OK\r\n" +
+                            "Access-Control-Allow-Origin: *\r\n" +
+                            "Access-Control-Allow-Methods: GET, HEAD, OPTIONS\r\n" +
+                            "Access-Control-Allow-Headers: Range, Content-Type, Accept\r\n" +
+                            "Content-Length: 0\r\n\r\n";
+                    os.write(corsResponse.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    socket.close();
+                    return;
+                }
+
+                String subPath = "";
+                if (uri.contains("?")) {
+                    String query = uri.substring(uri.indexOf("?") + 1);
+                    for (String param : query.split("&")) {
+                        String[] pair = param.split("=", 2);
+                        if (pair.length == 2 && "path".equalsIgnoreCase(pair[0])) {
+                            subPath = URLDecoder.decode(pair[1], "UTF-8");
+                            break;
+                        }
+                    }
+                }
+
+                File root = Environment.getExternalStorageDirectory();
+                File targetFile = (subPath != null && !subPath.trim().isEmpty())
+                        ? new File(root, subPath.trim())
+                        : null;
+
+                if (targetFile == null || !targetFile.exists() || targetFile.isDirectory()) {
+                    String notFound = "HTTP/1.1 404 Not Found\r\nContent-Type: text/plain\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 14\r\n\r\nFile Not Found";
+                    os.write(notFound.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    socket.close();
+                    return;
+                }
+
+                String canonicalRoot = root.getCanonicalPath();
+                String canonicalTarget = targetFile.getCanonicalPath();
+                if (!canonicalTarget.startsWith(canonicalRoot)) {
+                    String forbidden = "HTTP/1.1 403 Forbidden\r\nAccess-Control-Allow-Origin: *\r\nContent-Length: 9\r\n\r\nForbidden";
+                    os.write(forbidden.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    socket.close();
+                    return;
+                }
+
+                long fileLength = targetFile.length();
+                String mimeType = getMimeType(targetFile.getName());
+
+                long start = 0;
+                long end = fileLength - 1;
+                boolean isRange = false;
+
+                if (rangeHeader != null && rangeHeader.startsWith("bytes=")) {
+                    isRange = true;
+                    String rangeValues = rangeHeader.substring(6).trim();
+                    String[] rangeParts = rangeValues.split("-", 2);
+                    try {
+                        start = Long.parseLong(rangeParts[0].trim());
+                        if (rangeParts.length > 1 && !rangeParts[1].trim().isEmpty()) {
+                            end = Long.parseLong(rangeParts[1].trim());
+                        }
+                    } catch (NumberFormatException ignored) {}
+
+                    if (start >= fileLength) {
+                        String unsat = "HTTP/1.1 416 Range Not Satisfiable\r\nContent-Range: bytes */" + fileLength + "\r\nAccess-Control-Allow-Origin: *\r\n\r\n";
+                        os.write(unsat.getBytes(StandardCharsets.UTF_8));
+                        os.flush();
+                        socket.close();
+                        return;
+                    }
+                    if (end >= fileLength) {
+                        end = fileLength - 1;
+                    }
+                }
+
+                long chunkLength = end - start + 1;
+
+                StringBuilder sb = new StringBuilder();
+                if (isRange) {
+                    sb.append("HTTP/1.1 206 Partial Content\r\n");
+                    sb.append("Content-Range: bytes ").append(start).append("-").append(end).append("/").append(fileLength).append("\r\n");
+                } else {
+                    sb.append("HTTP/1.1 200 OK\r\n");
+                }
+                sb.append("Content-Type: ").append(mimeType).append("\r\n");
+                sb.append("Content-Length: ").append(chunkLength).append("\r\n");
+                sb.append("Accept-Ranges: bytes\r\n");
+                sb.append("Access-Control-Allow-Origin: *\r\n");
+                sb.append("Connection: close\r\n\r\n");
+
+                os.write(sb.toString().getBytes(StandardCharsets.UTF_8));
+                os.flush();
+
+                if (!"HEAD".equalsIgnoreCase(method)) {
+                    RandomAccessFile raf = new RandomAccessFile(targetFile, "r");
+                    raf.seek(start);
+                    byte[] buffer = new byte[65536];
+                    long remaining = chunkLength;
+                    while (remaining > 0) {
+                        int toRead = (int) Math.min(buffer.length, remaining);
+                        int read = raf.read(buffer, 0, toRead);
+                        if (read == -1) break;
+                        os.write(buffer, 0, read);
+                        remaining -= read;
+                    }
+                    os.flush();
+                    raf.close();
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try { socket.close(); } catch (Exception ignored) {}
+            }
+        }
+
+        private String getMimeType(String name) {
+            String lower = name.toLowerCase();
+            if (lower.endsWith(".mp4")) return "video/mp4";
+            if (lower.endsWith(".mkv")) return "video/x-matroska";
+            if (lower.endsWith(".webm")) return "video/webm";
+            if (lower.endsWith(".mov")) return "video/quicktime";
+            if (lower.endsWith(".avi")) return "video/x-msvideo";
+            if (lower.endsWith(".3gp")) return "video/3gpp";
+            if (lower.endsWith(".mp3")) return "audio/mpeg";
+            if (lower.endsWith(".wav")) return "audio/wav";
+            if (lower.endsWith(".ogg")) return "audio/ogg";
+            if (lower.endsWith(".m4a")) return "audio/mp4";
+            if (lower.endsWith(".aac")) return "audio/aac";
+            if (lower.endsWith(".flac")) return "audio/flac";
+            return "application/octet-stream";
+        }
+    }
 }
-
-

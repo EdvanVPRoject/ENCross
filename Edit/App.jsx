@@ -12,6 +12,7 @@ import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
 import { ScrcpyModal } from './components/ScrcpyModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
+import { MediaStreamingModal } from './components/MediaStreamingModal';
 import { TouchpadModal } from './components/TouchpadModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
@@ -62,6 +63,9 @@ export function App() {
 
   // Remote File Explorer States
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
+  const [streamingMediaItem, setStreamingMediaItem] = useState(null);
+  const streamingMediaItemRef = useRef(streamingMediaItem);
+  streamingMediaItemRef.current = streamingMediaItem;
   const [explorerTargetPeer, setExplorerTargetPeer] = useState(null);
   const [explorerPath, setExplorerPath] = useState('/');
   const [explorerItems, setExplorerItems] = useState([]);

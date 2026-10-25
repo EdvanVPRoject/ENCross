@@ -1,4 +1,4 @@
-﻿import React, { useRef, useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Laptop,
   Smartphone,
@@ -24,7 +24,8 @@ import {
   Battery,
   BatteryCharging,
   BatteryWarning,
-  BellRing
+  BellRing,
+  FolderUp
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -57,8 +58,64 @@ export function PeersRadar({
   onRingDevice
 }) {
   const fileInputRef = useRef(null);
+  const folderInputRef = useRef(null);
   const selectedPeerRef = useRef(null);
   const [dragOverPeerId, setDragOverPeerId] = useState(null);
+
+  // Helper to recursively extract files from Drag & Drop with folder directory tree
+  const extractFilesFromDataTransfer = async (dataTransfer) => {
+    const items = dataTransfer.items;
+    if (!items || items.length === 0) {
+      return Array.from(dataTransfer.files || []);
+    }
+
+    const files = [];
+
+    const traverseEntry = async (entry, dirPath = '') => {
+      if (entry.isFile) {
+        const file = await new Promise((resolve) => entry.file(resolve));
+        file.relativePath = dirPath ? `${dirPath}/${file.name}` : file.name;
+        files.push(file);
+      } else if (entry.isDirectory) {
+        const currentPath = dirPath ? `${dirPath}/${entry.name}` : entry.name;
+        const dirReader = entry.createReader();
+        const readBatch = async () => {
+          const entries = await new Promise((resolve) => dirReader.readEntries(resolve));
+          if (entries.length > 0) {
+            for (const childEntry of entries) {
+              await traverseEntry(childEntry, currentPath);
+            }
+            await readBatch();
+          }
+        };
+        await readBatch();
+      }
+    };
+
+    const queue = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.webkitGetAsEntry) {
+        const entry = item.webkitGetAsEntry();
+        if (entry) {
+          queue.push(traverseEntry(entry));
+          continue;
+        }
+      }
+      const file = item.getAsFile();
+      if (file) {
+        file.relativePath = file.webkitRelativePath || file.name;
+        files.push(file);
+      }
+    }
+
+    if (queue.length > 0) {
+      await Promise.all(queue);
+      return files;
+    }
+
+    return Array.from(dataTransfer.files || []);
+  };
 
   const handleFileSelect = (peerId) => {
     triggerHaptic([35]);
@@ -69,9 +126,22 @@ export function PeersRadar({
     }
   };
 
-  const handleFileChange = (e) => {
-    const files = Array.from(e.target.files || []);
-    if (files.length > 0 && selectedPeerRef.current && onSendFile) {
+  const handleFolderSelect = (peerId) => {
+    triggerHaptic([35]);
+    selectedPeerRef.current = peerId;
+    if (folderInputRef.current) {
+      folderInputRef.current.value = '';
+      folderInputRef.current.click();
+    }
+  };
+
+  const handleFolderChange = (e) => {
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length > 0 && selectedPeerRef.current && onSendFile) {
+      const files = rawFiles.map((f) => {
+        f.relativePath = f.webkitRelativePath || f.name;
+        return f;
+      });
       onSendFile(selectedPeerRef.current, files);
     }
   };
@@ -121,10 +191,10 @@ export function PeersRadar({
         onDragLeave={() => {
           if (dragOverPeerId === peer.id) setDragOverPeerId(null);
         }}
-        onDrop={(e) => {
+        onDrop={async (e) => {
           e.preventDefault();
           setDragOverPeerId(null);
-          const files = Array.from(e.dataTransfer.files || []);
+          const files = await extractFilesFromDataTransfer(e.dataTransfer);
           if (files.length > 0 && onSendFile) {
             onSendFile(peer.id, files);
           }
@@ -214,6 +284,18 @@ export function PeersRadar({
               </button>
             )}
           </div>
+
+          {/* Tombol Kirim Seluruh Folder (Folder Transfer with Directory Structure) */}
+          {FEATURE_TOGGLES.enableFolderTransfer !== false && (
+            <button
+              onClick={() => handleFolderSelect(peer.id)}
+              className="w-full flex items-center justify-center gap-1.5 bg-zinc-800/80 hover:bg-zinc-700 active:scale-[0.98] text-amber-300 border border-amber-500/30 hover:border-amber-500/50 py-1.5 px-2.5 rounded-xl text-xs font-medium transition cursor-pointer"
+              title="Kirim seluruh folder beserta struktur direktori tanpa perlu zip manual"
+            >
+              <FolderUp className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+              <span>Kirim Seluruh Folder</span>
+            </button>
+          )}
 
           {/* Baris Kedua: Kirim Teks & Bagi Layar / Mirror */}
           <div className="grid grid-cols-2 gap-2">
@@ -371,6 +453,17 @@ export function PeersRadar({
         multiple
         ref={fileInputRef}
         onChange={handleFileChange}
+        className="hidden"
+      />
+
+      {/* Hidden folder input supporting recursive folder selection */}
+      <input
+        type="file"
+        webkitdirectory=""
+        directory=""
+        multiple
+        ref={folderInputRef}
+        onChange={handleFolderChange}
         className="hidden"
       />
 

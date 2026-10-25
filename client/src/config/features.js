@@ -1,4 +1,4 @@
-﻿// =============================================================================
+// =============================================================================
 // VANCROSS / ENCROS - PUSAT PENGATURAN & MODUL FITUR (FEATURE CONFIG)
 // File ini dapat Anda edit secara langsung untuk menambah, mengubah, atau
 // mengaktifkan/menonaktifkan fitur tanpa harus mengubah banyak kode internal.
@@ -65,6 +65,12 @@ export const FEATURE_TOGGLES = {
 
   // 17. Monitor Baterai & Status Perangkat Real-Time
   enableBatteryMonitor: true,
+
+  // 18. Streaming Media Instan (Play Video/Audio Tanpa Unduh Dulu)
+  enableInstantMediaStreaming: true,
+
+  // 19. Kirim Seluruh Folder (Folder Transfer with Directory Structure)
+  enableFolderTransfer: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

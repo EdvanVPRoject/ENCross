@@ -329,34 +329,44 @@ function getUniqueSafeFilePath(targetDir, rawFileName) {
   return path.join(targetDir, `${base} (${counter})${ext}`);
 }
 
-ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeType }) => {
+ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeType, relativePath }) => {
   try {
-    const subfolder = getEncrossSubfolder(fileName, mimeType);
     const downloadsDir = app.getPath('downloads');
-    const targetDir = subfolder
-      ? path.join(downloadsDir, 'ENCross', subfolder)
-      : path.join(downloadsDir, 'ENCross');
+    let targetDir;
+    let finalFileName = fileName;
+
+    if (relativePath && (relativePath.includes('/') || relativePath.includes('\\'))) {
+      const cleanRelPath = relativePath.replace(/^[/\\]+/, '');
+      const parts = cleanRelPath.split(/[/\\]+/);
+      finalFileName = parts.pop() || fileName;
+      targetDir = path.join(downloadsDir, 'ENCross', ...parts);
+    } else {
+      const subfolder = getEncrossSubfolder(fileName, mimeType);
+      targetDir = subfolder
+        ? path.join(downloadsDir, 'ENCross', subfolder)
+        : path.join(downloadsDir, 'ENCross');
+    }
 
     if (!fs.existsSync(targetDir)) {
       fs.mkdirSync(targetDir, { recursive: true });
     }
 
-    const filePath = getUniqueSafeFilePath(targetDir, fileName);
-    const finalFileName = path.basename(filePath);
+    const filePath = getUniqueSafeFilePath(targetDir, finalFileName);
+    const savedName = path.basename(filePath);
     const buffer = Buffer.from(base64Data, 'base64');
     fs.writeFileSync(filePath, buffer);
 
-    const relFolder = subfolder ? `Downloads/ENCross/${subfolder}` : 'Downloads/ENCross';
+    const relFolder = targetDir.replace(downloadsDir, 'Downloads').replace(/\\/g, '/');
     if (Notification.isSupported()) {
       const iconPath = path.join(__dirname, 'assets/icon.png');
       new Notification({
         title: 'File Diterima',
-        body: `Disimpan di ${relFolder}/${finalFileName}`,
+        body: `Disimpan di ${relFolder}/${savedName}`,
         icon: nativeImage.createFromPath(iconPath)
       }).show();
     }
 
-    return { success: true, path: filePath, relFolder, fileName: finalFileName };
+    return { success: true, path: filePath, relFolder, fileName: savedName };
   } catch (err) {
     console.error('[Electron] Error saving file to ENCross folder:', err);
     return { success: false, error: err.message };
