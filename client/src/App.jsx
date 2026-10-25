@@ -747,6 +747,52 @@ export function App() {
     }
   };
 
+  // Mount and open Phone WebDAV Storage directly in Windows File Explorer (Drive Z:)
+  const handleMountPhoneStorage = async (peer) => {
+    triggerHaptic([30]);
+    const peerIp = peer?.ip || peer?.clientIp;
+    const peerPort = peer?.webdavPort || 8089;
+
+    if (!peerIp) {
+      setIncomingToast({
+        senderName: 'VanCross Storage',
+        text: 'Alamat IP perangkat HP tidak terdeteksi di jaringan.',
+        senderId: null
+      });
+      return;
+    }
+
+    if (window.electronAPI?.mountPhoneStorage) {
+      setIncomingToast({
+        senderName: 'VanCross Storage',
+        text: `Menghubungkan penyimpanan ${peer.name || 'HP'} ke Windows File Explorer (Drive Z:)...`,
+        senderId: null
+      });
+      try {
+        const res = await window.electronAPI.mountPhoneStorage({ ip: peerIp, port: peerPort, driveLetter: 'Z:' });
+        setIncomingToast({
+          senderName: 'VanCross Storage',
+          text: res?.message || 'Penyimpanan HP berhasil dibuka di Windows File Explorer!',
+          senderId: null
+        });
+      } catch (err) {
+        setIncomingToast({
+          senderName: 'VanCross Storage',
+          text: `Gagal memetakan drive: ${err.message}`,
+          senderId: null
+        });
+      }
+    } else {
+      const davUrl = `http://${peerIp}:${peerPort}/`;
+      window.open(davUrl, '_blank');
+      setIncomingToast({
+        senderName: 'VanCross Storage',
+        text: `Buka File Explorer -> Map Network Drive -> Masukkan: ${davUrl}`,
+        senderId: null
+      });
+    }
+  };
+
   // Send Remote Touchpad / Keyboard Command to PC
   const handleSendInput = (event) => {
     if (!selectedPeerForTouchpad) return;
@@ -1400,6 +1446,7 @@ export function App() {
           transferHistory={transferHistory}
           onClearTransferHistory={handleClearTransferHistory}
           onOpenFolder={handleOpenFolder}
+          onMountPhoneStorage={handleMountPhoneStorage}
         />
       </main>
 

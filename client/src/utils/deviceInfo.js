@@ -75,12 +75,27 @@ export function getDeviceInfo(serverHostname) {
     localStorage.setItem('encross_device_name', name);
   }
 
+  let nativeIp = null;
+  let webdavPort = undefined;
+  try {
+    if (window.AndroidDownloader?.getDeviceIp) {
+      nativeIp = window.AndroidDownloader.getDeviceIp();
+    }
+    if (window.AndroidDownloader?.getWebDavPort) {
+      webdavPort = window.AndroidDownloader.getWebDavPort();
+    } else if (detected.os === 'Android') {
+      webdavPort = 8089;
+    }
+  } catch (_) {}
+
   return {
     deviceId,
     name,
     deviceType: detected.deviceType,
     os: detected.os,
-    browser: detected.browser
+    browser: detected.browser,
+    ip: nativeIp || undefined,
+    webdavPort
   };
 }
 

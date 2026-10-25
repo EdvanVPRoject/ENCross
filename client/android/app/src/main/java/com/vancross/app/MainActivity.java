@@ -55,6 +55,10 @@ import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.text.SimpleDateFormat;
+import java.util.Date;
+import java.util.Locale;
+import java.util.TimeZone;
 
 public class MainActivity extends BridgeActivity {
     private static final int REQUEST_MEDIA_PROJECTION = 2001;
@@ -63,6 +67,7 @@ public class MainActivity extends BridgeActivity {
     private MediaProjection mediaProjection;
     private VirtualDisplay virtualDisplay;
     private MediaStreamServer mediaStreamServer;
+    private WebDavServer webDavServer;
     private ImageReader imageReader;
     private HandlerThread captureThread;
     private Handler captureHandler;
@@ -90,8 +95,21 @@ public class MainActivity extends BridgeActivity {
             e.printStackTrace();
         }
 
+        // Start embedded WebDAV server on port 8089 for Windows Explorer mapping
+        try {
+            webDavServer = new WebDavServer();
+            webDavServer.start();
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         // Native Downloader & Device Info Bridge
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public int getWebDavPort() {
+                return 8089;
+            }
+
             @JavascriptInterface
             public String getDeviceIp() {
                 try {
@@ -341,11 +359,7 @@ public class MainActivity extends BridgeActivity {
             @JavascriptInterface
             public void stopRinging() {
                 MainActivity.this.stopRinging();
-        if (mediaStreamServer != null) {
-            try {
-                mediaStreamServer.stop();
-            } catch (Exception ignored) {}
-        }
+
             }
         }, "AndroidRinger");
 
@@ -784,6 +798,12 @@ public class MainActivity extends BridgeActivity {
                 unregisterReceiver(batteryReceiver);
             } catch (Exception ignored) {}
         }
+        if (webDavServer != null) {
+            try { webDavServer.stop(); } catch (Exception ignored) {}
+        }
+        if (mediaStreamServer != null) {
+            try { mediaStreamServer.stop(); } catch (Exception ignored) {}
+        }
         stopScreenCaptureInternal();
         super.onDestroy();
     }
@@ -1007,4 +1027,482 @@ public class MainActivity extends BridgeActivity {
             return "application/octet-stream";
         }
     }
+
+    // =========================================================================
+    // Embedded Lightweight WebDAV Server (Port 8089)
+    // Enables Windows File Explorer to mount Android phone storage as a native drive
+    // Supports OPTIONS, PROPFIND, GET, HEAD, PUT, MKCOL, DELETE, MOVE, LOCK, UNLOCK
+    // =========================================================================
+    private class WebDavServer {
+        private final int port = 8089;
+        private ServerSocket serverSocket;
+        private volatile boolean isRunning = false;
+        private Thread serverThread;
+        private final ExecutorService executor = Executors.newCachedThreadPool();
+        private final SimpleDateFormat rfc1123 = new SimpleDateFormat("EEE, dd MMM yyyy HH:mm:ss 'GMT'", Locale.US);
+
+        public WebDavServer() {
+            rfc1123.setTimeZone(TimeZone.getTimeZone("GMT"));
+        }
+
+        public void start() {
+            if (isRunning) return;
+            isRunning = true;
+            serverThread = new Thread(() -> {
+                try {
+                    serverSocket = new ServerSocket(port);
+                    while (isRunning && serverSocket != null && !serverSocket.isClosed()) {
+                        Socket clientSocket = serverSocket.accept();
+                        executor.submit(() -> handleClient(clientSocket));
+                    }
+                } catch (Exception ignored) {
+                }
+            });
+            serverThread.setDaemon(true);
+            serverThread.start();
+        }
+
+        public void stop() {
+            isRunning = false;
+            try {
+                if (serverSocket != null && !serverSocket.isClosed()) {
+                    serverSocket.close();
+                }
+            } catch (Exception ignored) {}
+            try {
+                executor.shutdownNow();
+            } catch (Exception ignored) {}
+        }
+
+        private void handleClient(Socket socket) {
+            try {
+                socket.setSoTimeout(30000);
+                InputStream is = socket.getInputStream();
+                OutputStream os = socket.getOutputStream();
+                BufferedReader reader = new BufferedReader(new InputStreamReader(is, StandardCharsets.UTF_8));
+
+                String requestLine = reader.readLine();
+                if (requestLine == null || requestLine.isEmpty()) {
+                    socket.close();
+                    return;
+                }
+
+                String[] parts = requestLine.split(" ");
+                if (parts.length < 2) {
+                    socket.close();
+                    return;
+                }
+                String method = parts[0].toUpperCase(Locale.US);
+                String rawUri = parts[1];
+
+                // Read all HTTP headers
+                String headerLine;
+                int depth = 1;
+                long contentLength = -1;
+                String destination = null;
+                boolean overwrite = true;
+                while ((headerLine = reader.readLine()) != null && !headerLine.isEmpty()) {
+                    String lower = headerLine.toLowerCase(Locale.US);
+                    if (lower.startsWith("depth:")) {
+                        try {
+                            depth = Integer.parseInt(headerLine.substring(6).trim());
+                        } catch (Exception ignored) {}
+                    } else if (lower.startsWith("content-length:")) {
+                        try {
+                            contentLength = Long.parseLong(headerLine.substring(15).trim());
+                        } catch (Exception ignored) {}
+                    } else if (lower.startsWith("destination:")) {
+                        destination = headerLine.substring(12).trim();
+                    } else if (lower.startsWith("overwrite:")) {
+                        overwrite = !"F".equalsIgnoreCase(headerLine.substring(10).trim());
+                    }
+                }
+
+                File rootDir = Environment.getExternalStorageDirectory();
+                String pathOnly = rawUri.contains("?") ? rawUri.substring(0, rawUri.indexOf("?")) : rawUri;
+                String decodedPath = URLDecoder.decode(pathOnly, "UTF-8").replace('\\', '/');
+                if (decodedPath.startsWith("/")) {
+                    decodedPath = decodedPath.substring(1);
+                }
+
+                File targetFile = (decodedPath.isEmpty() || decodedPath.equals("."))
+                        ? rootDir
+                        : new File(rootDir, decodedPath);
+
+                String canonicalRoot = rootDir.getCanonicalPath();
+                String canonicalTarget = targetFile.getCanonicalPath();
+                if (!canonicalTarget.startsWith(canonicalRoot)) {
+                    sendResponse(os, "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                    socket.close();
+                    return;
+                }
+
+                switch (method) {
+                    case "OPTIONS": {
+                        String optionsResp = "HTTP/1.1 200 OK\r\n" +
+                                "DAV: 1, 2\r\n" +
+                                "MS-Author-Via: DAV\r\n" +
+                                "Allow: OPTIONS, GET, HEAD, PROPFIND, PROPPATCH, MKCOL, PUT, DELETE, COPY, MOVE, LOCK, UNLOCK\r\n" +
+                                "Accept-Ranges: bytes\r\n" +
+                                "Content-Length: 0\r\n" +
+                                "Connection: close\r\n\r\n";
+                        sendResponse(os, optionsResp);
+                        break;
+                    }
+
+                    case "PROPFIND": {
+                        if (!targetFile.exists()) {
+                            sendResponse(os, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            break;
+                        }
+                        String xml = buildPropfindXml(rawUri, targetFile, rootDir, depth);
+                        byte[] xmlBytes = xml.getBytes(StandardCharsets.UTF_8);
+                        String propResp = "HTTP/1.1 207 Multi-Status\r\n" +
+                                "Content-Type: application/xml; charset=\"utf-8\"\r\n" +
+                                "Content-Length: " + xmlBytes.length + "\r\n" +
+                                "Connection: close\r\n\r\n";
+                        os.write(propResp.getBytes(StandardCharsets.UTF_8));
+                        os.write(xmlBytes);
+                        os.flush();
+                        break;
+                    }
+
+                    case "GET":
+                    case "HEAD": {
+                        if (!targetFile.exists()) {
+                            sendResponse(os, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            break;
+                        }
+                        if (targetFile.isDirectory()) {
+                            String html = buildDirectoryHtml(rawUri, targetFile, rootDir);
+                            byte[] htmlBytes = html.getBytes(StandardCharsets.UTF_8);
+                            String getResp = "HTTP/1.1 200 OK\r\n" +
+                                    "Content-Type: text/html; charset=\"utf-8\"\r\n" +
+                                    "Content-Length: " + htmlBytes.length + "\r\n" +
+                                    "Connection: close\r\n\r\n";
+                            os.write(getResp.getBytes(StandardCharsets.UTF_8));
+                            if (!"HEAD".equalsIgnoreCase(method)) {
+                                os.write(htmlBytes);
+                            }
+                            os.flush();
+                            break;
+                        }
+
+                        long fileLength = targetFile.length();
+                        String mimeType = getMimeType(targetFile.getName());
+                        String fileResp = "HTTP/1.1 200 OK\r\n" +
+                                "Content-Type: " + mimeType + "\r\n" +
+                                "Content-Length: " + fileLength + "\r\n" +
+                                "Last-Modified: " + formatHttpDate(targetFile.lastModified()) + "\r\n" +
+                                "Accept-Ranges: bytes\r\n" +
+                                "Connection: close\r\n\r\n";
+                        os.write(fileResp.getBytes(StandardCharsets.UTF_8));
+                        if (!"HEAD".equalsIgnoreCase(method)) {
+                            FileInputStream fis = new FileInputStream(targetFile);
+                            byte[] buf = new byte[65536];
+                            int read;
+                            while ((read = fis.read(buf)) != -1) {
+                                os.write(buf, 0, read);
+                            }
+                            fis.close();
+                        }
+                        os.flush();
+                        break;
+                    }
+
+                    case "PUT": {
+                        File parent = targetFile.getParentFile();
+                        if (parent != null && !parent.exists()) {
+                            parent.mkdirs();
+                        }
+                        FileOutputStream fos = new FileOutputStream(targetFile);
+                        byte[] buffer = new byte[65536];
+                        long remaining = contentLength;
+                        if (contentLength >= 0) {
+                            while (remaining > 0) {
+                                int toRead = (int) Math.min(buffer.length, remaining);
+                                int r = is.read(buffer, 0, toRead);
+                                if (r == -1) break;
+                                fos.write(buffer, 0, r);
+                                remaining -= r;
+                            }
+                        } else {
+                            int r;
+                            while ((r = is.read(buffer)) != -1) {
+                                fos.write(buffer, 0, r);
+                            }
+                        }
+                        fos.flush();
+                        fos.close();
+
+                        try {
+                            MediaScannerConnection.scanFile(MainActivity.this, new String[]{targetFile.getAbsolutePath()}, null, null);
+                        } catch (Exception ignored) {}
+
+                        sendResponse(os, "HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        break;
+                    }
+
+                    case "MKCOL": {
+                        boolean created = targetFile.mkdirs();
+                        if (created || targetFile.exists()) {
+                            sendResponse(os, "HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        } else {
+                            sendResponse(os, "HTTP/1.1 403 Forbidden\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        }
+                        break;
+                    }
+
+                    case "DELETE": {
+                        if (!targetFile.exists()) {
+                            sendResponse(os, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            break;
+                        }
+                        deleteRecursively(targetFile);
+                        try {
+                            MediaScannerConnection.scanFile(MainActivity.this, new String[]{targetFile.getAbsolutePath()}, null, null);
+                        } catch (Exception ignored) {}
+                        sendResponse(os, "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        break;
+                    }
+
+                    case "MOVE": {
+                        if (!targetFile.exists()) {
+                            sendResponse(os, "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            break;
+                        }
+                        if (destination == null || destination.isEmpty()) {
+                            sendResponse(os, "HTTP/1.1 400 Bad Request\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                            break;
+                        }
+                        String destPath = destination;
+                        if (destPath.contains("://")) {
+                            destPath = destPath.substring(destPath.indexOf("://") + 3);
+                            if (destPath.contains("/")) {
+                                destPath = destPath.substring(destPath.indexOf("/"));
+                            }
+                        }
+                        String cleanDest = URLDecoder.decode(destPath, "UTF-8").replace('\\', '/');
+                        if (cleanDest.startsWith("/")) cleanDest = cleanDest.substring(1);
+                        File destFile = new File(rootDir, cleanDest);
+
+                        if (destFile.exists()) {
+                            if (!overwrite) {
+                                sendResponse(os, "HTTP/1.1 412 Precondition Failed\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                                break;
+                            }
+                            deleteRecursively(destFile);
+                        }
+
+                        File destParent = destFile.getParentFile();
+                        if (destParent != null && !destParent.exists()) {
+                            destParent.mkdirs();
+                        }
+
+                        boolean moved = targetFile.renameTo(destFile);
+                        if (moved) {
+                            try {
+                                MediaScannerConnection.scanFile(MainActivity.this, new String[]{targetFile.getAbsolutePath(), destFile.getAbsolutePath()}, null, null);
+                            } catch (Exception ignored) {}
+                            sendResponse(os, "HTTP/1.1 201 Created\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        } else {
+                            sendResponse(os, "HTTP/1.1 500 Internal Server Error\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        }
+                        break;
+                    }
+
+                    case "LOCK": {
+                        String lockToken = "urn:uuid:12345678-1111-2222-3333-123456789abc";
+                        String lockXml = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n" +
+                                "<D:prop xmlns:D=\"DAV:\">\r\n" +
+                                "  <D:lockdiscovery>\r\n" +
+                                "    <D:activelock>\r\n" +
+                                "      <D:locktype><D:write/></D:locktype>\r\n" +
+                                "      <D:lockscope><D:exclusive/></D:lockscope>\r\n" +
+                                "      <D:depth>0</D:depth>\r\n" +
+                                "      <D:timeout>Second-3600</D:timeout>\r\n" +
+                                "      <D:locktoken><D:href>" + lockToken + "</D:href></D:locktoken>\r\n" +
+                                "      <D:lockroot><D:href>" + escapeXml(rawUri) + "</D:href></D:lockroot>\r\n" +
+                                "    </D:activelock>\r\n" +
+                                "  </D:lockdiscovery>\r\n" +
+                                "</D:prop>";
+                        byte[] lockBytes = lockXml.getBytes(StandardCharsets.UTF_8);
+                        String lockResp = "HTTP/1.1 200 OK\r\n" +
+                                "Lock-Token: <" + lockToken + ">\r\n" +
+                                "Content-Type: application/xml; charset=\"utf-8\"\r\n" +
+                                "Content-Length: " + lockBytes.length + "\r\n" +
+                                "Connection: close\r\n\r\n";
+                        os.write(lockResp.getBytes(StandardCharsets.UTF_8));
+                        os.write(lockBytes);
+                        os.flush();
+                        break;
+                    }
+
+                    case "UNLOCK": {
+                        sendResponse(os, "HTTP/1.1 204 No Content\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        break;
+                    }
+
+                    case "PROPPATCH": {
+                        String patchXml = "<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n" +
+                                "<D:multistatus xmlns:D=\"DAV:\">\r\n" +
+                                "  <D:response>\r\n" +
+                                "    <D:href>" + escapeXml(rawUri) + "</D:href>\r\n" +
+                                "    <D:propstat>\r\n" +
+                                "      <D:status>HTTP/1.1 200 OK</D:status>\r\n" +
+                                "    </D:propstat>\r\n" +
+                                "  </D:response>\r\n" +
+                                "</D:multistatus>";
+                        byte[] patchBytes = patchXml.getBytes(StandardCharsets.UTF_8);
+                        String patchResp = "HTTP/1.1 207 Multi-Status\r\n" +
+                                "Content-Type: application/xml; charset=\"utf-8\"\r\n" +
+                                "Content-Length: " + patchBytes.length + "\r\n" +
+                                "Connection: close\r\n\r\n";
+                        os.write(patchResp.getBytes(StandardCharsets.UTF_8));
+                        os.write(patchBytes);
+                        os.flush();
+                        break;
+                    }
+
+                    default:
+                        sendResponse(os, "HTTP/1.1 501 Not Implemented\r\nContent-Length: 0\r\nConnection: close\r\n\r\n");
+                        break;
+                }
+            } catch (Exception ignored) {
+            } finally {
+                try { socket.close(); } catch (Exception ignored) {}
+            }
+        }
+
+        private void sendResponse(OutputStream os, String response) throws Exception {
+            os.write(response.getBytes(StandardCharsets.UTF_8));
+            os.flush();
+        }
+
+        private synchronized String formatHttpDate(long ms) {
+            return rfc1123.format(new Date(ms));
+        }
+
+        private void deleteRecursively(File file) {
+            if (file.isDirectory()) {
+                File[] children = file.listFiles();
+                if (children != null) {
+                    for (File c : children) {
+                        deleteRecursively(c);
+                    }
+                }
+            }
+            file.delete();
+        }
+
+        private String buildPropfindXml(String requestUri, File target, File root, int depth) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("<?xml version=\"1.0\" encoding=\"utf-8\" ?>\r\n");
+            sb.append("<D:multistatus xmlns:D=\"DAV:\">\r\n");
+
+            appendResourceNode(sb, requestUri, target, root);
+
+            if (depth > 0 && target.isDirectory()) {
+                File[] list = target.listFiles();
+                if (list != null) {
+                    for (File child : list) {
+                        if (child.getName().startsWith(".")) continue;
+                        String childUri = requestUri;
+                        if (!childUri.endsWith("/")) childUri += "/";
+                        childUri += Uri.encode(child.getName());
+                        if (child.isDirectory()) childUri += "/";
+                        appendResourceNode(sb, childUri, child, root);
+                    }
+                }
+            }
+
+            sb.append("</D:multistatus>");
+            return sb.toString();
+        }
+
+        private void appendResourceNode(StringBuilder sb, String href, File file, File root) {
+            boolean isDir = file.isDirectory();
+            String name = file.equals(root) ? "VanCross Storage" : file.getName();
+            sb.append("  <D:response>\r\n");
+            sb.append("    <D:href>").append(escapeXml(href)).append("</D:href>\r\n");
+            sb.append("    <D:propstat>\r\n");
+            sb.append("      <D:prop>\r\n");
+            sb.append("        <D:displayname>").append(escapeXml(name)).append("</D:displayname>\r\n");
+            if (isDir) {
+                sb.append("        <D:resourcetype><D:collection/></D:resourcetype>\r\n");
+            } else {
+                sb.append("        <D:resourcetype/>\r\n");
+                sb.append("        <D:getcontentlength>").append(file.length()).append("</D:getcontentlength>\r\n");
+                sb.append("        <D:getcontenttype>").append(getMimeType(file.getName())).append("</D:getcontenttype>\r\n");
+            }
+            sb.append("        <D:getlastmodified>").append(formatHttpDate(file.lastModified())).append("</D:getlastmodified>\r\n");
+            sb.append("        <D:supportedlock>\r\n");
+            sb.append("          <D:lockentry>\r\n");
+            sb.append("            <D:lockscope><D:exclusive/></D:lockscope>\r\n");
+            sb.append("            <D:locktype><D:write/></D:locktype>\r\n");
+            sb.append("          </D:lockentry>\r\n");
+            sb.append("        </D:supportedlock>\r\n");
+            sb.append("      </D:prop>\r\n");
+            sb.append("      <D:status>HTTP/1.1 200 OK</D:status>\r\n");
+            sb.append("    </D:propstat>\r\n");
+            sb.append("  </D:response>\r\n");
+        }
+
+        private String buildDirectoryHtml(String uri, File dir, File root) {
+            StringBuilder sb = new StringBuilder();
+            sb.append("<!DOCTYPE html><html><head><meta charset=\"utf-8\"><title>VanCross WebDAV Storage</title>");
+            sb.append("<style>body{font-family:sans-serif;background:#18181b;color:#f4f4f5;padding:20px;}a{color:#38bdf8;text-decoration:none;}ul{list-style:none;padding:0;}li{padding:8px 0;border-bottom:1px solid #27272a;}</style></head><body>");
+            sb.append("<h2>📂 VanCross Storage: ").append(escapeXml(uri)).append("</h2>");
+            sb.append("<ul>");
+            if (!dir.equals(root)) {
+                sb.append("<li><a href='../'>⬅ [Folder Induk]</a></li>");
+            }
+            File[] files = dir.listFiles();
+            if (files != null) {
+                Arrays.sort(files, (a, b) -> {
+                    if (a.isDirectory() && !b.isDirectory()) return -1;
+                    if (!a.isDirectory() && b.isDirectory()) return 1;
+                    return a.getName().compareToIgnoreCase(b.getName());
+                });
+                for (File f : files) {
+                    if (f.getName().startsWith(".")) continue;
+                    String link = Uri.encode(f.getName()) + (f.isDirectory() ? "/" : "");
+                    String icon = f.isDirectory() ? "📁 " : "📄 ";
+                    String size = f.isDirectory() ? "" : " (" + f.length() + " bytes)";
+                    sb.append("<li>").append(icon).append("<a href='").append(link).append("'>").append(escapeXml(f.getName())).append("</a>").append(size).append("</li>");
+                }
+            }
+            sb.append("</ul></body></html>");
+            return sb.toString();
+        }
+
+        private String escapeXml(String text) {
+            if (text == null) return "";
+            return text.replace("&", "&amp;")
+                       .replace("<", "&lt;")
+                       .replace(">", "&gt;")
+                       .replace("\"", "&quot;")
+                       .replace("'", "&apos;");
+        }
+
+        private String getMimeType(String name) {
+            String lower = name.toLowerCase(Locale.US);
+            if (lower.endsWith(".mp4")) return "video/mp4";
+            if (lower.endsWith(".mkv")) return "video/x-matroska";
+            if (lower.endsWith(".webm")) return "video/webm";
+            if (lower.endsWith(".mov")) return "video/quicktime";
+            if (lower.endsWith(".avi")) return "video/x-msvideo";
+            if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+            if (lower.endsWith(".png")) return "image/png";
+            if (lower.endsWith(".gif")) return "image/gif";
+            if (lower.endsWith(".webp")) return "image/webp";
+            if (lower.endsWith(".pdf")) return "application/pdf";
+            if (lower.endsWith(".zip")) return "application/zip";
+            if (lower.endsWith(".txt")) return "text/plain";
+            if (lower.endsWith(".mp3")) return "audio/mpeg";
+            if (lower.endsWith(".wav")) return "audio/wav";
+            return "application/octet-stream";
+        }
+    }
+
 }

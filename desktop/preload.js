@@ -26,5 +26,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.on('clipboard-changed', handler);
     return () => ipcRenderer.removeListener('clipboard-changed', handler);
   },
-  sendRemoteInput: (cmd) => ipcRenderer.invoke('send-remote-input', cmd)
+  sendRemoteInput: (cmd) => ipcRenderer.invoke('send-remote-input', cmd),
+  mountPhoneStorage: (params) => ipcRenderer.invoke('mount-phone-storage', params),
+  unmountPhoneStorage: (driveLetter) => ipcRenderer.invoke('unmount-phone-storage', driveLetter)
 });

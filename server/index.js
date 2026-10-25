@@ -84,17 +84,41 @@ app.get('/api/download-apk', (req, res) => {
   res.status(404).send('File APK belum tersedia. Silakan build APK terlebih dahulu.');
 });
 
-// Helper to safely resolve requested path against user's home directory (prevents path traversal)
+// Helper to detect Windows drives (C:, D:, etc.)
+function getWindowsDrives() {
+  if (os.platform() !== 'win32') return [];
+  const drives = [];
+  const letters = ['C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V', 'W', 'X', 'Y', 'Z'];
+  for (const letter of letters) {
+    try {
+      const rootPath = `${letter}:\\`;
+      if (fs.existsSync(rootPath)) {
+        drives.push({
+          letter: `${letter}:`,
+          path: `${letter}:/`,
+          name: letter === 'C' ? 'Drive C: (Sistem)' : letter === 'D' ? 'Drive D: (Data)' : `Drive ${letter}:`
+        });
+      }
+    } catch (_) {}
+  }
+  return drives;
+}
+
+// Helper to safely resolve requested path (supports Windows Drive letters C:, D: and user home directory)
 function resolveSafePcPath(requestedPath) {
+  if (!requestedPath || requestedPath === '.' || requestedPath.trim() === '') {
+    return os.homedir();
+  }
+  let clean = requestedPath.trim();
+  // Check if requestedPath is a Windows drive path like "C:/", "D:\Folder", "C:"
+  if (/^[a-zA-Z]:[/\\]?/.test(clean)) {
+    const normalized = path.resolve(clean);
+    return normalized;
+  }
+  // Otherwise resolve relative to user's home directory
   const home = os.homedir();
-  if (!requestedPath || requestedPath === '/' || requestedPath === '.' || requestedPath.trim() === '') {
-    return home;
-  }
-  const cleanRel = requestedPath.replace(/^[/\\]+/, '');
+  const cleanRel = clean.replace(/^[/\\]+/, '');
   const resolved = path.resolve(home, cleanRel);
-  if (!resolved.startsWith(home)) {
-    return home;
-  }
   return resolved;
 }
 
@@ -286,7 +310,9 @@ io.on('connection', (socket) => {
     peerData = {
       id: socket.id,
       deviceId: deviceKey,
-      clientIp,
+      clientIp: device?.ip || clientIp,
+      ip: device?.ip || clientIp,
+      webdavPort: device?.webdavPort || (device?.os === 'Android' ? 8089 : undefined),
       name: device?.name || (isHost ? 'PC' : 'Perangkat'),
       deviceType: device?.deviceType || (isHost ? 'desktop' : 'mobile'),
       os: device?.os || 'Unknown OS',
@@ -588,14 +614,29 @@ io.on('connection', (socket) => {
   socket.on('fs-read-local-pc-dir', ({ dirPath }, callback) => {
     if (typeof callback !== 'function') return;
     try {
+      // If on Windows and requesting root '/' or empty, return all available drives!
+      if (os.platform() === 'win32' && (!dirPath || dirPath === '/' || dirPath === '' || dirPath === 'DRIVES')) {
+        const drives = getWindowsDrives();
+        const items = drives.map(d => ({
+          name: d.name,
+          path: d.path,
+          isDirectory: true,
+          isDrive: true,
+          size: 0,
+          lastModified: Date.now()
+        }));
+        return callback({ currentPath: '/', items, isDriveRoot: true });
+      }
+
       const targetDir = resolveSafePcPath(dirPath);
       if (!fs.existsSync(targetDir) || !fs.statSync(targetDir).isDirectory()) {
-        return callback({ error: 'Folder tidak ditemukan.' });
+        return callback({ error: 'Folder tidak ditemukan di PC Host.' });
       }
-      const home = os.homedir();
-      let relPath = path.relative(home, targetDir).replace(/\\/g, '/');
-      if (!relPath || relPath === '') relPath = '/';
-      else if (!relPath.startsWith('/')) relPath = '/' + relPath;
+
+      let displayPath = targetDir.replace(/\\/g, '/');
+      if (/^[a-zA-Z]:$/.test(displayPath)) {
+        displayPath += '/';
+      }
 
       const entries = fs.readdirSync(targetDir, { withFileTypes: true });
       const items = [];
@@ -613,12 +654,11 @@ io.on('connection', (socket) => {
             mtime = st.mtimeMs;
           } catch (_) {}
 
-          let itemRel = path.relative(home, fullPath).replace(/\\/g, '/');
-          if (!itemRel.startsWith('/')) itemRel = '/' + itemRel;
+          let itemDisplayPath = fullPath.replace(/\\/g, '/');
 
           items.push({
             name: ent.name,
-            path: itemRel,
+            path: itemDisplayPath,
             isDirectory: isDir,
             size,
             lastModified: mtime
@@ -632,7 +672,7 @@ io.on('connection', (socket) => {
         return a.name.localeCompare(b.name, undefined, { sensitivity: 'base' });
       });
 
-      callback({ currentPath: relPath, items });
+      callback({ currentPath: displayPath, items });
     } catch (err) {
       callback({ error: err.message });
     }

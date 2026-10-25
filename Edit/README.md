@@ -8,24 +8,24 @@ Semua file program penting ini ditempatkan **langsung di dalam folder `Edit/`** 
 
 | Nama File di `Edit/` | Lokasi Asli di Proyek | Fungsi & Pembaruan Terbaru |
 | :--- | :--- | :--- |
-| **`features.js`** | `client/src/config/features.js` | **Pusat On/Off Fitur:** Saklar toggle fitur (`enableAutoClipboardSync`, `enableVirtualTouchpad`, `enableTransferResume`, `enableNotificationMirror`, `enableRingPhone`, `enableBatteryMonitor`, `enableInstantMediaStreaming`, `enableFolderTransfer`, `enableWirelessMic`, dll), konfigurasi Scrcpy default, dan slot aksi kustom. |
-| **`App.jsx`** | `client/src/App.jsx` | **Logika Utama Frontend:** State global, wireless microphone listener & broadcaster bar, pemutar media instan (`MediaStreamingModal`), navigasi bertingkat tombol back Android, sinkronisasi background clipboard dua arah, remote input touchpad/numpad, alarm dering HP ("Ring My Phone"), monitor baterai live, dan notifikasi HP. |
-| **`PeersRadar.jsx`** | `client/src/components/PeersRadar.jsx` | **Tampilan Radar & Kartu Perangkat:** Tombol "Mic HP (Wireless Mic)", tombol "Kirim Seluruh Folder" dengan pembacaan rekursif drag-and-drop, tombol aksi 2x2 rapi (Scrcpy, Webcam, Mic HP, Deringkan HP), tombol "Remote & Touchpad PC", badge baterai real-time, dan riwayat transfer. |
-| **`WirelessMicModal.jsx`** | `client/src/components/WirelessMicModal.jsx` | **Pusat Mikrofon Nirkabel PC (Baru):** Penerima audio mikrofon HP secara real-time di laptop, visualisator gelombang suara & VU meter live (Web Audio API Analyser), switch monitor speaker laptop (cegah feedback gema), pengatur volume, serta perekam suara instan (Audio Recorder WebM). |
+| **`features.js`** | `client/src/config/features.js` | **Pusat On/Off Fitur:** Saklar toggle fitur (`enableWindowsDriveMount`, `enableAutoClipboardSync`, `enableVirtualTouchpad`, `enableTransferResume`, `enableNotificationMirror`, `enableRingPhone`, `enableBatteryMonitor`, `enableInstantMediaStreaming`, `enableFolderTransfer`, `enableWirelessMic`, dll), konfigurasi Scrcpy default, dan slot aksi kustom. |
+| **`App.jsx`** | `client/src/App.jsx` | **Logika Utama Frontend:** State global, handler `handleMountPhoneStorage` untuk pemetaan 1-klik Drive Z: ke Windows File Explorer, wireless mic, streaming media instan, navigasi bertingkat tombol back Android, clipboard sync dua arah, remote input touchpad/numpad, alarm dering HP, monitor baterai, dan notifikasi HP. |
+| **`PeersRadar.jsx`** | `client/src/components/PeersRadar.jsx` | **Tampilan Radar & Kartu Perangkat:** Tombol dedicated **"Buka di Windows Explorer (Drive Z:)"**, tombol "Mic HP", "Kirim Seluruh Folder" drag-and-drop, aksi 2x2 rapi (Scrcpy, Webcam, Mic HP, Deringkan HP), "Remote & Touchpad PC", badge baterai live, dan riwayat transfer. |
+| **`FileExplorerModal.jsx`** | `client/src/components/FileExplorerModal.jsx` | **Remote File Explorer Dua Arah & Drive Windows:** Pintasan dan navigasi langsung ke **Drive C: (Sistem)** dan **Drive D: (Data)** Windows dari HP, tombol aksi ganda "Putar" (streaming instan) dan "Ambil File" (unduh penuh), serta penjelajah memori internal HP. |
+| **`WirelessMicModal.jsx`** | `client/src/components/WirelessMicModal.jsx` | **Pusat Mikrofon Nirkabel PC:** Penerima audio mikrofon HP secara real-time di laptop, visualisator gelombang suara & VU meter live, switch monitor speaker laptop, pengatur volume, serta perekam suara instan (Audio Recorder WebM). |
 | **`MediaStreamingModal.jsx`** | `client/src/components/MediaStreamingModal.jsx` | **Pemutar Media Streaming Instan:** Streaming video dan audio langsung antar perangkat via HTTP Range Request tanpa unduh penuh, seek instan, fallback otomatis ke proxy server lokal jika port HP terisolasi, dan tombol pintasan unduh/salin URL. |
-| **`FileExplorerModal.jsx`** | `client/src/components/FileExplorerModal.jsx` | **Remote File Explorer Dua Arah:** Tombol aksi ganda "Putar" (streaming instan) dan "Ambil File" (unduh penuh) pada file video/audio, navigasi folder cepat (Download, Kamera DCIM, Gambar, Dokumen), serta pembacaan berkas HP/PC. |
 | **`TouchpadModal.jsx`** | `client/src/components/TouchpadModal.jsx` | **Virtual Remote PC:** Trackpad sentuh ultra-responsif (gerak kursor, klik kiri/kanan, scroll 2 jari), Numpad 4x5 kalkulator, serta tombol pintasan media & Windows (Vol, Mute, Play/Pause, Show Desktop). |
 | **`TransferProgressModal.jsx`** | `client/src/components/TransferProgressModal.jsx` | **Modal Transfer Berkas & Folder:** Penanganan `relativePath` untuk transfer struktur folder utuh ke `Downloads/ENCross/...`, serta kontrol Jeda (Pause) dan Lanjutkan (Resume). |
 | **`ScrcpyModal.jsx`** | `client/src/components/ScrcpyModal.jsx` | **Fitur Scrcpy Ultra Rendah Latensi:** Opsi resolusi & bitrate, toggle matikan layar HP saat mirroring, deteksi ADB USB/Wi-Fi, accordion pairing Android 11+ (port & pairing code). |
-| **`webrtcManager.js`** | `client/src/utils/webrtcManager.js` | **Engine WebRTC P2P:** Dukungan mode `mic` (`getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true }, video: false })`), transmisi metadata `relativePath` untuk folder transfer, kontrol Pause/Resume, buffer backpressure 1MB, dan pergantian kamera. |
-| **`index.js`** | `server/index.js` (dan `desktop/server.js`) | **Signaling, File & Streaming Server:** Socket handler `request-remote-mic`, endpoint `/api/pc-files/stream` dengan dukungan HTTP Range Request (206 Partial Content), endpoint proxy `/api/media-stream-proxy`, socket clipboard, dan remote input. |
-| **`main.js`** | `desktop/main.js` | **Proses Native Electron Desktop:** Rekonstruksi hierarki direktori folder otomatis (`fs.mkdirSync` rekursif berdasarkan `relativePath`) saat menerima folder transfer di `Downloads/ENCross/`, clipboard sync Windows, dan simulator input. |
-| **`MainActivity.java`** | `client/android/.../MainActivity.java` | **Fitur Native Android:** Izin native audio `RECORD_AUDIO`, server streaming media embedded port 8088 (`MediaStreamServer`) dengan core Java `ServerSocket` & `RandomAccessFile`, native clipboard, ringer alarm kencang `STREAM_ALARM`, monitor baterai `ACTION_BATTERY_CHANGED`, bridge notifikasi, dan perbaikan crash Android 14+. |
+| **`webrtcManager.js`** | `client/src/utils/webrtcManager.js` | **Engine WebRTC P2P:** Dukungan mode `mic`, transmisi metadata `relativePath` folder transfer, kontrol Pause/Resume, buffer backpressure 1MB, dan pergantian kamera. |
+| **`index.js`** | `server/index.js` (dan `desktop/server.js`) | **Signaling, File & Streaming Server:** Deteksi dan pembacaan otomatis seluruh Windows Drive (`getWindowsDrives`), resolusi aman jalur `C:/` dan `D:/` (`resolveSafePcPath`), socket handler `request-remote-mic`, endpoint range streaming, socket clipboard, dan remote input. |
+| **`main.js`** | `desktop/main.js` (dan `desktop/preload.js`) | **Proses Native Electron Desktop:** IPC handler `mount-phone-storage` (eksekusi `net use Z: http://<ip>:8089` dan peluncuran `explorer.exe Z:`), `unmount-phone-storage`, rekonstruksi direktori folder otomatis, clipboard sync Windows, dan simulator input. |
+| **`MainActivity.java`** | `client/android/.../MainActivity.java` | **Fitur Native Android:** Server WebDAV embedded port 8089 (`WebDavServer`) bawaan Java murni untuk Windows Explorer (`OPTIONS`, `PROPFIND`, `GET`, `PUT`, `DELETE`, `MKCOL`, `MOVE`, `LOCK`, `UNLOCK`), server streaming port 8088 (`MediaStreamServer`), izin `RECORD_AUDIO`, clipboard native, ringer alarm kencang `STREAM_ALARM`, monitor baterai `ACTION_BATTERY_CHANGED`, bridge notifikasi, dan perbaikan crash Android 14+. |
 | **`NotificationMirrorService.java`** | `client/android/.../NotificationMirrorService.java` | **Layanan Listener Notifikasi Android:** `NotificationListenerService` native bawaan Android SDK untuk menangkap notifikasi masuk (WhatsApp, SMS, Bank, dsb.) dan meneruskannya ke desktop tanpa library eksternal. |
 
 ---
 
-### 🚀 Fitur Baru yang Telah Diimplementasikan:
+### 🚀 Fitur yang Telah Diimplementasikan:
 
 #### ⚡ Kategori 1: Prioritas Tinggi (Produktivitas Harian)
 1. **Auto Clipboard Sync Dua Arah (Background Clipboard):**
@@ -55,6 +55,15 @@ Semua file program penting ini ditempatkan **langsung di dalam folder `Edit/`** 
    - Dilengkapi filter suara jernih (*echoCancellation*, *noiseSuppression*, *autoGainControl*).
    - Di laptop tersedia visualisator gelombang audio & VU meter decibel real-time, pengatur volume, switch speaker monitor (pencegah feedback gema), serta perekam suara instan (Audio Recorder) berformat WebM/Opus.
    - Di HP terdapat status bar siaran langsung dengan tombol Mute Mic dan Hentikan Siaran.
+
+#### 📂 Kategori 5: Integrasi File Explorer Sistem & Seamless Drive Access
+10. **Penyimpanan HP Muncul Langsung di Windows File Explorer (Native Drive Z: via WebDAV):**
+    - Server WebDAV ringan embedded pada port `8089` di HP Android (`WebDavServer`) yang dibangun dengan Java murni tanpa dependency pihak ketiga.
+    - Di dashboard laptop, cukup klik tombol **"Buka di Windows Explorer (Drive Z:)"** pada kartu HP. Electron langsung memetakan drive (`net use Z: http://<hp-ip>:8089`) dan membuka Windows File Explorer (`explorer.exe Z:`).
+    - Berkas di internal HP dapat disalin, dipindahkan, diedit, dan di-drag-and-drop layaknya drive lokal / flashdisk nirkabel.
+11. **Jelajahi Drive C: dan Drive D: Windows dari HP:**
+    - Remote File Explorer di aplikasi Android kini menampilkan pintasan langsung dan daftar lengkap drive Windows (**Drive C: (Sistem)** dan **Drive D: (Data)**).
+    - Membuka akses bebas untuk menelusuri seluruh folder di harddisk laptop, mengunduh dokumen, atau langsung memutar video/musik secara streaming di HP tanpa terkurung hanya di folder user home.
 
 ---
 

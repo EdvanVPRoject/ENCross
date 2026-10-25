@@ -74,6 +74,9 @@ export const FEATURE_TOGGLES = {
 
   // 20. Wireless PC Microphone (HP Jadi Mic Eksternal Laptop)
   enableWirelessMic: true,
+
+  // 21. Penyimpanan HP di Windows File Explorer (WebDAV Native Drive Z:)
+  enableWindowsDriveMount: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

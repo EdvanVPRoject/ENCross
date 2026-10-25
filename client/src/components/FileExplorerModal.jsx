@@ -89,10 +89,21 @@ export function FileExplorerModal({
   const handleGoUp = () => {
     triggerHaptic([25]);
     if (!currentPath || currentPath === '/' || currentPath === '.') return;
-    const parts = currentPath.split('/').filter(Boolean);
+    if (/^[a-zA-Z]:[/]?$/.test(currentPath)) {
+      if (onNavigate) onNavigate('/');
+      return;
+    }
+    const clean = currentPath.replace(/\/+$/, '');
+    const parts = clean.split('/').filter(Boolean);
     parts.pop();
-    const upPath = parts.length === 0 ? '/' : '/' + parts.join('/');
-    if (onNavigate) onNavigate(upPath);
+    if (parts.length === 0) {
+      if (onNavigate) onNavigate('/');
+    } else if (parts.length === 1 && /^[a-zA-Z]:$/.test(parts[0])) {
+      if (onNavigate) onNavigate(parts[0] + '/');
+    } else {
+      const up = (clean.startsWith('/') ? '/' : '') + parts.join('/');
+      if (onNavigate) onNavigate(up);
+    }
   };
 
   const shortcuts = isTargetMobile
@@ -103,10 +114,11 @@ export function FileExplorerModal({
         { label: 'Dokumen', path: '/Documents' }
       ]
     : [
-        { label: 'Home', path: '/' },
+        { label: 'Semua Drive', path: '/' },
+        { label: 'Drive C:', path: 'C:/' },
+        { label: 'Drive D:', path: 'D:/' },
         { label: 'Downloads', path: '/Downloads' },
-        { label: 'Documents', path: '/Documents' },
-        { label: 'Pictures', path: '/Pictures' }
+        { label: 'Documents', path: '/Documents' }
       ];
 
   return (
@@ -260,7 +272,9 @@ export function FileExplorerModal({
                     }`}
                   >
                     <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700/60 shrink-0">
-                      {item.isDirectory ? (
+                      {item.isDrive ? (
+                        <HardDrive className="w-4 h-4 text-cyan-400 shrink-0" />
+                      ) : item.isDirectory ? (
                         <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
                       ) : (
                         getFileIcon(item.name)
@@ -277,7 +291,9 @@ export function FileExplorerModal({
                         {item.name}
                       </p>
                       <div className="flex items-center gap-2 text-[10px] text-zinc-400 font-mono mt-0.5">
-                        {item.isDirectory ? (
+                        {item.isDrive ? (
+                          <span className="text-cyan-400 font-semibold">Drive Windows</span>
+                        ) : item.isDirectory ? (
                           <span className="text-emerald-400/90">Folder</span>
                         ) : (
                           <>

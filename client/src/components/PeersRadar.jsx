@@ -26,7 +26,8 @@ import {
   BatteryWarning,
   BellRing,
   FolderUp,
-  Mic
+  Mic,
+  HardDrive
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -57,7 +58,8 @@ export function PeersRadar({
   onClearTransferHistory,
   onOpenFolder,
   onOpenTouchpad,
-  onRingDevice
+  onRingDevice,
+  onMountPhoneStorage
 }) {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -434,6 +436,23 @@ export function PeersRadar({
                   </button>
                 )}
               </div>
+            </div>
+          )}
+
+          {/* Baris Khusus: Buka Penyimpanan HP di Windows File Explorer (Drive Z:) */}
+          {isPeerMobile && FEATURE_TOGGLES.enableWindowsDriveMount !== false && (
+            <div className="pt-0.5">
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  if (onMountPhoneStorage) onMountPhoneStorage(peer);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-cyan-500/15 hover:bg-cyan-500/25 text-cyan-300 border border-cyan-500/35 transition cursor-pointer active:scale-[0.98]"
+                title="Buka seluruh penyimpanan internal HP langsung di Windows File Explorer (Drive Z:)"
+              >
+                <HardDrive className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
+                <span className="truncate">Buka di Windows Explorer (Drive Z:)</span>
+              </button>
             </div>
           )}
 

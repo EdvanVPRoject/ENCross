@@ -2,7 +2,7 @@ const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, sess
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
-const { execFile, spawn, exec } = require('child_process');
+const { execFile, spawn, exec, execSync } = require('child_process');
 const { startServer, getLocalIpAddresses } = require('./server');
 
 let mainWindow = null;
@@ -687,6 +687,69 @@ ipcMain.handle('set-clipboard-text', (_, text) => {
     }
   } catch (_) {}
   return false;
+});
+
+// Map Phone WebDAV storage as a native Windows drive (e.g. Z:)
+ipcMain.handle('mount-phone-storage', async (_, { ip, port = 8089, driveLetter = 'Z:' }) => {
+  if (process.platform !== 'win32') {
+    return { success: false, message: 'Fitur Map Drive hanya didukung pada sistem Windows.' };
+  }
+  if (!ip) {
+    return { success: false, message: 'Alamat IP HP tidak valid.' };
+  }
+
+  // Ensure WebClient service is running (required for Windows WebDAV drive mapping)
+  try {
+    execSync('sc config WebClient start= auto', { stdio: 'ignore' });
+    execSync('net start WebClient', { stdio: 'ignore' });
+  } catch (_) {}
+
+  // Delete any existing mapping on this drive letter
+  try {
+    execSync(`net use ${driveLetter} /delete /y`, { stdio: 'ignore' });
+  } catch (_) {}
+
+  const url = `http://${ip}:${port}`;
+  try {
+    // Attempt mapping via net use
+    execSync(`net use ${driveLetter} ${url} /persistent:no`, { timeout: 8000 });
+    // Open Windows File Explorer to the drive
+    exec(`explorer.exe ${driveLetter}`);
+    return {
+      success: true,
+      drive: driveLetter,
+      message: `Penyimpanan HP berhasil dipetakan ke ${driveLetter} dan dibuka di Windows Explorer!`
+    };
+  } catch (err) {
+    console.warn(`[WebDAV Mount Warning] net use failed, attempting UNC / explorer fallback: ${err.message}`);
+    // Fallback 1: Try UNC path \\ip@port\DavWWWRoot
+    try {
+      exec(`explorer.exe "\\\\${ip}@${port}\\DavWWWRoot"`);
+      return {
+        success: true,
+        drive: null,
+        message: `Membuka penyimpanan HP melalui jalur jaringan \\\\${ip}@${port}...`
+      };
+    } catch (_) {
+      // Fallback 2: Open browser WebDAV URL
+      shell.openExternal(url);
+      return {
+        success: true,
+        drive: null,
+        message: `Membuka penyimpanan HP di browser: ${url}`
+      };
+    }
+  }
+});
+
+ipcMain.handle('unmount-phone-storage', async (_, driveLetter = 'Z:') => {
+  if (process.platform !== 'win32') return { success: false };
+  try {
+    execSync(`net use ${driveLetter} /delete /y`, { stdio: 'ignore' });
+    return { success: true, message: `Drive ${driveLetter} berhasil dilepas.` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
 });
 
 // Single Instance Lock (prevents multiple desktop windows)
