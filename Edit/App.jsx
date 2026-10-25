@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+﻿import React, { useState, useEffect, useRef } from 'react';
 import { io } from 'socket.io-client';
 import { Navbar } from './components/Navbar';
 import { QRCodeModal } from './components/QRCodeModal';
@@ -13,7 +13,7 @@ import { ServerIpModal } from './components/ServerIpModal';
 import { ScrcpyModal } from './components/ScrcpyModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
 import { TouchpadModal } from './components/TouchpadModal';
-import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check } from 'lucide-react';
+import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -49,6 +49,10 @@ export function App() {
 
   // Session Transfer History (max 10 items)
   const [transferHistory, setTransferHistory] = useState([]);
+
+  // Ring Phone Alarm States
+  const [isRingingActive, setIsRingingActive] = useState(false);
+  const [ringingSenderName, setRingingSenderName] = useState('');
 
   // Virtual Touchpad & Numpad States
   const [isTouchpadModalOpen, setIsTouchpadModalOpen] = useState(false);
@@ -382,6 +386,50 @@ export function App() {
       }
     });
 
+    // Ring Phone Event (Mobile receives alarm trigger from PC)
+    newSocket.on('ring-device', ({ senderName }) => {
+      if (!FEATURE_TOGGLES.enableRingPhone) return;
+      if (window.AndroidRinger?.startRinging) {
+        window.AndroidRinger.startRinging();
+      }
+      setIsRingingActive(true);
+      setRingingSenderName(senderName || 'Laptop');
+    });
+
+    newSocket.on('stop-ring-device', () => {
+      if (window.AndroidRinger?.stopRinging) {
+        window.AndroidRinger.stopRinging();
+      }
+      setIsRingingActive(false);
+    });
+
+    // Notification Mirroring (PC receives phone notifications)
+    newSocket.on('incoming-notification', ({ senderName, notif }) => {
+      if (!FEATURE_TOGGLES.enableNotificationMirror || !notif) return;
+      playSound('message');
+      triggerHaptic([30, 40]);
+
+      if (window.electronAPI?.showNotification) {
+        window.electronAPI.showNotification(
+          (notif.appName || senderName || 'HP') + ': ' + (notif.title || 'Notifikasi'),
+          notif.text || ''
+        );
+      }
+
+      setIncomingToast({
+        senderName: notif.appName || senderName || 'HP',
+        text: (notif.title ? notif.title + ': ' : '') + (notif.text || ''),
+        senderId: null
+      });
+    });
+
+    // Real-Time Peer Status & Battery updates
+    newSocket.on('peer-status-updated', ({ id, deviceId, battery }) => {
+      setPeers((prev) =>
+        prev.map((p) => (p.id === id || (deviceId && p.deviceId === deviceId) ? { ...p, battery } : p))
+      );
+    });
+
     // 3. Peer requests a file to be sent from this device
     newSocket.on('fs-pull-file-request', async ({ requesterId, filePath, fileName }) => {
       if (!requesterId || !filePath) return;
@@ -585,6 +633,87 @@ export function App() {
       window.onAndroidClipboardChanged = null;
     };
   }, [socket]);
+
+  // Real-Time Battery Monitor Sync
+  useEffect(() => {
+    if (!FEATURE_TOGGLES.enableBatteryMonitor || !socket) return;
+
+    const pushBattery = (batteryData) => {
+      if (batteryData && typeof batteryData === 'object') {
+        socket.emit('update-battery-status', { battery: batteryData });
+      }
+    };
+
+    // Android Native Battery Bridge
+    if (window.AndroidBattery?.getBatteryStatus) {
+      try {
+        const raw = window.AndroidBattery.getBatteryStatus();
+        const parsed = JSON.parse(raw);
+        pushBattery(parsed);
+      } catch (_) {}
+
+      window.onAndroidBatteryChanged = (jsonStr) => {
+        try {
+          const parsed = typeof jsonStr === 'string' ? JSON.parse(jsonStr) : jsonStr;
+          pushBattery(parsed);
+        } catch (_) {}
+      };
+      return () => {
+        window.onAndroidBatteryChanged = null;
+      };
+    }
+
+    // Web Browser Battery API fallback
+    if (typeof navigator !== 'undefined' && navigator.getBattery) {
+      navigator.getBattery().then((bm) => {
+        const update = () => {
+          pushBattery({
+            level: Math.round(bm.level * 100),
+            isCharging: bm.charging,
+            temperature: null
+          });
+        };
+        update();
+        bm.addEventListener('levelchange', update);
+        bm.addEventListener('chargingchange', update);
+      }).catch(() => {});
+    }
+  }, [socket]);
+
+  // Android Notification Mirroring listener
+  useEffect(() => {
+    if (!FEATURE_TOGGLES.enableNotificationMirror || !socket) return;
+    window.onAndroidNotificationReceived = (notifData) => {
+      try {
+        const notif = typeof notifData === 'string' ? JSON.parse(notifData) : notifData;
+        socket.emit('mirror-notification', { notif });
+      } catch (_) {}
+    };
+    return () => {
+      window.onAndroidNotificationReceived = null;
+    };
+  }, [socket]);
+
+  // Ring My Phone Handlers
+  const handleRingDevice = (targetId) => {
+    if (!socket || !targetId) return;
+    socket.emit('ring-device', { targetId });
+    setIncomingToast({
+      senderName: 'Sistem',
+      text: 'Membunyikan alarm di ponsel target...',
+      senderId: null
+    });
+  };
+
+  const handleStopRinging = () => {
+    if (window.AndroidRinger?.stopRinging) {
+      window.AndroidRinger.stopRinging();
+    }
+    setIsRingingActive(false);
+    if (socket) {
+      socket.emit('stop-ring-device', {});
+    }
+  };
 
   // Send Remote Touchpad / Keyboard Command to PC
   const handleSendInput = (event) => {
@@ -1219,6 +1348,7 @@ export function App() {
           onOpenConnect={() => setIsServerIpModalOpen(true)}
           onOpenFileExplorer={handleOpenFileExplorer}
         onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
+        onRingDevice={handleRingDevice}
           pingMs={pingMs}
           transferHistory={transferHistory}
           onClearTransferHistory={handleClearTransferHistory}
@@ -1376,6 +1506,27 @@ export function App() {
         />
       )}
 
+      {/* Ring My Phone Alarm Alert Modal/Banner */}
+      {isRingingActive && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-red-950/80 backdrop-blur-md animate-pulse">
+          <div className="bg-zinc-900 border-2 border-red-500 rounded-3xl p-6 max-w-sm w-full text-center shadow-2xl shadow-red-950">
+            <div className="w-16 h-16 rounded-full bg-red-500/20 text-red-400 border border-red-500/40 flex items-center justify-center mx-auto mb-4 animate-bounce">
+              <BellRing className="w-8 h-8" />
+            </div>
+            <h3 className="text-lg font-bold text-white mb-1">Ponsel Sedang Dideringkan!</h3>
+            <p className="text-xs text-zinc-300 mb-6">
+              Permintaan dari <span className="text-red-400 font-semibold">{ringingSenderName || 'Laptop'}</span> untuk mencari perangkat ini.
+            </p>
+            <button
+              onClick={handleStopRinging}
+              className="w-full py-3.5 bg-red-600 hover:bg-red-500 active:bg-red-700 text-white font-bold text-sm rounded-xl transition cursor-pointer shadow-lg shadow-red-900/50"
+            >
+              HENTIKAN DERING
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">
         <p>ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage</p>
@@ -1388,4 +1539,5 @@ export function App() {
 }
 
 export default App;
+
 

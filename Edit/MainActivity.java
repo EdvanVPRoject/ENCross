@@ -2,6 +2,15 @@ package com.vancross.app;
 
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
+import android.content.BroadcastReceiver;
+import android.media.AudioManager;
+import android.media.Ringtone;
+import android.media.RingtoneManager;
+import android.media.AudioAttributes;
+import android.os.BatteryManager;
+import android.os.Vibrator;
+import android.os.VibrationEffect;
 import android.graphics.Bitmap;
 import android.graphics.Color;
 import android.graphics.PixelFormat;
@@ -47,6 +56,9 @@ public class MainActivity extends BridgeActivity {
     private volatile boolean isCapturingScreen = false;
     private volatile boolean isDispatchingFrame = false;
     private long lastFrameTime = 0;
+    private Ringtone alarmRingtone = null;
+    private Vibrator phoneVibrator = null;
+    private BroadcastReceiver batteryReceiver = null;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -283,6 +295,79 @@ public class MainActivity extends BridgeActivity {
                 runOnUiThread(() -> stopScreenCaptureInternal());
             }
         }, "AndroidScreenShare");
+
+        // Native Ringer / Alarm Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public void startRinging() {
+                MainActivity.this.startRinging();
+            }
+
+            @JavascriptInterface
+            public void stopRinging() {
+                MainActivity.this.stopRinging();
+            }
+        }, "AndroidRinger");
+
+        // Native Battery Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public String getBatteryStatus() {
+                return MainActivity.this.getBatteryStatus();
+            }
+        }, "AndroidBattery");
+
+        // Native Notification Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean isNotificationAccessGranted() {
+                try {
+                    String pkg = getPackageName();
+                    String flat = Settings.Secure.getString(getContentResolver(), "enabled_notification_listeners");
+                    return flat != null && flat.contains(pkg);
+                } catch (Exception e) {
+                    return false;
+                }
+            }
+
+            @JavascriptInterface
+            public void openNotificationAccessSettings() {
+                try {
+                    Intent intent = new Intent(Settings.ACTION_NOTIFICATION_LISTENER_SETTINGS);
+                    startActivity(intent);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
+        }, "AndroidNotifications");
+
+        // Notification Mirror Service Callback
+        NotificationMirrorService.setCallback((appName, title, text, packageName) -> {
+            runOnUiThread(() -> {
+                try {
+                    JSONObject notif = new JSONObject();
+                    notif.put("appName", appName);
+                    notif.put("title", title);
+                    notif.put("text", text);
+                    notif.put("packageName", packageName);
+                    getBridge().getWebView().evaluateJavascript("window.onAndroidNotificationReceived && window.onAndroidNotificationReceived(" + JSONObject.quote(notif.toString()) + ");", null);
+                } catch (Exception ignored) {}
+            });
+        });
+
+        // Battery State Changed Receiver
+        batteryReceiver = new BroadcastReceiver() {
+            @Override
+            public void onReceive(Context context, Intent intent) {
+                try {
+                    String batteryJson = getBatteryStatus();
+                    getBridge().getWebView().evaluateJavascript("window.onAndroidBatteryChanged && window.onAndroidBatteryChanged(" + JSONObject.quote(batteryJson) + ");", null);
+                } catch (Exception ignored) {}
+            }
+        };
+        try {
+            registerReceiver(batteryReceiver, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+        } catch (Exception ignored) {}
 
         // Native Clipboard Bridge
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
@@ -564,8 +649,101 @@ public class MainActivity extends BridgeActivity {
         super.onPause();
     }
 
+    public void startRinging() {
+        runOnUiThread(() -> {
+            try {
+                AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                if (am != null) {
+                    int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
+                    am.setStreamVolume(AudioManager.STREAM_ALARM, maxVol, 0);
+                }
+
+                if (alarmRingtone != null && alarmRingtone.isPlaying()) {
+                    alarmRingtone.stop();
+                }
+
+                Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
+                if (alarmUri == null) {
+                    alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
+                }
+
+                alarmRingtone = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
+                if (alarmRingtone != null) {
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                        AudioAttributes aa = new AudioAttributes.Builder()
+                                .setUsage(AudioAttributes.USAGE_ALARM)
+                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                                .build();
+                        alarmRingtone.setAudioAttributes(aa);
+                    }
+                    alarmRingtone.play();
+                }
+
+                if (phoneVibrator == null) {
+                    phoneVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+                }
+                if (phoneVibrator != null) {
+                    long[] pattern = {0, 800, 400, 800, 400, 800};
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                        phoneVibrator.vibrate(VibrationEffect.createWaveform(pattern, 0));
+                    } else {
+                        phoneVibrator.vibrate(pattern, 0);
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public void stopRinging() {
+        runOnUiThread(() -> {
+            try {
+                if (alarmRingtone != null) {
+                    alarmRingtone.stop();
+                    alarmRingtone = null;
+                }
+                if (phoneVibrator != null) {
+                    phoneVibrator.cancel();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
+    public String getBatteryStatus() {
+        try {
+            Intent intent = registerReceiver(null, new IntentFilter(Intent.ACTION_BATTERY_CHANGED));
+            if (intent != null) {
+                int level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1);
+                int scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1);
+                int percent = (scale > 0) ? (int) Math.round((level * 100.0) / scale) : level;
+                int status = intent.getIntExtra(BatteryManager.EXTRA_STATUS, -1);
+                boolean isCharging = (status == BatteryManager.BATTERY_STATUS_CHARGING || status == BatteryManager.BATTERY_STATUS_FULL);
+                int tempTenths = intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0);
+                double temperature = tempTenths / 10.0;
+
+                JSONObject obj = new JSONObject();
+                obj.put("level", percent);
+                obj.put("isCharging", isCharging);
+                obj.put("temperature", temperature);
+                return obj.toString();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        return "{\"level\":-1,\"isCharging\":false,\"temperature\":0}";
+    }
+
     @Override
     public void onDestroy() {
+        stopRinging();
+        if (batteryReceiver != null) {
+            try {
+                unregisterReceiver(batteryReceiver);
+            } catch (Exception ignored) {}
+        }
         stopScreenCaptureInternal();
         super.onDestroy();
     }
@@ -587,4 +765,5 @@ public class MainActivity extends BridgeActivity {
         super.onBackPressed();
     }
 }
+
 

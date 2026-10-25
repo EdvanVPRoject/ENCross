@@ -1,4 +1,4 @@
-// WebRTC PeerConnection & DataChannel Manager for ENCross
+﻿// WebRTC PeerConnection & DataChannel Manager for ENCross
 
 const ICE_SERVERS = {
   iceServers: [

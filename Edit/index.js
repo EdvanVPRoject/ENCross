@@ -319,6 +319,51 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Ring Phone / Find My Phone
+  socket.on('ring-device', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('ring-device', {
+        senderId: socket.id,
+        senderName: peerData?.name || 'Laptop'
+      });
+    }
+  });
+
+  socket.on('stop-ring-device', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('stop-ring-device', {
+        senderId: socket.id
+      });
+    } else if (currentRoom) {
+      socket.to(currentRoom).emit('stop-ring-device', { senderId: socket.id });
+    }
+  });
+
+  // Notification Mirroring (Phone -> PC)
+  socket.on('mirror-notification', ({ notif }) => {
+    if (!notif) return;
+    if (currentRoom) {
+      socket.to(currentRoom).emit('incoming-notification', {
+        senderId: socket.id,
+        senderName: peerData?.name || 'HP',
+        notif
+      });
+    }
+  });
+
+  // Real-Time Battery & Device Status
+  socket.on('update-battery-status', ({ battery }) => {
+    if (!battery || !peerData) return;
+    peerData.battery = battery;
+    if (currentRoom) {
+      io.to(currentRoom).emit('peer-status-updated', {
+        id: socket.id,
+        deviceId: peerData.deviceId,
+        battery
+      });
+    }
+  });
+
   // Remote Input Event (Touchpad / Numpad / Media Keys)
   socket.on('remote-input-event', ({ targetId, event }) => {
     if (!event) return;
@@ -505,4 +550,5 @@ server.listen(PORT, '0.0.0.0', () => {
   });
   console.log(`======================================================\n`);
 });
+
 

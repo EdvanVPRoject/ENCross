@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+﻿import React, { useRef, useState } from 'react';
 import {
   Laptop,
   Smartphone,
@@ -20,7 +20,11 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   Sparkles,
-  MousePointer
+  MousePointer,
+  Battery,
+  BatteryCharging,
+  BatteryWarning,
+  BellRing
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -49,7 +53,8 @@ export function PeersRadar({
   transferHistory = [],
   onClearTransferHistory,
   onOpenFolder,
-  onOpenTouchpad
+  onOpenTouchpad,
+  onRingDevice
 }) {
   const fileInputRef = useRef(null);
   const selectedPeerRef = useRef(null);
@@ -161,6 +166,24 @@ export function PeersRadar({
             <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.os}</span>
             <span>•</span>
             <span className="bg-zinc-800 px-1.5 py-0.5 rounded text-zinc-300">{peer.browser}</span>
+            {peer.battery && typeof peer.battery.level === 'number' && peer.battery.level >= 0 && (
+              <>
+                <span>•</span>
+                <span
+                  className="inline-flex items-center gap-1 bg-zinc-800/90 px-1.5 py-0.5 rounded text-zinc-300"
+                  title={'Baterai: ' + peer.battery.level + '%' + (peer.battery.isCharging ? ' (Mengisi Daya)' : '')}
+                >
+                  {peer.battery.isCharging ? (
+                    <BatteryCharging className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  ) : peer.battery.level <= 20 ? (
+                    <BatteryWarning className="w-3.5 h-3.5 text-amber-400 shrink-0" />
+                  ) : (
+                    <Battery className="w-3.5 h-3.5 text-zinc-300 shrink-0" />
+                  )}
+                  <span>{peer.battery.level}%</span>
+                </span>
+              </>
+            )}
           </div>
         </div>
 
@@ -589,4 +612,5 @@ export function PeersRadar({
 }
 
 export default PeersRadar;
+
 

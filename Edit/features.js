@@ -1,4 +1,4 @@
-// =============================================================================
+﻿// =============================================================================
 // VANCROSS / ENCROS - PUSAT PENGATURAN & MODUL FITUR (FEATURE CONFIG)
 // File ini dapat Anda edit secara langsung untuk menambah, mengubah, atau
 // mengaktifkan/menonaktifkan fitur tanpa harus mengubah banyak kode internal.
@@ -56,6 +56,15 @@ export const FEATURE_TOGGLES = {
 
   // 14. Pause & Resume Transfer File WebRTC
   enableTransferResume: true,
+
+  // 15. Notification Mirroring (Notifikasi HP Muncul di Laptop)
+  enableNotificationMirror: true,
+
+  // 16. Deringkan HP / Ring My Phone (Cari HP yang Lupa Ditaruh)
+  enableRingPhone: true,
+
+  // 17. Monitor Baterai & Status Perangkat Real-Time
+  enableBatteryMonitor: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)
@@ -82,5 +91,6 @@ export const CUSTOM_ACTIONS = [
   //   onClick: (peer) => console.log('Ping to peer:', peer)
   // }
 ];
+
 
 

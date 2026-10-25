@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+﻿import React, { useEffect } from 'react';
 import { Upload, Download, CheckCircle2, X, ArrowDownToLine, Play, Pause } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
 import { getEncrossSubfolder } from '../utils/fileCategorizer';
