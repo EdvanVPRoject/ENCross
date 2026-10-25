@@ -12,6 +12,7 @@ import { ShareSourceModal } from './components/ShareSourceModal';
 import { ServerIpModal } from './components/ServerIpModal';
 import { ScrcpyModal } from './components/ScrcpyModal';
 import { FileExplorerModal } from './components/FileExplorerModal';
+import { TouchpadModal } from './components/TouchpadModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -48,6 +49,12 @@ export function App() {
 
   // Session Transfer History (max 10 items)
   const [transferHistory, setTransferHistory] = useState([]);
+
+  // Virtual Touchpad & Numpad States
+  const [isTouchpadModalOpen, setIsTouchpadModalOpen] = useState(false);
+  const [selectedPeerForTouchpad, setSelectedPeerForTouchpad] = useState(null);
+  const isTouchpadModalOpenRef = useRef(isTouchpadModalOpen);
+  const lastSyncedClipboardRef = useRef('');
 
   // Remote File Explorer States
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
@@ -90,6 +97,7 @@ export function App() {
   useEffect(() => { isRenameOpenRef.current = isRenameOpen; }, [isRenameOpen]);
   useEffect(() => { isScrcpyModalOpenRef.current = isScrcpyModalOpen; }, [isScrcpyModalOpen]);
   useEffect(() => { isFileExplorerOpenRef.current = isFileExplorerOpen; }, [isFileExplorerOpen]);
+  useEffect(() => { isTouchpadModalOpenRef.current = isTouchpadModalOpen; }, [isTouchpadModalOpen]);
   useEffect(() => { pendingRemoteRequestRef.current = pendingRemoteRequest; }, [pendingRemoteRequest]);
 
   useEffect(() => {
@@ -348,6 +356,32 @@ export function App() {
       }
     });
 
+    // Auto Clipboard Sync Listener
+    newSocket.on('sync-clipboard', ({ senderName, text }) => {
+      if (!FEATURE_TOGGLES.enableAutoClipboardSync || !text) return;
+      if (text === lastSyncedClipboardRef.current) return;
+      lastSyncedClipboardRef.current = text;
+
+      if (window.electronAPI?.setClipboardText) {
+        window.electronAPI.setClipboardText(text);
+      } else if (window.AndroidClipboard?.setClipboardText) {
+        window.AndroidClipboard.setClipboardText(text);
+      }
+
+      setIncomingToast({
+        senderName: senderName || 'Perangkat',
+        text: 'Clipboard: ' + (text.length > 50 ? text.substring(0, 50) + '...' : text),
+        senderId: null
+      });
+    });
+
+    // Remote Input Event (for desktop executing phone touchpad commands)
+    newSocket.on('remote-input-event', ({ event }) => {
+      if (window.electronAPI?.sendRemoteInput) {
+        window.electronAPI.sendRemoteInput(event);
+      }
+    });
+
     // 3. Peer requests a file to be sent from this device
     newSocket.on('fs-pull-file-request', async ({ requesterId, filePath, fileName }) => {
       if (!requesterId || !filePath) return;
@@ -524,8 +558,72 @@ export function App() {
     return () => window.removeEventListener('paste', handlePaste);
   }, [peers, textTargetPeer]);
 
+  // Auto Clipboard Monitoring for Electron Desktop
+  useEffect(() => {
+    if (!FEATURE_TOGGLES.enableAutoClipboardSync) return;
+    if (window.electronAPI?.onClipboardChanged && socket) {
+      const unsubscribe = window.electronAPI.onClipboardChanged((text) => {
+        if (text && text !== lastSyncedClipboardRef.current) {
+          lastSyncedClipboardRef.current = text;
+          socket.emit('sync-clipboard', { text });
+        }
+      });
+      return () => unsubscribe?.();
+    }
+  }, [socket]);
+
+  // Auto Clipboard Monitoring for Android APK
+  useEffect(() => {
+    if (!FEATURE_TOGGLES.enableAutoClipboardSync) return;
+    window.onAndroidClipboardChanged = (text) => {
+      if (text && text !== lastSyncedClipboardRef.current && socket) {
+        lastSyncedClipboardRef.current = text;
+        socket.emit('sync-clipboard', { text });
+      }
+    };
+    return () => {
+      window.onAndroidClipboardChanged = null;
+    };
+  }, [socket]);
+
+  // Send Remote Touchpad / Keyboard Command to PC
+  const handleSendInput = (event) => {
+    if (!selectedPeerForTouchpad) return;
+    const sentP2P = webrtcManagerRef.current?.sendRemoteInput(selectedPeerForTouchpad.id, event);
+    if (!sentP2P && socket) {
+      socket.emit('remote-input-event', {
+        targetId: selectedPeerForTouchpad.id,
+        event
+      });
+    }
+  };
+
+  // Pause / Resume & Cancel Transfer Handlers
+  const handleTogglePauseTransfer = (fileId) => {
+    const webrtc = webrtcManagerRef.current;
+    if (!webrtc) return;
+    const transfer = webrtc.activeTransfers.get(fileId);
+    if (transfer?.paused) {
+      webrtc.resumeTransfer(fileId);
+    } else {
+      webrtc.pauseTransfer(fileId);
+    }
+  };
+
+  const handleCancelTransfer = (fileId, peerId) => {
+    if (webrtcManagerRef.current) {
+      webrtcManagerRef.current.cancelTransfer(fileId, peerId);
+    }
+    setActiveTransfer(null);
+  };
+
   // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
   const handleBackStep = () => {
+    if (isTouchpadModalOpenRef.current) {
+      setIsTouchpadModalOpen(false);
+      setSelectedPeerForTouchpad(null);
+      return true;
+    }
     if (pendingRemoteRequestRef.current) {
       setPendingRemoteRequest(null);
       return true;
@@ -623,6 +721,7 @@ export function App() {
     const isAnyModalOpen =
       Boolean(incomingStream) ||
       Boolean(pendingRemoteRequest) ||
+      Boolean(isTouchpadModalOpen) ||
       isFileExplorerOpen ||
       isScrcpyModalOpen ||
       isTextSyncOpen ||
@@ -1119,6 +1218,7 @@ export function App() {
           isMobile={isMobileDevice}
           onOpenConnect={() => setIsServerIpModalOpen(true)}
           onOpenFileExplorer={handleOpenFileExplorer}
+        onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
           pingMs={pingMs}
           transferHistory={transferHistory}
           onClearTransferHistory={handleClearTransferHistory}
@@ -1264,6 +1364,18 @@ export function App() {
         />
       )}
 
+            {/* Virtual Touchpad & Numpad Modal */}
+      {isTouchpadModalOpen && (
+        <TouchpadModal
+          targetPeer={selectedPeerForTouchpad}
+          onSendInput={handleSendInput}
+          onClose={() => {
+            setIsTouchpadModalOpen(false);
+            setSelectedPeerForTouchpad(null);
+          }}
+        />
+      )}
+
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">
         <p>ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage</p>
@@ -1276,3 +1388,4 @@ export function App() {
 }
 
 export default App;
+

@@ -1,13 +1,14 @@
 import React, { useEffect } from 'react';
-import { Upload, Download, CheckCircle2, X, ArrowDownToLine, FolderCheck } from 'lucide-react';
+import { Upload, Download, CheckCircle2, X, ArrowDownToLine, Play, Pause } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
 import { getEncrossSubfolder } from '../utils/fileCategorizer';
 
-export function TransferProgressModal({ transfer, onClose }) {
+export function TransferProgressModal({ transfer, onClose, onTogglePause, onCancel }) {
   if (!transfer) return null;
 
   const isUpload = transfer.direction === 'upload';
   const isDone = transfer.completed;
+  const isPaused = Boolean(transfer.isPaused);
   const subfolder = getEncrossSubfolder(transfer.fileName, transfer.mimeType || transfer.blob?.type);
   const targetFolderDisplay = `Downloads/ENCross${subfolder ? '/' + subfolder : ''}`;
 
@@ -96,7 +97,9 @@ export function TransferProgressModal({ transfer, onClose }) {
             <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-0.5 font-mono">
               <span>{formatBytes(transfer.fileSize || 0)}</span>
               <span>•</span>
-              <span className="text-zinc-300">{transfer.speed}</span>
+              <span className={isPaused ? "text-amber-400 font-semibold" : "text-zinc-300"}>
+                {isPaused ? 'Dijeda' : transfer.speed}
+              </span>
             </div>
           </div>
         </div>
@@ -105,13 +108,13 @@ export function TransferProgressModal({ transfer, onClose }) {
         <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden mb-3">
           <div
             className={`h-full transition-all duration-150 rounded-full ${
-              isDone ? 'bg-emerald-500' : 'bg-zinc-200'
+              isDone ? 'bg-emerald-500' : isPaused ? 'bg-amber-400' : 'bg-zinc-200'
             }`}
             style={{ width: `${transfer.progress}%` }}
           />
         </div>
 
-        {/* Status Text & Action */}
+        {/* Status Text & Actions */}
         <div className="flex items-center justify-between text-xs">
           <div className="min-w-0 pr-2">
             <span className="text-zinc-400 text-[11px] block truncate">
@@ -119,11 +122,48 @@ export function TransferProgressModal({ transfer, onClose }) {
                 ? isUpload
                   ? 'File Berhasil Terkirim'
                   : `Tersimpan di ${targetFolderDisplay}`
+                : isPaused
+                ? 'Transfer Dijeda'
                 : isUpload
                 ? `Mengirim (${transfer.progress}%)`
                 : `Menerima (${transfer.progress}%)`}
             </span>
           </div>
+
+          {/* Active transfer controls: Pause / Resume / Cancel */}
+          {!isDone && (
+            <div className="flex items-center gap-1.5 shrink-0">
+              {onTogglePause && isUpload && (
+                <button
+                  onClick={() => onTogglePause(transfer.fileId)}
+                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] transition cursor-pointer"
+                  title={isPaused ? "Lanjutkan Transfer" : "Jeda Transfer"}
+                >
+                  {isPaused ? (
+                    <>
+                      <Play className="w-3 h-3 text-emerald-400" />
+                      <span>Lanjut</span>
+                    </>
+                  ) : (
+                    <>
+                      <Pause className="w-3 h-3 text-amber-400" />
+                      <span>Jeda</span>
+                    </>
+                  )}
+                </button>
+              )}
+
+              {onCancel && (
+                <button
+                  onClick={() => onCancel(transfer.fileId, transfer.peerId)}
+                  className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition cursor-pointer"
+                  title="Batalkan Transfer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+          )}
 
           {isDone && !isUpload && transfer.blobUrl && (
             <button
@@ -138,7 +178,7 @@ export function TransferProgressModal({ transfer, onClose }) {
           {isDone && isUpload && (
             <button
               onClick={onClose}
-              className="text-xs text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800"
+              className="text-xs text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 cursor-pointer"
             >
               Tutup
             </button>

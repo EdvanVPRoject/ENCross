@@ -18,5 +18,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
   enableAdbTcpip: (arg1) => (typeof arg1 === 'object' ? ipcRenderer.invoke('enable-adb-tcpip', arg1) : ipcRenderer.invoke('enable-adb-tcpip', { port: arg1 })),
   pairAdbWifi: (ipPort, code) => ipcRenderer.invoke('pair-adb-wifi', { ipPort, code }),
   openEncrossFolder: () => ipcRenderer.invoke('open-encross-folder'),
-  stopScrcpy: () => ipcRenderer.invoke('stop-scrcpy')
+  stopScrcpy: () => ipcRenderer.invoke('stop-scrcpy'),
+  getClipboardText: () => ipcRenderer.invoke('get-clipboard-text'),
+  setClipboardText: (text) => ipcRenderer.invoke('set-clipboard-text', text),
+  onClipboardChanged: (callback) => {
+    const handler = (_, text) => callback(text);
+    ipcRenderer.on('clipboard-changed', handler);
+    return () => ipcRenderer.removeListener('clipboard-changed', handler);
+  },
+  sendRemoteInput: (cmd) => ipcRenderer.invoke('send-remote-input', cmd)
 });

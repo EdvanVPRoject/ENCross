@@ -283,6 +283,65 @@ public class MainActivity extends BridgeActivity {
                 runOnUiThread(() -> stopScreenCaptureInternal());
             }
         }, "AndroidScreenShare");
+
+        // Native Clipboard Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public String getClipboardText() {
+                try {
+                    android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                    if (clipboard != null && clipboard.hasPrimaryClip()) {
+                        android.content.ClipData.Item item = clipboard.getPrimaryClip().getItemAt(0);
+                        if (item != null && item.getText() != null) {
+                            return item.getText().toString();
+                        }
+                    }
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+                return "";
+            }
+
+            @JavascriptInterface
+            public boolean setClipboardText(String text) {
+                if (text == null) return false;
+                runOnUiThread(() -> {
+                    try {
+                        android.content.ClipboardManager clipboard = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+                        if (clipboard != null) {
+                            android.content.ClipData clip = android.content.ClipData.newPlainText("ENCross", text);
+                            clipboard.setPrimaryClip(clip);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+                return true;
+            }
+        }, "AndroidClipboard");
+
+        // Clipboard change listener
+        try {
+            android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);
+            if (cm != null) {
+                cm.addPrimaryClipChangedListener(() -> {
+                    runOnUiThread(() -> {
+                        try {
+                            if (cm.hasPrimaryClip()) {
+                                android.content.ClipData.Item item = cm.getPrimaryClip().getItemAt(0);
+                                if (item != null && item.getText() != null) {
+                                    String text = item.getText().toString();
+                                    String escaped = org.json.JSONObject.quote(text);
+                                    getBridge().getWebView().evaluateJavascript("window.onAndroidClipboardChanged && window.onAndroidClipboardChanged(" + escaped + ");", null);
+                                }
+                            }
+                        } catch (Exception ignored) {}
+                    });
+                });
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
     }
 
     @Override
@@ -528,3 +587,4 @@ public class MainActivity extends BridgeActivity {
         super.onBackPressed();
     }
 }
+

@@ -47,6 +47,15 @@ export const FEATURE_TOGGLES = {
 
   // 11. Riwayat Transfer File pada Sesi Aktif
   enableTransferHistory: true,
+
+  // 12. Auto Clipboard Sync Dua Arah (Background Clipboard Laptop <-> HP)
+  enableAutoClipboardSync: true,
+
+  // 13. Virtual Touchpad & Numpad (HP Menjadi Mouse & Remote Laptop)
+  enableVirtualTouchpad: true,
+
+  // 14. Pause & Resume Transfer File WebRTC
+  enableTransferResume: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)
@@ -73,4 +82,5 @@ export const CUSTOM_ACTIONS = [
   //   onClick: (peer) => console.log('Ping to peer:', peer)
   // }
 ];
+
 

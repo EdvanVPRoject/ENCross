@@ -19,7 +19,8 @@ import {
   Download,
   ArrowDownLeft,
   ArrowUpRight,
-  Sparkles
+  Sparkles,
+  MousePointer
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -47,7 +48,8 @@ export function PeersRadar({
   pingMs,
   transferHistory = [],
   onClearTransferHistory,
-  onOpenFolder
+  onOpenFolder,
+  onOpenTouchpad
 }) {
   const fileInputRef = useRef(null);
   const selectedPeerRef = useRef(null);
@@ -279,6 +281,23 @@ export function PeersRadar({
                   <span className="truncate">Webcam HP</span>
                 </button>
               )}
+            </div>
+          )}
+
+                    {/* Baris Khusus: Remote / Virtual Touchpad jika peer adalah Laptop/PC */}
+          {!isPeerMobile && FEATURE_TOGGLES.enableVirtualTouchpad !== false && (
+            <div className="pt-0.5">
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  if (onOpenTouchpad) onOpenTouchpad(peer);
+                }}
+                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 transition cursor-pointer active:scale-[0.98]"
+                title="Gunakan HP sebagai trackpad, mouse, numpad, dan kontrol remote PC"
+              >
+                <MousePointer className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <span className="truncate">Remote & Touchpad PC</span>
+              </button>
             </div>
           )}
 
@@ -570,3 +589,4 @@ export function PeersRadar({
 }
 
 export default PeersRadar;
+

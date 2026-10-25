@@ -108,6 +108,7 @@ export class WebRTCManager {
     this.onTransferProgress = null;
     this.onRemoteStream = null;
     this.onScreenShareEnded = null;
+    this.onRemoteInput = null;
 
     // Camera & Screen share state
     this.currentFacingMode = 'environment';
@@ -303,7 +304,8 @@ export class WebRTCManager {
             peerId
           });
 
-          if (this.onTransferProgress) {
+          if (transferState) transferState.lastProgress = progress;
+        if (this.onTransferProgress) {
             this.onTransferProgress({
               fileId: msg.fileId,
               fileName: msg.name,
@@ -315,12 +317,41 @@ export class WebRTCManager {
               completed: false
             });
           }
+        } else if (msg.type === 'file-pause') {
+          const incoming = this.incomingFiles.get(msg.fileId);
+          if (incoming) {
+            incoming.isPaused = true;
+            if (transferState) transferState.lastProgress = progress;
+        if (this.onTransferProgress) {
+              this.onTransferProgress({
+                fileId: msg.fileId,
+                fileName: incoming.meta.name,
+                fileSize: incoming.meta.size,
+                progress: incoming.lastProgress || 0,
+                speed: 'Dijeda',
+                direction: 'download',
+                peerId,
+                isPaused: true,
+                completed: false
+              });
+            }
+          }
+        } else if (msg.type === 'file-resume') {
+          const incoming = this.incomingFiles.get(msg.fileId);
+          if (incoming) {
+            incoming.isPaused = false;
+          }
+        } else if (msg.type === 'remote-input') {
+          if (this.onRemoteInput) {
+            this.onRemoteInput(msg.event);
+          }
         } else if (msg.type === 'file-cancel') {
           // File cancelled by sender
           const incoming = this.incomingFiles.get(msg.fileId);
           if (incoming) {
             this.incomingFiles.delete(msg.fileId);
-            if (this.onTransferProgress) {
+            if (transferState) transferState.lastProgress = progress;
+        if (this.onTransferProgress) {
               this.onTransferProgress({
                 fileId: msg.fileId,
                 fileName: incoming.meta.name,
@@ -341,7 +372,8 @@ export class WebRTCManager {
             const blob = new Blob(incoming.chunks, { type: incoming.meta.mimeType || 'application/octet-stream' });
             const blobUrl = URL.createObjectURL(blob);
 
-            if (this.onTransferProgress) {
+            if (transferState) transferState.lastProgress = progress;
+        if (this.onTransferProgress) {
               this.onTransferProgress({
                 fileId: msg.fileId,
                 fileName: incoming.meta.name,
@@ -382,6 +414,7 @@ export class WebRTCManager {
         const bytesPerSec = incoming.receivedBytes / elapsedSec;
         const progress = Math.min(Math.round((incoming.receivedBytes / incoming.meta.size) * 100), 99);
 
+        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,
@@ -396,6 +429,63 @@ export class WebRTCManager {
         }
       }
     }
+  }
+
+  // Pause an active file transfer
+  pauseTransfer(fileId) {
+    const transfer = this.activeTransfers.get(fileId);
+    if (transfer) {
+      transfer.paused = true;
+      const peerObj = this.peers.get(transfer.peerId);
+      if (peerObj?.dataChannel?.readyState === 'open') {
+        try {
+          peerObj.dataChannel.send(JSON.stringify({ type: 'file-pause', fileId }));
+        } catch (_) {}
+      }
+      if (this.onTransferProgress) {
+        this.onTransferProgress({
+          fileId,
+          fileName: transfer.file?.name,
+          fileSize: transfer.file?.size,
+          progress: transfer.lastProgress || 0,
+          speed: 'Dijeda',
+          direction: 'upload',
+          peerId: transfer.peerId,
+          isPaused: true,
+          completed: false
+        });
+      }
+    }
+  }
+
+  // Resume an active file transfer
+  resumeTransfer(fileId) {
+    const transfer = this.activeTransfers.get(fileId);
+    if (transfer && transfer.paused) {
+      transfer.paused = false;
+      const peerObj = this.peers.get(transfer.peerId);
+      if (peerObj?.dataChannel?.readyState === 'open') {
+        try {
+          peerObj.dataChannel.send(JSON.stringify({ type: 'file-resume', fileId }));
+        } catch (_) {}
+      }
+      if (typeof transfer.resumeResolver === 'function') {
+        transfer.resumeResolver();
+        transfer.resumeResolver = null;
+      }
+    }
+  }
+
+  // Direct P2P Remote Input (Touchpad / Numpad)
+  sendRemoteInput(peerId, event) {
+    const peerObj = this.peers.get(peerId);
+    if (peerObj?.dataChannel?.readyState === 'open') {
+      try {
+        peerObj.dataChannel.send(JSON.stringify({ type: 'remote-input', event }));
+        return true;
+      } catch (_) {}
+    }
+    return false;
   }
 
   // Cancel an active file transfer
@@ -426,7 +516,7 @@ export class WebRTCManager {
 
     const fileId = 'file_' + Math.random().toString(36).substring(2, 10);
     const startTime = Date.now();
-    this.activeTransfers.set(fileId, { cancelled: false, peerId });
+    this.activeTransfers.set(fileId, { cancelled: false, paused: false, peerId, file, offset: 0, lastProgress: 0, resumeResolver: null });
 
     // 1. Send metadata header
     channel.send(JSON.stringify({
@@ -462,6 +552,7 @@ export class WebRTCManager {
         try {
           channel.send(JSON.stringify({ type: 'file-cancel', fileId }));
         } catch (_) {}
+        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,
@@ -500,6 +591,7 @@ export class WebRTCManager {
         const bytesPerSec = offset / elapsedSec;
         const progress = Math.min(Math.round((offset / file.size) * 100), 99);
 
+        if (transferState) transferState.lastProgress = progress;
         if (this.onTransferProgress) {
           this.onTransferProgress({
             fileId,
@@ -849,3 +941,4 @@ export class WebRTCManager {
     this.peers.forEach((_, peerId) => this.closePeer(peerId));
   }
 }
+

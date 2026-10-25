@@ -8,24 +8,26 @@ Semua file program penting ini ditempatkan **langsung di dalam folder `Edit/`** 
 
 | Nama File di `Edit/` | Lokasi Asli di Proyek | Fungsi & Pembaruan Terbaru |
 | :--- | :--- | :--- |
-| **`features.js`** | `client/src/config/features.js` | **Pusat On/Off Fitur:** Saklar toggle fitur (`enableRemoteFileExplorer`, `enableAudioStream`, `enableGlobalPaste`, `enableTransferHistory`), konfigurasi Scrcpy default (`maxSize`, `bitRate`, `turnScreenOff`), dan pendaftaran aksi kustom (`CUSTOM_ACTIONS`). |
-| **`App.jsx`** | `client/src/App.jsx` | **Logika Utama Frontend:** State global, dialog persetujuan privasi & user gesture remote request, penanganan dua arah File Explorer, paste global (`Ctrl+V`), ping latency checker 5 detik, riwayat transfer, dan sinkronisasi history/back button. |
-| **`PeersRadar.jsx`** | `client/src/components/PeersRadar.jsx` | **Tampilan Radar & Kartu Perangkat:** Grid kartu peer 2 kolom tombol aksi, indikator ping RTT langsung, drag-and-drop file visual, riwayat transfer sesi dengan tombol buka folder ENCross, dan integrasi tombol kustom. |
-| **`ScrcpyModal.jsx`** | `client/src/components/ScrcpyModal.jsx` | **Fitur Scrcpy Ultra Rendah Latensi:** Opsi resolusi & bitrate, toggle matikan layar HP saat mirroring, deteksi ADB USB/Wi-Fi, accordion pairing Android 11+ (port & pairing code), serta pencegahan teks terpotong. |
-| **`FileExplorerModal.jsx`** | `client/src/components/FileExplorerModal.jsx` | **Remote File Explorer Dua Arah (Baru):** Menjelajahi file HP dari Laptop dan file Laptop dari HP, shortcut folder cepat (Download, Kamera DCIM, Gambar, Dokumen), status perizinan penyimpanan, serta fitur unduh/pull file instan. |
-| **`webrtcManager.js`** | `client/src/utils/webrtcManager.js` | **Engine WebRTC P2P:** Optimasi backpressure buffer 1MB (`bufferedAmountLowThreshold`), negosiasi ulang SDP saat ganti kamera tanpa sender, tombol batalkan transfer per-file, dan opsi streaming audio. |
-| **`index.js`** | `server/index.js` (dan `desktop/server.js`) | **Signaling & File Server:** Socket.io handler remote FS (`fs-list-request`, `fs-list-response`, `fs-pull-file-request`, `fs-read-local-pc-dir`), endpoint `GET /api/pc-files/download`, dan sanitasi direktori terhadap folder home pengguna. |
-| **`main.js`** | `desktop/main.js` | **Proses Native Electron Desktop:** Sanitasi eksekusi ADB menggunakan `execFile` & validasi regex, IPC pairing ADB Wi-Fi, pembukaan folder unduhan ENCross, dan pencegahan penimpaan file duplikat (`getUniqueSafeFilePath`). |
-| **`MainActivity.java`** | `client/android/.../MainActivity.java` | **Fitur Native Android:** Perbaikan crash Android 14+ (`registerCallback` sebelum `createVirtualDisplay`), deteksi IP Wi-Fi akurat (filter interface `rmnet`/`tun`), dan jembatan Javascript `@JavascriptInterface("AndroidFileSystem")`. |
+| **`features.js`** | `client/src/config/features.js` | **Pusat On/Off Fitur:** Saklar toggle fitur (`enableAutoClipboardSync`, `enableVirtualTouchpad`, `enableTransferResume`, `enableRemoteFileExplorer`, dll), konfigurasi Scrcpy default, dan slot aksi kustom. |
+| **`App.jsx`** | `client/src/App.jsx` | **Logika Utama Frontend:** State global, sinkronisasi background clipboard dua arah, penghubung remote input touchpad/numpad, kontrol jeda/lanjutkan transfer berkas, dan dialog izin keamanan. |
+| **`PeersRadar.jsx`** | `client/src/components/PeersRadar.jsx` | **Tampilan Radar & Kartu Perangkat:** Tombol aksi 2 kolom rapi, tombol khusus "Remote & Touchpad PC", indikator ping RTT 5 detik, dan riwayat transfer berkas sesi. |
+| **`TouchpadModal.jsx`** | `client/src/components/TouchpadModal.jsx` | **Virtual Remote PC (Baru):** Trackpad sentuh ultra-responsif (gerak kursor, klik kiri/kanan, scroll 2 jari), Numpad 4x5 kalkulator, serta tombol pintasan media & Windows (Vol, Mute, Play/Pause, Show Desktop). |
+| **`ScrcpyModal.jsx`** | `client/src/components/ScrcpyModal.jsx` | **Fitur Scrcpy Ultra Rendah Latensi:** Opsi resolusi & bitrate, toggle matikan layar HP saat mirroring, deteksi ADB USB/Wi-Fi, accordion pairing Android 11+ (port & pairing code). |
+| **`FileExplorerModal.jsx`** | `client/src/components/FileExplorerModal.jsx` | **Remote File Explorer Dua Arah:** Menjelajahi file HP dari Laptop dan file Laptop dari HP, shortcut folder cepat (Download, Kamera DCIM, Gambar, Dokumen), serta fitur unduh/pull file instan. |
+| **`webrtcManager.js`** | `client/src/utils/webrtcManager.js` | **Engine WebRTC P2P:** Dukungan Pause (`pauseTransfer`) dan Resume (`resumeTransfer`) transfer file, pengiriman input remote P2P instan (`sendRemoteInput`), buffer backpressure 1MB, dan pergantian kamera. |
+| **`index.js`** | `server/index.js` (dan `desktop/server.js`) | **Signaling & File Server:** Socket handler `sync-clipboard` dan `remote-input-event`, endpoint file download PC, dan manajemen koneksi LAN. |
+| **`main.js`** | `desktop/main.js` | **Proses Native Electron Desktop:** Pemantau background clipboard Windows (`clipboard.readText()`), manajer simulator input native Windows (`input-helper.exe`), dan sanitasi ADB. |
+| **`MainActivity.java`** | `client/android/.../MainActivity.java` | **Fitur Native Android:** Jembatan native clipboard `@JavascriptInterface("AndroidClipboard")` dengan `OnPrimaryClipChangedListener`, perbaikan crash Android 14+ (`registerCallback`), dan sistem file HP. |
 
 ---
 
-### 🚀 Fitur Utama & Perbaikan Baru:
-1. **Pencegahan Crash Android 14+ (API 34+):** Pendaftaran `MediaProjection.Callback` sebelum memanggil `createVirtualDisplay()`.
-2. **Akses File Dua Arah (Laptop <-> HP):** Jelajahi file HP dari Laptop melalui `AndroidFileSystem` Web Interface atau jelajahi file Laptop dari HP melalui Socket.io + REST download endpoint aman.
-3. **Keamanan Privasi & User Gesture:** Permintaan remote screen share atau kamera wajib dikonfirmasi melalui dialog izin ("Izinkan", "Selalu Percayai", atau "Tolak") guna mencegah pengintipan dan kegagalan `getDisplayMedia`.
-4. **Scrcpy Kontrol Kualitas & Wireless Pairing:** Pengaturan resolusi (Original, 1080p, 720p), bitrate (2M - 16M), toggle matikan layar HP, serta panduan pairing nirkabel Android 11+.
-5. **Indikator Ping Real-Time & Global Paste:** Pemantauan latensi jaringan lokal per 5 detik dan kemudahan mengirim file/screenshot hanya dengan menekan `Ctrl+V`.
+### 🚀 3 Fitur Baru yang Baru Ditambahkan (Kategori 1: Prioritas Tinggi):
+1. **Auto Clipboard Sync Dua Arah (Background Clipboard):**
+   - Saat teks disalin (`Ctrl+C`) di Laptop, otomatis masuk ke clipboard HP, dan sebaliknya teks yang disalin di HP langsung terkirim dan disalin ke clipboard Laptop tanpa perlu tombol manual.
+2. **Virtual Touchpad & Keyboard / Numpad (HP Menjadi Mouse & Remote Laptop):**
+   - Mengubah layar HP menjadi trackpad laptop (geser kursor, klik kiri, klik kanan, scroll 2 jari) serta keypad Numpad virtual dan tombol multimedia Windows dengan latensi sub-milidetik via native input simulator.
+3. **Pause & Resume Transfer File WebRTC:**
+   - Transfer file besar kini dapat dijeda (**Pause**) dan dilanjutkan kembali (**Resume**) kapan saja tanpa harus mengulang transfer dari awal (0%).
 
 ---
 

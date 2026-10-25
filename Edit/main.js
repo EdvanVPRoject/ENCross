@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell, clipboard } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -600,6 +600,85 @@ ipcMain.handle('stop-scrcpy', async () => {
   return { success: false, message: 'Tidak ada proses Scrcpy yang berjalan' };
 });
 
+// =============================================================================
+// VIRTUAL TOUCHPAD & NATIVE INPUT SIMULATOR
+// =============================================================================
+let inputProcess = null;
+
+function ensureInputHelperRunning() {
+  if (inputProcess && !inputProcess.killed) return;
+  const exePath = path.join(__dirname, 'assets/input-helper.exe');
+  if (fs.existsSync(exePath)) {
+    try {
+      inputProcess = spawn(exePath, [], { windowsHide: true });
+      inputProcess.stdin.setDefaultEncoding('utf-8');
+      inputProcess.on('exit', () => { inputProcess = null; });
+      inputProcess.on('error', (err) => console.warn('[InputHelper] process error:', err));
+    } catch (e) {
+      console.warn('[InputHelper] Failed to spawn:', e);
+    }
+  }
+}
+
+function sendInputCommand(cmdStr) {
+  if (!cmdStr || typeof cmdStr !== 'string') return;
+  ensureInputHelperRunning();
+  if (inputProcess && inputProcess.stdin && !inputProcess.stdin.destroyed) {
+    try {
+      inputProcess.stdin.write(cmdStr.trim() + '\n');
+    } catch (_) {}
+  }
+}
+
+ipcMain.handle('send-remote-input', (_, cmd) => {
+  sendInputCommand(cmd);
+  return true;
+});
+
+// =============================================================================
+// AUTO CLIPBOARD SYNC MONITOR
+// =============================================================================
+let lastCopiedText = '';
+let clipboardWatcher = null;
+
+function startClipboardWatcher() {
+  if (clipboardWatcher) return;
+  try {
+    lastCopiedText = clipboard.readText();
+  } catch (_) {}
+
+  clipboardWatcher = setInterval(() => {
+    try {
+      const current = clipboard.readText();
+      if (current && current !== lastCopiedText) {
+        lastCopiedText = current;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('clipboard-changed', current);
+        }
+      }
+    } catch (_) {}
+  }, 1200);
+}
+
+ipcMain.handle('get-clipboard-text', () => {
+  try {
+    return clipboard.readText();
+  } catch (_) {
+    return '';
+  }
+});
+
+ipcMain.handle('set-clipboard-text', (_, text) => {
+  try {
+    if (typeof text === 'string') {
+      lastCopiedText = text;
+      clipboard.writeText(text);
+      return true;
+    }
+  } catch (_) {}
+  return false;
+});
+
 // Single Instance Lock (prevents multiple desktop windows)
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
@@ -666,6 +745,9 @@ if (!gotTheLock) {
     createMainWindow();
     createSystemTray();
 
+        startClipboardWatcher();
+    ensureInputHelperRunning();
+
     // 5. Automatically ensure Desktop Shortcut exists on launch
     createDesktopShortcut(false);
 
@@ -678,6 +760,13 @@ if (!gotTheLock) {
 }
 
 app.on('before-quit', () => {
+  if (inputProcess && !inputProcess.killed) {
+    try { inputProcess.kill(); } catch (_) {}
+  }
+  if (clipboardWatcher) {
+    clearInterval(clipboardWatcher);
+    clipboardWatcher = null;
+  }
   app.isQuitting = true;
 });
 
@@ -686,3 +775,4 @@ app.on('window-all-closed', () => {
     app.quit();
   }
 });
+

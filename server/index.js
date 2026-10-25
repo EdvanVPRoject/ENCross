@@ -304,6 +304,35 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Auto Clipboard Sync
+  socket.on('sync-clipboard', ({ targetId, text }) => {
+    if (!text || typeof text !== 'string') return;
+    const payload = {
+      senderId: socket.id,
+      senderName: peerData?.name || 'Perangkat',
+      text
+    };
+    if (targetId) {
+      io.to(targetId).emit('sync-clipboard', payload);
+    } else if (currentRoom) {
+      socket.to(currentRoom).emit('sync-clipboard', payload);
+    }
+  });
+
+  // Remote Input Event (Touchpad / Numpad / Media Keys)
+  socket.on('remote-input-event', ({ targetId, event }) => {
+    if (!event) return;
+    const payload = {
+      senderId: socket.id,
+      event
+    };
+    if (targetId) {
+      io.to(targetId).emit('remote-input-event', payload);
+    } else if (currentRoom) {
+      socket.to(currentRoom).emit('remote-input-event', payload);
+    }
+  });
+
   // Screen share status event (Phase 4)
   socket.on('screen-share-status', ({ targetId, isSharing }) => {
     if (targetId) {
@@ -476,3 +505,4 @@ server.listen(PORT, '0.0.0.0', () => {
   });
   console.log(`======================================================\n`);
 });
+
