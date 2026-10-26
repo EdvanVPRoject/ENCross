@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Smartphone, MonitorPlay, Wifi, RefreshCw, X, CheckCircle, AlertTriangle, Play, Square, Usb, HelpCircle, ChevronDown, ChevronUp, Sliders, KeyRound } from 'lucide-react';
+import { Smartphone, MonitorPlay, Wifi, RefreshCw, X, CheckCircle, AlertTriangle, Play, Square, Usb, HelpCircle, ChevronDown, ChevronUp, Sliders, KeyRound, Camera } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
 
-export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
+export function ScrcpyModal({ isOpen, onClose, targetPeer, initialMode = 'display' }) {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState(null);
   const [errorMsg, setErrorMsg] = useState('');
@@ -19,6 +19,16 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
   const [bitRate, setBitRate] = useState(SCRCPY_CONFIG?.bitRate || '8M');
   const [turnScreenOff, setTurnScreenOff] = useState(SCRCPY_CONFIG?.turnScreenOff || false);
 
+  // Mode Selection: 'display' (Screen Mirror) | 'camera' (Webcam 60 FPS)
+  const [videoSource, setVideoSource] = useState(initialMode || 'display');
+  const [cameraFacing, setCameraFacing] = useState('back');
+  const [includeAudio, setIncludeAudio] = useState(true);
+
+  useEffect(() => {
+    if (initialMode) {
+      setVideoSource(initialMode);
+    }
+  }, [initialMode]);
   const isElectron = typeof window !== 'undefined' && Boolean(window.electronAPI?.isElectron);
 
   useEffect(() => {
@@ -60,7 +70,10 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
         stayAwake: true,
         maxSize: Number(maxSize) || 0,
         bitRate: bitRate || '8M',
-        turnScreenOff: Boolean(turnScreenOff)
+        turnScreenOff: Boolean(turnScreenOff),
+        videoSource,
+        cameraFacing,
+        includeAudio
       });
 
       if (res.success) {
@@ -224,6 +237,81 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer }) {
         {/* Device Status & Mirroring Control */}
         {isElectron && (
           <div className="space-y-4">
+            {/* Mode Selector: Layar HP vs Kamera HP */}
+            <div className="grid grid-cols-2 gap-2 p-1 bg-zinc-950/70 border border-zinc-800 rounded-xl text-xs font-semibold">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([20]);
+                  setVideoSource('display');
+                }}
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg transition cursor-pointer ${
+                  videoSource === 'display'
+                    ? 'bg-sky-500/20 text-sky-300 border border-sky-500/40 shadow-xs'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Smartphone className="w-4 h-4 text-sky-400" />
+                <span>Mirror Layar HP</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([20]);
+                  setVideoSource('camera');
+                }}
+                className={`flex items-center justify-center gap-1.5 py-2 rounded-lg transition cursor-pointer ${
+                  videoSource === 'camera'
+                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40 shadow-xs'
+                    : 'text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                <Camera className="w-4 h-4 text-emerald-400" />
+                <span>Webcam HP (60 FPS)</span>
+              </button>
+            </div>
+
+            {videoSource === 'camera' && (
+              <div className="bg-emerald-950/20 border border-emerald-500/30 rounded-xl p-3 space-y-2.5 animate-in fade-in">
+                <span className="text-[11px] font-bold text-emerald-300 uppercase tracking-wider block">
+                  Pilihan Kamera HP (Scrcpy 60 FPS)
+                </span>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setCameraFacing('back')}
+                    className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
+                      cameraFacing === 'back'
+                        ? 'bg-emerald-500/30 border-emerald-500/60 text-white font-bold'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                    }`}
+                  >
+                    📷 Kamera Belakang (Utama)
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setCameraFacing('front')}
+                    className={`py-1.5 px-2 rounded-lg border text-center transition cursor-pointer ${
+                      cameraFacing === 'front'
+                        ? 'bg-emerald-500/30 border-emerald-500/60 text-white font-bold'
+                        : 'bg-zinc-800 border-zinc-700 text-zinc-400'
+                    }`}
+                  >
+                    🤳 Kamera Depan (Selfie)
+                  </button>
+                </div>
+                <label className="flex items-center gap-2 text-[11px] text-zinc-300 cursor-pointer pt-1">
+                  <input
+                    type="checkbox"
+                    checked={includeAudio}
+                    onChange={(e) => setIncludeAudio(e.target.checked)}
+                    className="rounded accent-emerald-500"
+                  />
+                  <span>Sertakan audio mic ponsel (`--audio-source=mic`)</span>
+                </label>
+              </div>
+            )}
             {/* Scrcpy Quality & Battery Configuration */}
             <div className="p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800/90 space-y-3">
               <div className="flex items-center gap-2 text-xs font-semibold text-zinc-200">

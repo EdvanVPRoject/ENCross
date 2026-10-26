@@ -39,6 +39,7 @@ export function App() {
   const [isServerIpModalOpen, setIsServerIpModalOpen] = useState(false);
   const [isScrcpyModalOpen, setIsScrcpyModalOpen] = useState(false);
   const [scrcpyTargetPeer, setScrcpyTargetPeer] = useState(null);
+  const [scrcpyInitialMode, setScrcpyInitialMode] = useState('display');
   const [pendingTargetPeerId, setPendingTargetPeerId] = useState(null);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
@@ -253,10 +254,33 @@ export function App() {
     };
 
     // Socket Event: Peer started or stopped screen sharing
-    newSocket.on('peer-screen-share-status', ({ senderId, isSharing }) => {
+    newSocket.on('peer-screen-share-status', ({ senderId, isSharing, mode }) => {
       if (!isSharing) {
         setIncomingStream(null);
         setIncomingStreamPeerId(null);
+      } else if (mode) {
+        setIncomingStreamMode(mode);
+      }
+    });
+
+    // Socket Event: Remote peer requested to launch Scrcpy on this PC
+    newSocket.on('remote-scrcpy-requested', async ({ senderId, mode, cameraFacing }) => {
+      console.log('[RemoteScrcpy] Incoming request from peer:', senderId, mode);
+      if (window.electronAPI?.startScrcpy && window.electronAPI?.getScrcpyStatus) {
+        try {
+          const status = await window.electronAPI.getScrcpyStatus();
+          if (status.isScrcpyAvailable && status.devices && status.devices.length > 0) {
+            await window.electronAPI.startScrcpy({
+              deviceId: status.devices[0].serial,
+              videoSource: mode === 'camera' ? 'camera' : 'display',
+              cameraFacing: cameraFacing || 'back',
+              stayAwake: true
+            });
+            playSound('connect');
+          }
+        } catch (scrcpyErr) {
+          console.warn('[RemoteScrcpy] Auto-launch scrcpy error:', scrcpyErr);
+        }
       }
     });
 
@@ -1113,6 +1137,12 @@ export function App() {
     }
 
     if (explicitMode) {
+      if (socket && (explicitMode === 'camera' || explicitMode === 'screen')) {
+        socket.emit('request-remote-scrcpy', {
+          targetId: peerId,
+          mode: explicitMode === 'camera' ? 'camera' : 'display'
+        });
+      }
       executeStream(peerId, explicitMode);
       return;
     }
@@ -1165,9 +1195,10 @@ export function App() {
     socket.emit('request-remote-mic', { targetId });
   };
 
-  const handleOpenScrcpy = (peer) => {
+  const handleOpenScrcpy = (peer, mode = 'display') => {
     triggerHaptic([30]);
     setScrcpyTargetPeer(peer);
+    setScrcpyInitialMode(mode);
     setIsScrcpyModalOpen(true);
   };
 
@@ -1490,6 +1521,7 @@ export function App() {
         isOpen={isScrcpyModalOpen}
         onClose={() => setIsScrcpyModalOpen(false)}
         targetPeer={scrcpyTargetPeer}
+        initialMode={scrcpyInitialMode}
       />
 
       {/* Two-Way Remote File Explorer Modal */}

@@ -125,6 +125,9 @@ export class WebRTCManager {
       const peerObj = this.peers.get(senderId);
       if (metadata && metadata.mode) {
         peerObj.remoteMode = metadata.mode;
+        if (peerObj.remoteStream && this.onRemoteStream) {
+          this.onRemoteStream(senderId, peerObj.remoteStream, metadata.mode);
+        }
       }
 
       await pc.setRemoteDescription(new RTCSessionDescription(offer));
@@ -215,8 +218,9 @@ export class WebRTCManager {
       console.log(`[WebRTC] Remote stream track received from ${peerId}`, event);
       const stream = (event.streams && event.streams[0]) ? event.streams[0] : new MediaStream([event.track]);
       peerObj.remoteStream = stream;
+      const effectiveMode = peerObj.remoteMode || (stream.getVideoTracks().length === 0 ? 'mic' : 'screen');
       if (this.onRemoteStream) {
-        this.onRemoteStream(peerId, stream, peerObj.remoteMode);
+        this.onRemoteStream(peerId, stream, effectiveMode);
       }
     };
 
@@ -762,7 +766,7 @@ export class WebRTCManager {
       metadata: { isScreenShare: true, mode }
     });
 
-    this.socket.emit('screen-share-status', { targetId: peerId, isSharing: true });
+    this.socket.emit('screen-share-status', { targetId: peerId, isSharing: true, mode });
     return stream;
   }
 

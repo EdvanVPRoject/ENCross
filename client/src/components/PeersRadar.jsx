@@ -394,14 +394,18 @@ export function PeersRadar({
                   <button
                     onClick={() => {
                       triggerHaptic([30]);
-                      if (onRequestRemoteCamera) onRequestRemoteCamera(peer.id);
+                      if (onOpenScrcpy && typeof window !== 'undefined' && window.electronAPI?.isElectron) {
+                        onOpenScrcpy(peer, 'camera');
+                      } else if (onRequestRemoteCamera) {
+                        onRequestRemoteCamera(peer.id);
+                      }
                     }}
                     className={`flex items-center justify-center gap-1 py-1.5 px-2 rounded-lg text-[11px] font-medium transition cursor-pointer active:scale-[0.98] ${
                       activeSharingPeerId === peer.id && activeSharingMode === 'camera'
                         ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
                         : 'bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-300 border border-emerald-500/30'
                     }`}
-                    title="Jadikan kamera ponsel ini sebagai webcam nirkabel PC"
+                    title="Jadikan kamera ponsel ini sebagai webcam nirkabel PC (Scrcpy 60 FPS / WebRTC)"
                   >
                     <Camera className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                     <span className="truncate">

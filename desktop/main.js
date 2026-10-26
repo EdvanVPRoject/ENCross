@@ -476,7 +476,10 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
     alwaysOnTop = false,
     maxSize = 0,
     bitRate = '8M',
-    turnScreenOff = false
+    turnScreenOff = false,
+    videoSource = 'display', // 'display' | 'camera'
+    cameraFacing = 'back',   // 'back' | 'front'
+    includeAudio = true
   } = options;
 
   if (activeScrcpyProcess && !activeScrcpyProcess.killed) {
@@ -486,12 +489,22 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
     activeScrcpyProcess = null;
   }
 
-  const args = ['--window-title=ENCross - Layar HP'];
+  const isCamera = videoSource === 'camera';
+  const title = isCamera ? 'ENCross - Wireless Webcam HP (60 FPS)' : 'ENCross - Layar HP';
+  const args = [`--window-title=${title}`];
   if (stayAwake) args.push('--stay-awake');
   if (alwaysOnTop) args.push('--always-on-top');
   if (maxSize && Number(maxSize) > 0) args.push(`--max-size=${Number(maxSize)}`);
   if (bitRate && typeof bitRate === 'string') args.push(`--video-bit-rate=${bitRate}`);
-  if (turnScreenOff) args.push('--turn-screen-off');
+  if (turnScreenOff && !isCamera) args.push('--turn-screen-off');
+
+  if (isCamera) {
+    args.push('--video-source=camera');
+    args.push(`--camera-facing=${cameraFacing === 'front' ? 'front' : 'back'}`);
+    if (includeAudio) {
+      args.push('--audio-source=mic');
+    }
+  }
 
   if (deviceId) {
     args.push('-s', deviceId);

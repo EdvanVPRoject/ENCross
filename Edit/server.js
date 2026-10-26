@@ -401,11 +401,22 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
-    socket.on('screen-share-status', ({ targetId, isSharing }) => {
+    socket.on('screen-share-status', ({ targetId, isSharing, mode }) => {
+      const payload = { senderId: socket.id, isSharing, mode };
       if (targetId) {
-        io.to(targetId).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
+        io.to(targetId).emit('peer-screen-share-status', payload);
       } else if (currentRoom) {
-        socket.to(currentRoom).emit('peer-screen-share-status', { senderId: socket.id, isSharing });
+        socket.to(currentRoom).emit('peer-screen-share-status', payload);
+      }
+    });
+
+    socket.on('request-remote-scrcpy', ({ targetId, mode, cameraFacing }) => {
+      if (targetId) {
+        io.to(targetId).emit('remote-scrcpy-requested', {
+          senderId: socket.id,
+          mode: mode || 'display',
+          cameraFacing: cameraFacing || 'back'
+        });
       }
     });
 
