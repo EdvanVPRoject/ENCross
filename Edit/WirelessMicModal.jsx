@@ -24,6 +24,39 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
   const [audioLevel, setAudioLevel] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordSeconds, setRecordSeconds] = useState(0);
+  const [outputDevices, setOutputDevices] = useState([]);
+  const [selectedOutput, setSelectedOutput] = useState('');
+
+  // Enumerate audio output devices
+  useEffect(() => {
+    async function loadAudioOutputs() {
+      try {
+        if (navigator.mediaDevices?.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const outputs = devices.filter((d) => d.kind === 'audiooutput');
+          setOutputDevices(outputs);
+        }
+      } catch (err) {
+        console.warn('[WirelessMic] Failed to enumerate audio devices:', err);
+      }
+    }
+    loadAudioOutputs();
+    navigator.mediaDevices?.addEventListener?.('devicechange', loadAudioOutputs);
+    return () => {
+      navigator.mediaDevices?.removeEventListener?.('devicechange', loadAudioOutputs);
+    };
+  }, []);
+
+  const handleOutputChange = async (deviceId) => {
+    setSelectedOutput(deviceId);
+    if (audioRef.current && typeof audioRef.current.setSinkId === 'function') {
+      try {
+        await audioRef.current.setSinkId(deviceId);
+      } catch (err) {
+        console.warn('[WirelessMic] setSinkId error:', err);
+      }
+    }
+  };
 
   // 1. Play audio stream through HTML5 audio element
   useEffect(() => {
@@ -286,6 +319,54 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
                 {Math.round(volume * 100)}%
               </span>
             </div>
+          </div>
+
+          {/* Audio Output Route Selector */}
+          <div className="bg-zinc-900/80 p-3 rounded-2xl border border-zinc-800 flex flex-col gap-2">
+            <div className="flex items-center justify-between text-xs">
+              <span className="font-semibold text-zinc-300 flex items-center gap-1.5">
+                <Volume2 className="w-3.5 h-3.5 text-teal-400" />
+                Rute Output Suara Laptop:
+              </span>
+              {outputDevices.some((d) => d.label.toLowerCase().includes('cable')) && (
+                <span className="text-[10px] bg-teal-500/20 text-teal-300 border border-teal-500/30 px-1.5 py-0.5 rounded font-medium">
+                  VB-Cable Siap
+                </span>
+              )}
+            </div>
+
+            <select
+              value={selectedOutput}
+              onChange={(e) => handleOutputChange(e.target.value)}
+              className="w-full bg-zinc-950 border border-zinc-700/80 rounded-xl px-2.5 py-1.5 text-xs text-white focus:outline-none focus:border-teal-500 cursor-pointer"
+            >
+              <option value="">Default (Speaker / Headphone Laptop)</option>
+              {outputDevices.map((d) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Device (${d.deviceId.substring(0, 5)})`}
+                  {d.label.toLowerCase().includes('cable') ? ' ★ (Pilih ini untuk Voicemod)' : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Panduan Voicemod & Discord */}
+          <div className="bg-teal-950/20 border border-teal-500/30 rounded-2xl p-3 text-left">
+            <div className="flex items-center gap-1.5 mb-1 text-teal-300 text-xs font-semibold">
+              <ShieldCheck className="w-4 h-4 text-teal-400 shrink-0" />
+              <span>Cara Menghubungkan ke Voicemod / Discord:</span>
+            </div>
+            <ol className="text-[11px] text-zinc-300 space-y-1 pl-4 list-decimal leading-relaxed">
+              <li>
+                Jalankan installer <strong className="text-white">VBCABLE_Setup_x64.exe</strong> sebagai Administrator (folder sudah kami buka di File Explorer laptop).
+              </li>
+              <li>
+                Pada pilihan di atas, pilih output: <strong className="text-teal-300">CABLE Input (VB-Audio)</strong>.
+              </li>
+              <li>
+                Di Voicemod ➔ <strong className="text-emerald-400">INPUT Microphone</strong> ➔ pilih: <strong className="text-white">CABLE Output (VB-Audio)</strong>.
+              </li>
+            </ol>
           </div>
 
           <div className="text-[11px] text-zinc-400 leading-relaxed px-1">

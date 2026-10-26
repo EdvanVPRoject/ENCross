@@ -1,5 +1,5 @@
 import React from 'react';
-import { Smartphone, Camera, X } from 'lucide-react';
+import { Smartphone, Camera, Mic, X } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
 export function ShareSourceModal({ isOpen, onClose, onSelect }) {
@@ -76,6 +76,27 @@ export function ShareSourceModal({ isOpen, onClose, onSelect }) {
                 <span className="text-[9px] bg-emerald-500/20 text-emerald-400 px-1 rounded font-medium">Webcam</span>
               </div>
               <p className="text-[11px] text-zinc-400">Jadikan kamera ponsel sebagai webcam (Depan & Belakang)</p>
+            </div>
+          </button>
+
+          {/* Mikrofon HP (Wireless Mic) */}
+          <button
+            onClick={() => {
+              triggerHaptic([30]);
+              onSelect('mic');
+              onClose();
+            }}
+            className="w-full flex items-center gap-3 p-3 rounded-xl bg-zinc-800 hover:bg-zinc-700/80 border border-zinc-700/60 text-left transition active:scale-95 cursor-pointer shadow-xs"
+          >
+            <div className="p-2 rounded-lg bg-teal-500/20 text-teal-400 shrink-0">
+              <Mic className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-1.5">
+                <h4 className="text-xs font-semibold text-white">Mikrofon HP (Wireless Mic)</h4>
+                <span className="text-[9px] bg-teal-500/20 text-teal-400 px-1 rounded font-medium">Mic Eksternal</span>
+              </div>
+              <p className="text-[11px] text-zinc-400">Gunakan mikrofon ponsel ini sebagai mic wireless untuk Laptop</p>
             </div>
           </button>
         </div>

@@ -184,7 +184,10 @@ export function PeersRadar({
     }
   };
 
-  const isPc = (peer) => peer.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(peer.os);
+  const isPc = (peer) =>
+    peer.deviceType === 'desktop' ||
+    ['Windows', 'macOS', 'Linux'].includes(peer.os) ||
+    Boolean(peer.name && (peer.name.includes('(PC)') || peer.name.includes('Laptop') || peer.name.includes('Windows')));
   const pcPeers = peers.filter(isPc);
   const mobilePeers = peers.filter((p) => !isPc(p));
 
@@ -464,19 +467,42 @@ export function PeersRadar({
           )}
 
                     {/* Baris Khusus: Remote / Virtual Touchpad jika peer adalah Laptop/PC */}
-          {!isPeerMobile && FEATURE_TOGGLES.enableVirtualTouchpad !== false && (
-            <div className="pt-0.5">
-              <button
-                onClick={() => {
-                  triggerHaptic([30]);
-                  if (onOpenTouchpad) onOpenTouchpad(peer);
-                }}
-                className="w-full flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 transition cursor-pointer active:scale-[0.98]"
-                title="Gunakan HP sebagai trackpad, mouse, numpad, dan kontrol remote PC"
-              >
-                <MousePointer className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-                <span className="truncate">Remote & Touchpad PC</span>
-              </button>
+          {/* Baris Khusus jika peer adalah Laptop/PC (Remote Touchpad & Mic HP ke PC) */}
+          {!isPeerMobile && (
+            <div className="pt-0.5 grid grid-cols-2 gap-2">
+              {FEATURE_TOGGLES.enableVirtualTouchpad !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onOpenTouchpad) onOpenTouchpad(peer);
+                  }}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-emerald-500/15 hover:bg-emerald-500/25 text-emerald-300 border border-emerald-500/35 transition cursor-pointer active:scale-[0.98]"
+                  title="Gunakan HP sebagai trackpad, mouse, numpad, dan kontrol remote PC"
+                >
+                  <MousePointer className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                  <span className="truncate">Remote PC</span>
+                </button>
+              )}
+
+              {FEATURE_TOGGLES.enableWirelessMic !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onStartScreenShare) onStartScreenShare(peer.id, 'mic');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition cursor-pointer active:scale-[0.98] ${
+                    activeSharingPeerId === peer.id && activeSharingMode === 'mic'
+                      ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                      : 'bg-teal-500/15 hover:bg-teal-500/25 text-teal-300 border border-teal-500/35'
+                  }`}
+                  title="Siarkan mikrofon ponsel ini ke laptop secara nirkabel"
+                >
+                  <Mic className={`w-3.5 h-3.5 shrink-0 ${activeSharingPeerId === peer.id && activeSharingMode === 'mic' ? 'text-red-400 animate-pulse' : 'text-teal-400'}`} />
+                  <span className="truncate">
+                    {activeSharingPeerId === peer.id && activeSharingMode === 'mic' ? 'Stop Mic' : 'Mic HP'}
+                  </span>
+                </button>
+              )}
             </div>
           )}
 
