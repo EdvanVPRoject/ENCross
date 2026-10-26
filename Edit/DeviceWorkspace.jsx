@@ -293,16 +293,16 @@ export function DeviceWorkspace({
     if (!transferHistory || transferHistory.length === 0) return null;
 
     return (
-      <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 shadow-xl flex flex-col gap-2.5 animate-view-enter">
+      <div className="apple-card p-4 shadow-sm flex flex-col gap-2.5 animate-view-enter">
         <div className="flex items-center justify-between">
           <button
             onClick={() => {
               triggerHaptic([15]);
               setShowHistory(!showHistory);
             }}
-            className="flex items-center gap-2 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer"
+            className="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:text-blue-500 transition cursor-pointer"
           >
-            <Clock className="w-4 h-4 text-cyan-400" />
+            <Clock className="w-4 h-4 text-blue-500" />
             <span>Riwayat Transfer ({transferHistory.length})</span>
             <span className="text-[10px] text-zinc-500 font-normal">[{showHistory ? 'Sembunyikan' : 'Lihat'}]</span>
           </button>
@@ -311,17 +311,17 @@ export function DeviceWorkspace({
             {onOpenFolder && showHistory && (
               <button
                 onClick={onOpenFolder}
-                className="text-[11px] text-zinc-400 hover:text-cyan-300 transition cursor-pointer flex items-center gap-1 bg-zinc-800/70 hover:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-700/50"
+                className="text-[11px] text-zinc-600 dark:text-zinc-300 hover:text-blue-500 transition cursor-pointer flex items-center gap-1 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10"
                 title="Buka Folder Unduhan"
               >
-                <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
                 <span className="hidden sm:inline">Folder Unduhan</span>
               </button>
             )}
             {onClearTransferHistory && showHistory && (
               <button
                 onClick={onClearTransferHistory}
-                className="text-[11px] text-zinc-500 hover:text-red-400 transition cursor-pointer flex items-center gap-1 bg-zinc-800/50 hover:bg-red-950/40 px-2 py-1 rounded-lg border border-zinc-700/40 hover:border-red-800/50"
+                className="text-[11px] text-zinc-500 hover:text-red-500 transition cursor-pointer flex items-center gap-1 bg-black/5 dark:bg-white/5 hover:bg-red-500/10 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10"
                 title="Hapus riwayat sesi"
               >
                 <Trash2 className="w-3.5 h-3.5" />
@@ -332,7 +332,7 @@ export function DeviceWorkspace({
         </div>
 
         {showHistory && (
-          <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+          <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
             {transferHistory.map((item, idx) => {
               const isUpload = item.direction === 'upload' || item.direction === 'sent';
               const name = item.fileName || item.name || 'Berkas';
@@ -343,10 +343,10 @@ export function DeviceWorkspace({
               return (
                 <div
                   key={item.fileId || item.id || idx}
-                  className="flex items-center justify-between bg-zinc-950/70 border border-zinc-800/60 rounded-xl p-2.5 text-xs text-zinc-300 hover:border-zinc-700/70 transition gap-2"
+                  className="flex items-center justify-between bg-black/3 dark:bg-white/3 border border-black/5 dark:border-white/5 rounded-xl p-2.5 text-xs text-zinc-800 dark:text-zinc-200 hover:border-black/15 dark:hover:border-white/15 transition gap-2"
                 >
                   <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                    <div className={`p-1.5 rounded-lg shrink-0 ${isUpload ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/50' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'}`}>
+                    <div className={`p-1.5 rounded-lg shrink-0 ${isUpload ? 'bg-blue-500/10 text-blue-500' : 'bg-emerald-500/10 text-emerald-500'}`}>
                       {isUpload ? (
                         <ArrowUpRight className="w-4 h-4" />
                       ) : (
@@ -354,11 +354,11 @@ export function DeviceWorkspace({
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="truncate font-semibold text-zinc-200 text-xs" title={name}>{name}</p>
+                      <p className="truncate font-semibold text-zinc-900 dark:text-zinc-100 text-xs" title={name}>{name}</p>
                       <p className="text-[10px] text-zinc-500 flex items-center gap-1.5">
                         {sizeStr && <span>{sizeStr}</span>}
                         {sizeStr && <span>•</span>}
-                        <span className={isUpload ? 'text-cyan-400 font-medium' : 'text-emerald-400 font-medium'}>{statusLabel}</span>
+                        <span className={isUpload ? 'text-blue-500 font-medium' : 'text-emerald-500 font-medium'}>{statusLabel}</span>
                         {timeStr && <span>• {timeStr}</span>}
                       </p>
                     </div>
@@ -367,7 +367,7 @@ export function DeviceWorkspace({
                     <a
                       href={item.blobUrl}
                       download={name}
-                      className="shrink-0 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/50 border border-emerald-800/60 px-2.5 py-1 rounded-lg transition active:scale-95"
+                      className="shrink-0 text-[11px] font-medium text-blue-500 hover:text-blue-600 bg-blue-500/10 hover:bg-blue-500/15 border border-blue-500/20 px-3 py-1 rounded-full transition active:scale-95"
                     >
                       Simpan
                     </a>
@@ -429,7 +429,7 @@ export function DeviceWorkspace({
       )}
 
       {/* 1. Top Bar: Back Button, Selected Device Info & Status */}
-      <div className="bg-zinc-900/95 border border-zinc-800 rounded-2xl px-4 py-3 shadow-xl backdrop-blur-md flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
+      <div className="apple-card px-4 py-3 shadow-sm flex items-center justify-between gap-3 flex-wrap sm:flex-nowrap">
         {/* Left: Back Button & Target Device Summary */}
         <div className="flex items-center gap-3 min-w-0">
           <button
@@ -440,28 +440,28 @@ export function DeviceWorkspace({
               }
               onBack();
             }}
-            className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-zinc-200 border border-zinc-700 px-3 py-2 rounded-xl text-xs font-bold transition cursor-pointer shrink-0 shadow-sm"
+            className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
             title="Kembali ke Daftar Perangkat"
           >
-            <ArrowLeft className="w-4 h-4 text-emerald-400" />
+            <ArrowLeft className="w-4 h-4 text-blue-500" />
             <span className="hidden sm:inline">Daftar Perangkat</span>
           </button>
 
-          <div className="h-6 w-px bg-zinc-800 shrink-0" />
+          <div className="h-6 w-px bg-black/8 dark:bg-white/10 shrink-0" />
 
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 bg-zinc-800 border border-zinc-700 rounded-xl shrink-0">
+            <div className="p-2 bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 rounded-xl shrink-0">
               {getDeviceIcon(peer.deviceType, 'w-5 h-5')}
             </div>
             <div className="min-w-0">
               <div className="flex items-center gap-2">
-                <h2 className="text-sm sm:text-base font-bold text-white truncate">{peer.name}</h2>
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded font-mono font-medium shrink-0">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate">{peer.name}</h2>
+                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.2 rounded-full font-mono font-medium shrink-0">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   TERHUBUNG
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 font-mono truncate">
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
                 {peer.os || 'OS'} • {peer.ip || 'Wi-Fi LAN'}
                 {pingMs ? ` • ${pingMs} ms` : ''}
               </p>
@@ -472,13 +472,13 @@ export function DeviceWorkspace({
         {/* Right: Battery & Quick Switch */}
         <div className="flex items-center gap-2 shrink-0">
           {peer.battery && typeof peer.battery.level === 'number' && peer.battery.level >= 0 && (
-            <div className="flex items-center gap-1 text-xs text-zinc-300 font-mono bg-zinc-800/80 px-2 py-1 rounded-lg border border-zinc-700/60">
+            <div className="flex items-center gap-1 text-xs text-zinc-700 dark:text-zinc-300 font-mono bg-black/5 dark:bg-white/5 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10">
               {peer.battery.isCharging ? (
-                <BatteryCharging className="w-3.5 h-3.5 text-emerald-400" />
+                <BatteryCharging className="w-3.5 h-3.5 text-emerald-500" />
               ) : peer.battery.level <= 20 ? (
-                <BatteryWarning className="w-3.5 h-3.5 text-amber-400" />
+                <BatteryWarning className="w-3.5 h-3.5 text-amber-500" />
               ) : (
-                <Battery className="w-3.5 h-3.5 text-zinc-300" />
+                <Battery className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
               )}
               <span>{peer.battery.level}%</span>
             </div>
@@ -492,7 +492,7 @@ export function DeviceWorkspace({
               }
               onBack();
             }}
-            className="text-xs text-zinc-400 hover:text-white px-2.5 py-1.5 rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+            className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-3 py-1.5 rounded-full hover:bg-black/5 dark:hover:bg-white/5 transition cursor-pointer"
           >
             Tutup
           </button>
@@ -503,27 +503,27 @@ export function DeviceWorkspace({
       {/* CASE A: Running on PC / Laptop controlling an Android Phone (AnyDesk / StarDesk In-App Mirroring Mode) */}
       {!isMobile && isPeerMobile ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 flex-1">
-          {/* LEFT 7-8 COLUMNS: IN-APP SCREEN MIRRORING (AnyDesk style canvas) */}
-          <div className="lg:col-span-8 bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 flex flex-col justify-between shadow-2xl relative overflow-hidden min-h-[580px]">
+          {/* LEFT 7-8 COLUMNS: IN-APP SCREEN MIRRORING (Apple iPhone Mirroring style) */}
+          <div className="lg:col-span-8 apple-card p-4 flex flex-col justify-between shadow-sm relative overflow-hidden min-h-[580px]">
             {/* Top Toolbar inside Mirroring Box */}
-            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 gap-2 flex-wrap z-20">
+            <div className="flex items-center justify-between pb-3 border-b border-black/8 dark:border-white/10 gap-2 flex-wrap z-20">
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-white flex items-center gap-1.5">
-                  <MonitorPlay className="w-4 h-4 text-emerald-400" />
+                <span className="text-xs font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                  <MonitorPlay className="w-4 h-4 text-blue-500" />
                   Layar Ponsel (In-App)
                 </span>
 
                 {/* Engine switcher */}
-                <div className="bg-zinc-800 p-0.5 rounded-lg border border-zinc-700 flex items-center text-[10px] font-mono">
+                <div className="bg-black/5 dark:bg-white/8 p-0.5 rounded-full border border-black/8 dark:border-white/10 flex items-center text-[10px] font-mono">
                   <button
                     onClick={() => {
                       triggerHaptic([20]);
                       setMirrorEngine('scrcpy');
                     }}
-                    className={`px-2 py-0.5 rounded-md transition ${
+                    className={`px-2.5 py-0.5 rounded-full transition ${
                       mirrorEngine === 'scrcpy'
-                        ? 'bg-emerald-500 text-zinc-950 font-bold'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-[#0071e3] text-white font-semibold'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     ⚡ Scrcpy 60FPS
@@ -533,10 +533,10 @@ export function DeviceWorkspace({
                       triggerHaptic([20]);
                       setMirrorEngine('webrtc');
                     }}
-                    className={`px-2 py-0.5 rounded-md transition ${
+                    className={`px-2.5 py-0.5 rounded-full transition ${
                       mirrorEngine === 'webrtc'
-                        ? 'bg-emerald-500 text-zinc-950 font-bold'
-                        : 'text-zinc-400 hover:text-zinc-200'
+                        ? 'bg-[#0071e3] text-white font-semibold'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
                     }`}
                   >
                     🌐 WebRTC
@@ -550,7 +550,7 @@ export function DeviceWorkspace({
                       triggerHaptic([20]);
                       setIsDockedMode(!isDockedMode);
                     }}
-                    className="text-[10px] text-zinc-400 hover:text-zinc-200 bg-zinc-800 px-2 py-1 rounded-md border border-zinc-700 font-mono transition"
+                    className="text-[10px] text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white bg-black/5 dark:bg-white/8 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10 font-mono transition"
                     title={isDockedMode ? 'Buka Scrcpy di jendela terpisah' : 'Tempelkan Scrcpy di dalam aplikasi'}
                   >
                     {isDockedMode ? '📌 In-App' : '🪟 Pop-Out'}
@@ -563,7 +563,7 @@ export function DeviceWorkspace({
                 {isMirrorActive ? (
                   <button
                     onClick={handleStopMirroring}
-                    className="flex items-center gap-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-sm active:scale-95"
+                    className="flex items-center gap-1.5 bg-red-500/10 hover:bg-red-500/20 text-red-600 dark:text-red-400 border border-red-500/20 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-sm active:scale-95"
                   >
                     <Pause className="w-3.5 h-3.5" />
                     <span>Hentikan Mirror</span>
@@ -572,7 +572,7 @@ export function DeviceWorkspace({
                   <button
                     onClick={() => handleStartMirroring()}
                     disabled={isScrcpyStarting}
-                    className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 disabled:opacity-50"
+                    className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-4 py-1.5 rounded-full text-xs transition cursor-pointer shadow-sm active:scale-95 disabled:opacity-50"
                   >
                     <Play className="w-3.5 h-3.5 fill-current" />
                     <span>{isScrcpyStarting ? 'Menghubungkan...' : 'Mulai Mirroring'}</span>
@@ -583,7 +583,7 @@ export function DeviceWorkspace({
 
             {/* Error Message if any */}
             {scrcpyError && (
-              <div className="bg-red-950/50 border border-red-500/40 text-red-300 text-xs p-2.5 rounded-xl my-2">
+              <div className="bg-red-500/10 border border-red-500/20 text-red-600 dark:text-red-400 text-xs p-3 rounded-2xl my-2">
                 {scrcpyError}
               </div>
             )}
@@ -593,7 +593,7 @@ export function DeviceWorkspace({
               <div
                 ref={mirrorContainerRef}
                 id="scrcpy-container"
-                className="w-full max-w-[340px] h-[480px] sm:h-[540px] bg-black border-4 border-zinc-800 rounded-[2.5rem] shadow-2xl relative overflow-hidden flex flex-col items-center justify-center"
+                className="w-full max-w-[340px] h-[480px] sm:h-[540px] bg-black border-[3px] border-black/20 dark:border-white/20 rounded-[2.5rem] shadow-xl relative overflow-hidden flex flex-col items-center justify-center ring-1 ring-black/5 dark:ring-white/10"
               >
                 {/* Phone Speaker Notch */}
                 <div className="absolute top-2 w-20 h-3 bg-zinc-800 rounded-full z-30 pointer-events-none" />
@@ -602,13 +602,13 @@ export function DeviceWorkspace({
                 {isMirrorActive && mirrorEngine === 'scrcpy' ? (
                   <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
                     {isDockedMode ? (
-                      <p className="text-xs text-zinc-500 font-mono animate-pulse">
+                      <p className="text-xs text-zinc-500 font-mono">
                         [Scrcpy 60 FPS Native Docked Inside Frame]
                       </p>
                     ) : (
                       <div className="flex flex-col items-center">
-                        <Smartphone className="w-12 h-12 text-emerald-400 mb-2" />
-                        <h4 className="text-sm font-bold text-zinc-200 mb-1">Mirroring Aktif (Pop-Out)</h4>
+                        <Smartphone className="w-12 h-12 text-[#0071e3] mb-2" />
+                        <h4 className="text-sm font-semibold text-white mb-1">Mirroring Aktif (Pop-Out)</h4>
                         <p className="text-[11px] text-zinc-400 max-w-[200px]">
                           Tampilan layar ponsel Anda terbuka pada jendela terpisah di Windows.
                         </p>
@@ -626,14 +626,14 @@ export function DeviceWorkspace({
                 ) : (
                   /* Idle / Connect Placeholder */
                   <div className="text-center p-6 flex flex-col items-center justify-center">
-                    <Smartphone className="w-16 h-16 text-zinc-700 mb-3 animate-pulse" />
-                    <h4 className="text-sm font-bold text-zinc-300 mb-1">Mirroring Layar HP</h4>
-                    <p className="text-[11px] text-zinc-500 leading-relaxed mb-4 max-w-[220px]">
-                      Tampilan layar ponsel Vivo Anda akan muncul dan dapat dikontrol langsung di sini.
+                    <Smartphone className="w-14 h-14 text-zinc-600 mb-3" />
+                    <h4 className="text-sm font-semibold text-white mb-1">Mirroring Layar HP</h4>
+                    <p className="text-[11px] text-zinc-400 leading-relaxed mb-4 max-w-[220px]">
+                      Tampilan layar ponsel Anda akan muncul dan dapat dikontrol langsung di sini.
                     </p>
                     <button
                       onClick={() => handleStartMirroring()}
-                      className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold py-2 px-4 rounded-xl transition cursor-pointer shadow-lg active:scale-95"
+                      className="bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-medium py-2 px-5 rounded-full transition cursor-pointer shadow-sm active:scale-95"
                     >
                       Buka Layar HP Sekarang
                     </button>
@@ -642,60 +642,60 @@ export function DeviceWorkspace({
               </div>
             </div>
 
-            {/* Bottom Floating Android Navigation Bar (AnyDesk / StarDesk Controller) */}
-            <div className="bg-zinc-950/90 border border-zinc-800/90 rounded-2xl p-2 flex items-center justify-center gap-2 sm:gap-4 shrink-0 shadow-lg">
+            {/* Bottom Floating Android Navigation Bar (Apple Capsule Floating Style) */}
+            <div className="apple-glass rounded-full px-4 py-1.5 flex items-center justify-center gap-2 sm:gap-4 shrink-0 shadow-sm border border-black/8 dark:border-white/10 self-center">
               <button
                 onClick={() => handleAdbKey(4)}
-                className="flex items-center gap-1 p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer text-xs"
+                className="flex items-center gap-1.5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer text-xs"
                 title="Kembali (Back)"
               >
-                <ChevronLeft className="w-4 h-4 text-zinc-300" />
+                <ChevronLeft className="w-4 h-4" />
                 <span className="hidden sm:inline">Back</span>
               </button>
 
               <button
                 onClick={() => handleAdbKey(3)}
-                className="flex items-center gap-1 p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer text-xs"
+                className="flex items-center gap-1.5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer text-xs"
                 title="Beranda (Home)"
               >
-                <Circle className="w-4 h-4 text-emerald-400" />
+                <Circle className="w-4 h-4 text-emerald-500" />
                 <span className="hidden sm:inline">Home</span>
               </button>
 
               <button
                 onClick={() => handleAdbKey(187)}
-                className="flex items-center gap-1 p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer text-xs"
+                className="flex items-center gap-1.5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer text-xs"
                 title="Aplikasi Terbaru (Recents)"
               >
-                <Square className="w-4 h-4 text-cyan-400" />
+                <Square className="w-4 h-4 text-blue-500" />
                 <span className="hidden sm:inline">Recents</span>
               </button>
 
-              <div className="h-4 w-px bg-zinc-800" />
+              <div className="h-4 w-px bg-black/10 dark:bg-white/15" />
 
               <button
                 onClick={() => handleAdbKey(26)}
-                className="flex items-center gap-1 p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-red-400 transition cursor-pointer text-xs"
+                className="flex items-center gap-1.5 p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-red-500 transition cursor-pointer text-xs"
                 title="Tombol Daya / Kunci Layar (Power)"
               >
-                <Power className="w-4 h-4 text-red-400" />
+                <Power className="w-4 h-4 text-red-500" />
                 <span className="hidden sm:inline">Power</span>
               </button>
 
               <button
                 onClick={() => handleAdbKey(24)}
-                className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer"
+                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
                 title="Volume Up"
               >
-                <Volume2 className="w-4 h-4 text-zinc-300" />
+                <Volume2 className="w-4 h-4" />
               </button>
 
               <button
                 onClick={() => handleAdbKey(25)}
-                className="p-2 rounded-xl hover:bg-zinc-800 text-zinc-400 hover:text-white transition cursor-pointer"
+                className="p-2 rounded-full hover:bg-black/5 dark:hover:bg-white/10 text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white transition cursor-pointer"
                 title="Volume Down"
               >
-                <Volume1 className="w-4 h-4 text-zinc-300" />
+                <Volume1 className="w-4 h-4" />
               </button>
             </div>
           </div>
@@ -703,16 +703,16 @@ export function DeviceWorkspace({
           {/* RIGHT 4-5 COLUMNS: FULL FEATURE TOOLBAR FOR THIS PHONE */}
           <div className="lg:col-span-4 flex flex-col gap-3">
             {/* 1. Quick Transfer Dropzone */}
-            <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 shadow-xl flex flex-col gap-2.5">
-              <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Upload className="w-4 h-4 text-cyan-400" />
+            <div className="apple-card p-4 shadow-sm flex flex-col gap-3">
+              <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Upload className="w-4 h-4 text-[#0071e3]" />
                 Transfer Cepat ke Ponsel
               </h4>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-bold py-2.5 px-3 rounded-xl text-xs transition cursor-pointer shadow-sm active:scale-95"
+                  className="flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium py-2.5 px-3 rounded-full text-xs transition cursor-pointer shadow-sm active:scale-95"
                 >
                   <Upload className="w-4 h-4 shrink-0" />
                   <span>Kirim File</span>
@@ -720,14 +720,14 @@ export function DeviceWorkspace({
 
                 <button
                   onClick={() => folderInputRef.current?.click()}
-                  className="flex items-center justify-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-amber-300 border border-amber-500/30 py-2.5 px-3 rounded-xl text-xs font-semibold transition cursor-pointer shadow-sm active:scale-95"
+                  className="flex items-center justify-center gap-1.5 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 py-2.5 px-3 rounded-full text-xs font-medium transition cursor-pointer active:scale-95"
                 >
-                  <FolderUp className="w-4 h-4 shrink-0 text-amber-400" />
+                  <FolderUp className="w-4 h-4 shrink-0 text-amber-500" />
                   <span>Kirim Folder</span>
                 </button>
               </div>
 
-              <p className="text-[10px] text-zinc-500 text-center">
+              <p className="text-[10px] text-zinc-400 dark:text-zinc-500 text-center font-normal">
                 Atau tarik & lepas (drag-and-drop) file langsung ke jendela ini
               </p>
             </div>
@@ -736,9 +736,9 @@ export function DeviceWorkspace({
             {renderTransferHistory()}
 
             {/* 2. File Explorer & Drive Mount */}
-            <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 shadow-xl flex flex-col gap-2.5">
-              <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
-                <Folder className="w-4 h-4 text-emerald-400" />
+            <div className="apple-card p-4 shadow-sm flex flex-col gap-2.5">
+              <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider flex items-center gap-1.5">
+                <Folder className="w-4 h-4 text-emerald-500" />
                 Manajemen Berkas Ponsel
               </h4>
 
@@ -747,18 +747,18 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenFileExplorer?.(peer);
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-xl bg-zinc-800/80 hover:bg-zinc-800 border border-zinc-700/60 hover:border-emerald-500/40 text-left transition cursor-pointer active:scale-98"
+                className="w-full flex items-center justify-between p-3 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-left transition cursor-pointer active:scale-98"
               >
                 <div className="flex items-center gap-2.5">
-                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                  <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                     <Folder className="w-4 h-4" />
                   </div>
                   <div>
-                    <h5 className="text-xs font-bold text-white">Jelajah Berkas (Explorer)</h5>
-                    <p className="text-[10px] text-zinc-400">Akses, unduh, dan unggah file dua arah</p>
+                    <h5 className="text-xs font-semibold text-zinc-900 dark:text-white">Jelajah Berkas (Explorer)</h5>
+                    <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Akses, unduh, dan unggah file dua arah</p>
                   </div>
                 </div>
-                <ArrowLeft className="w-4 h-4 text-zinc-500 rotate-180" />
+                <ArrowLeft className="w-4 h-4 text-zinc-400 rotate-180" />
               </button>
 
               {FEATURE_TOGGLES.enableWindowsDriveMount !== false && (
@@ -767,25 +767,25 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onMountPhoneStorage?.(peer);
                   }}
-                  className="w-full flex items-center justify-between p-3 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 border border-cyan-500/30 text-left transition cursor-pointer active:scale-98"
+                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 hover:bg-blue-500/10 dark:hover:bg-blue-500/15 border border-blue-500/15 text-left transition cursor-pointer active:scale-98"
                 >
                   <div className="flex items-center gap-2.5">
-                    <div className="p-2 rounded-lg bg-cyan-500/20 text-cyan-400">
+                    <div className="p-2 rounded-xl bg-blue-500/20 text-[#0071e3]">
                       <HardDrive className="w-4 h-4" />
                     </div>
                     <div>
-                      <h5 className="text-xs font-bold text-cyan-200">Buka di Windows Explorer (Drive Z:)</h5>
-                      <p className="text-[10px] text-cyan-300/70">Mount memori HP sebagai hard drive PC</p>
+                      <h5 className="text-xs font-semibold text-[#0071e3] dark:text-blue-400">Buka di Windows Explorer (Drive Z:)</h5>
+                      <p className="text-[10px] text-zinc-500 dark:text-zinc-400">Mount memori HP sebagai hard drive PC</p>
                     </div>
                   </div>
-                  <ExternalLink className="w-4 h-4 text-cyan-400" />
+                  <ExternalLink className="w-4 h-4 text-[#0071e3] dark:text-blue-400" />
                 </button>
               )}
             </div>
 
             {/* 3. Multimedia & Utilities (Webcam, Mic, Ring, Chat) */}
-            <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 shadow-xl flex flex-col gap-2">
-              <h4 className="text-xs font-bold text-zinc-300 uppercase tracking-wider mb-1">
+            <div className="apple-card p-4 shadow-sm flex flex-col gap-2.5">
+              <h4 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-0.5">
                 Kamera, Audio & Utilitas
               </h4>
 
@@ -796,9 +796,9 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRequestRemoteCamera?.(peer.id);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 text-xs font-semibold transition cursor-pointer text-left"
+                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
-                  <Camera className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <Camera className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span className="truncate">Webcam HP</span>
                 </button>
 
@@ -808,9 +808,9 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRequestRemoteMic?.(peer.id);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 text-xs font-semibold transition cursor-pointer text-left"
+                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
-                  <Mic className="w-4 h-4 text-teal-400 shrink-0" />
+                  <Mic className="w-4 h-4 text-teal-500 shrink-0" />
                   <span className="truncate">Mic HP (PC Mic)</span>
                 </button>
 
@@ -820,9 +820,9 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onOpenTextSync?.(peer);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-zinc-800/80 hover:bg-zinc-700 text-zinc-200 border border-zinc-700/60 text-xs font-semibold transition cursor-pointer text-left"
+                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
-                  <MessageSquare className="w-4 h-4 text-cyan-400 shrink-0" />
+                  <MessageSquare className="w-4 h-4 text-[#0071e3] shrink-0" />
                   <span className="truncate">Kirim Teks</span>
                 </button>
 
@@ -832,9 +832,9 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRingDevice?.(peer.id, peer.deviceId);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-semibold transition cursor-pointer text-left"
+                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-red-500/5 dark:bg-red-500/10 hover:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/15 text-xs font-medium transition cursor-pointer text-left"
                 >
-                  <BellRing className="w-4 h-4 text-red-400 shrink-0" />
+                  <BellRing className="w-4 h-4 text-red-500 shrink-0" />
                   <span className="truncate">Deringkan HP</span>
                 </button>
               </div>
@@ -844,10 +844,10 @@ export function DeviceWorkspace({
       ) : (
         /* CASE B: Running on Mobile Phone controlling Laptop/PC (or Mobile to Mobile) */
         <div className="flex flex-col gap-4">
-          <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-5 shadow-2xl flex flex-col gap-4">
+          <div className="apple-card p-5 shadow-sm flex flex-col gap-4">
             <div>
-              <h3 className="text-base font-bold text-white mb-1">Pusat Kontrol PC</h3>
-              <p className="text-xs text-zinc-400">
+              <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1">Pusat Kontrol PC</h3>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
                 Pilih aksi untuk mengontrol, mentransfer berkas, atau memanfaatkan sensor ke {peer.name}.
               </p>
             </div>
@@ -860,14 +860,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenTouchpad?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-emerald-500/30 hover:border-emerald-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-emerald-500/20 text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                   <MousePointer className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Remote Mouse & Touchpad</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Remote Mouse & Touchpad</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Gunakan layar sentuh HP sebagai touchpad, gesture scrolling, dan numpad PC
                   </p>
                 </div>
@@ -879,14 +879,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenMacroPad?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-purple-500/30 hover:border-purple-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-purple-500/20 text-purple-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
                   <Layers className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Macro Pad & Shortcut PC</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Macro Pad & Shortcut PC</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Tombol pintasan cepat Stream Deck untuk OBS, Windows, dan multimedia
                   </p>
                 </div>
@@ -895,14 +895,14 @@ export function DeviceWorkspace({
               {/* 3. Send Files & Folder */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-cyan-500/30 hover:border-cyan-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-cyan-500/20 text-cyan-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
                   <Upload className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Kirim File & Folder</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim File & Folder</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Transfer foto, video, atau dokumen berkecepatan tinggi tanpa kuota internet
                   </p>
                 </div>
@@ -914,14 +914,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenFileExplorer?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-zinc-700/40 text-amber-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                   <Folder className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Jelajah File Laptop</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jelajah File Laptop</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Akses folder laptop dan unduh berkas langsung ke penyimpanan ponsel
                   </p>
                 </div>
@@ -933,14 +933,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'camera');
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-zinc-700/40 text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                   <Camera className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Jadikan Webcam Laptop</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jadikan Webcam Laptop</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Gunakan kamera ponsel berkualitas tinggi sebagai webcam PC/OBS
                   </p>
                 </div>
@@ -952,14 +952,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'mic');
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-zinc-700/40 text-teal-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0">
                   <Mic className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Jadikan Mic Laptop</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jadikan Mic Laptop</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Streaming audio mic HP dengan hardware AI Noise Cancellation ke PC
                   </p>
                 </div>
@@ -971,14 +971,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenTextSync?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-zinc-700/40 text-cyan-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
                   <MessageSquare className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Kirim Teks & Clipboard</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim Teks & Clipboard</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Kirim link, pesan instan, dan sinkronisasi papan klip otomatis
                   </p>
                 </div>
@@ -990,14 +990,14 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onRequestRemoteScreen?.(peer.id);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-zinc-800/90 hover:bg-zinc-800 border border-zinc-700 hover:border-zinc-500 text-left transition cursor-pointer active:scale-98 shadow-md"
+                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
               >
-                <div className="p-3 rounded-xl bg-zinc-700/40 text-indigo-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
                   <MonitorPlay className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-bold text-white">Lihat Layar Laptop</h4>
-                  <p className="text-[11px] text-zinc-400 mt-0.5">
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Lihat Layar Laptop</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
                     Pantau layar laptop dari layar ponsel secara realtime (WebRTC)
                   </p>
                 </div>

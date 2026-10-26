@@ -76,41 +76,41 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
 
   return (
     <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200 smooth-gpu">
-      <div className="bg-zinc-900/95 border border-zinc-800 rounded-2xl p-4 shadow-2xl relative backdrop-blur-md transition-all">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all">
         {/* Close button if finished */}
         {isDone && (
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-zinc-400 hover:text-white p-1 rounded hover:bg-zinc-800 transition cursor-pointer"
+            className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
         )}
 
         <div className="flex items-start gap-3 mb-3">
-          <div className="p-2 rounded-lg bg-zinc-800 border border-zinc-700/60 text-zinc-300">
+          <div className="p-2.5 rounded-xl bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 text-zinc-800 dark:text-zinc-200 shrink-0">
             {isDone ? (
-              <CheckCircle2 className="w-4 h-4 text-emerald-400" />
+              <CheckCircle2 className="w-4 h-4 text-emerald-500" />
             ) : isUpload ? (
-              <Upload className="w-4 h-4 text-zinc-300" />
+              <Upload className="w-4 h-4 text-[#0071e3]" />
             ) : (
-              <Download className="w-4 h-4 text-zinc-300" />
+              <Download className="w-4 h-4 text-[#0071e3]" />
             )}
           </div>
 
           <div className="flex-1 min-w-0 pr-4">
-            <h4 className="text-xs font-semibold text-white truncate">
+            <h4 className="text-xs font-semibold text-zinc-900 dark:text-white truncate">
               {transfer.fileName}
             </h4>
             {transfer.relativePath && transfer.relativePath.includes('/') && (
-              <div className="text-[10px] text-amber-400 font-mono truncate">
+              <div className="text-[10px] text-amber-600 dark:text-amber-400 font-mono truncate">
                 📁 {transfer.relativePath}
               </div>
             )}
-            <div className="flex items-center gap-2 text-[11px] text-zinc-400 mt-0.5 font-mono">
+            <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5 font-mono">
               <span>{formatBytes(transfer.fileSize || 0)}</span>
               <span>•</span>
-              <span className={isPaused ? "text-amber-400 font-semibold" : "text-zinc-300"}>
+              <span className={isPaused ? "text-amber-500 font-medium" : "text-zinc-700 dark:text-zinc-300"}>
                 {isPaused ? 'Dijeda' : transfer.speed}
               </span>
             </div>
@@ -118,10 +118,10 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
         </div>
 
         {/* Progress Bar */}
-        <div className="w-full bg-zinc-800 rounded-full h-1.5 overflow-hidden mb-3">
+        <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-1.5 overflow-hidden mb-3">
           <div
             className={`h-full transition-all duration-150 rounded-full ${
-              isDone ? 'bg-emerald-500' : isPaused ? 'bg-amber-400' : 'bg-zinc-200'
+              isDone ? 'bg-emerald-500' : isPaused ? 'bg-amber-500' : 'bg-[#0071e3]'
             }`}
             style={{ width: `${transfer.progress}%` }}
           />
@@ -130,7 +130,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
         {/* Status Text & Actions */}
         <div className="flex items-center justify-between text-xs">
           <div className="min-w-0 pr-2">
-            <span className="text-zinc-400 text-[11px] block truncate">
+            <span className="text-zinc-500 dark:text-zinc-400 text-[11px] block truncate">
               {isDone
                 ? isUpload
                   ? 'File Berhasil Terkirim'
@@ -149,17 +149,17 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
               {onTogglePause && isUpload && (
                 <button
                   onClick={() => onTogglePause(transfer.fileId)}
-                  className="flex items-center gap-1 px-2 py-0.5 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 hover:text-white text-[11px] transition cursor-pointer"
+                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium transition cursor-pointer"
                   title={isPaused ? "Lanjutkan Transfer" : "Jeda Transfer"}
                 >
                   {isPaused ? (
                     <>
-                      <Play className="w-3 h-3 text-emerald-400" />
+                      <Play className="w-3 h-3 text-emerald-500" />
                       <span>Lanjut</span>
                     </>
                   ) : (
                     <>
-                      <Pause className="w-3 h-3 text-amber-400" />
+                      <Pause className="w-3 h-3 text-amber-500" />
                       <span>Jeda</span>
                     </>
                   )}
@@ -169,7 +169,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
               {onCancel && (
                 <button
                   onClick={() => onCancel(transfer.fileId, transfer.peerId)}
-                  className="p-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-400 hover:text-red-400 transition cursor-pointer"
+                  className="p-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-400 hover:text-red-500 transition cursor-pointer"
                   title="Batalkan Transfer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -181,7 +181,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
           {isDone && !isUpload && transfer.blobUrl && (
             <button
               onClick={handleDownloadBlob}
-              className="flex items-center gap-1.5 bg-zinc-100 hover:bg-white text-zinc-950 font-medium px-2.5 py-1 rounded text-xs transition cursor-pointer"
+              className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3 py-1 rounded-full text-xs transition cursor-pointer shadow-sm active:scale-95"
             >
               <ArrowDownToLine className="w-3.5 h-3.5" />
               <span>Simpan Ulang</span>
@@ -191,7 +191,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
           {isDone && isUpload && (
             <button
               onClick={onClose}
-              className="text-xs text-zinc-400 hover:text-white px-2 py-0.5 rounded hover:bg-zinc-800 cursor-pointer"
+              className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1 rounded-full hover:bg-black/5 dark:hover:bg-white/8 cursor-pointer"
             >
               Tutup
             </button>

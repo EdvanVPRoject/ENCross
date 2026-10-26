@@ -57,6 +57,46 @@ export function App() {
   // Session Transfer History (max 10 items)
   const [transferHistory, setTransferHistory] = useState([]);
 
+  // Apple Continuity Theme State: 'dark' (default True AMOLED Black) | 'light' (Pristine Silver & Frosted Glass)
+  const [theme, setTheme] = useState(() => {
+    try {
+      return localStorage.getItem('encross_theme') || 'dark';
+    } catch {
+      return 'dark';
+    }
+  });
+
+  useEffect(() => {
+    try {
+      localStorage.setItem('encross_theme', theme);
+    } catch {}
+
+    const isLight = theme === 'light';
+    document.documentElement.classList.toggle('light', isLight);
+    document.documentElement.classList.toggle('dark', !isLight);
+    document.body.classList.toggle('light', isLight);
+    document.body.classList.toggle('dark', !isLight);
+
+    const updateStatusBar = async () => {
+      try {
+        const { StatusBar, Style } = await import('@capacitor/status-bar');
+        if (isLight) {
+          await StatusBar.setStyle({ style: Style.Light });
+          await StatusBar.setBackgroundColor({ color: '#F5F5F7' });
+        } else {
+          await StatusBar.setStyle({ style: Style.Dark });
+          await StatusBar.setBackgroundColor({ color: '#000000' });
+        }
+      } catch {}
+    };
+    updateStatusBar();
+  }, [theme]);
+
+  const toggleTheme = () => {
+    triggerHaptic([20]);
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
+
   // Ring Phone Alarm States
   const [isRingingActive, setIsRingingActive] = useState(false);
   const [ringingSenderName, setRingingSenderName] = useState('');
@@ -1550,8 +1590,8 @@ export function App() {
   const joinUrl = `${protocol}//${resolvedIp}${currentPort}/?room=${roomId}`;
 
   return (
-    <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-zinc-950 text-zinc-100 flex flex-col font-sans selection:bg-zinc-800 selection:text-white">
-      {/* Top Navbar with click-to-rename */}
+    <div className="min-h-[100dvh] w-full max-w-full overflow-x-hidden bg-[#f5f5f7] dark:bg-black text-[#1d1d1f] dark:text-[#f5f5f7] flex flex-col font-sans selection:bg-blue-500/20 selection:text-blue-500 transition-colors duration-200">
+      {/* Top Navbar with click-to-rename & theme switcher */}
       <Navbar
         selfInfo={selfInfo}
         localIp={resolvedIp}
@@ -1560,6 +1600,8 @@ export function App() {
         onOpenQR={() => setIsQrOpen(true)}
         onOpenRename={() => setIsRenameOpen(true)}
         onOpenConnect={() => setIsServerIpModalOpen(true)}
+        theme={theme}
+        onToggleTheme={toggleTheme}
       />
 
       {/* Floating Incoming Text Pop-up Notification (top-16 to avoid blocking Navbar) */}

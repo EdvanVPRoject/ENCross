@@ -46,7 +46,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
   const [newLabel, setNewLabel] = useState('');
   const [newType, setNewType] = useState('hotkey'); // 'hotkey' | 'text' | 'lock'
   const [newCommand, setNewCommand] = useState('');
-  const [newColor, setNewColor] = useState('emerald');
+  const [newColor, setNewColor] = useState('blue');
 
   useEffect(() => {
     try {
@@ -102,13 +102,14 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
   };
 
   const colorStyles = {
-    emerald: 'bg-emerald-500/15 hover:bg-emerald-500/25 border-emerald-500/35 text-emerald-300',
-    sky: 'bg-sky-500/15 hover:bg-sky-500/25 border-sky-500/35 text-sky-300',
-    rose: 'bg-rose-500/15 hover:bg-rose-500/25 border-rose-500/35 text-rose-300',
-    amber: 'bg-amber-500/15 hover:bg-amber-500/25 border-amber-500/35 text-amber-300',
-    purple: 'bg-purple-500/15 hover:bg-purple-500/25 border-purple-500/35 text-purple-300',
-    indigo: 'bg-indigo-500/15 hover:bg-indigo-500/25 border-indigo-500/35 text-indigo-300',
-    zinc: 'bg-zinc-800/80 hover:bg-zinc-700 border-zinc-700/60 text-zinc-200'
+    blue: 'bg-blue-500/10 hover:bg-blue-500/15 border-blue-500/20 text-[#0071e3] dark:text-blue-400',
+    emerald: 'bg-emerald-500/10 hover:bg-emerald-500/15 border-emerald-500/20 text-emerald-600 dark:text-emerald-400',
+    sky: 'bg-sky-500/10 hover:bg-sky-500/15 border-sky-500/20 text-sky-600 dark:text-sky-400',
+    rose: 'bg-rose-500/10 hover:bg-rose-500/15 border-rose-500/20 text-rose-600 dark:text-rose-400',
+    amber: 'bg-amber-500/10 hover:bg-amber-500/15 border-amber-500/20 text-amber-600 dark:text-amber-400',
+    purple: 'bg-purple-500/10 hover:bg-purple-500/15 border-purple-500/20 text-purple-600 dark:text-purple-400',
+    indigo: 'bg-indigo-500/10 hover:bg-indigo-500/15 border-indigo-500/20 text-indigo-600 dark:text-indigo-400',
+    zinc: 'bg-black/4 dark:bg-white/5 hover:bg-black/8 dark:hover:bg-white/10 border-black/8 dark:border-white/10 text-zinc-700 dark:text-zinc-300'
   };
 
   const systemMacros = [
@@ -149,87 +150,87 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
   ];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-3xl w-full max-w-lg h-[90vh] max-h-[720px] flex flex-col shadow-2xl overflow-hidden select-none">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-lg h-[90vh] max-h-[720px] flex flex-col shadow-2xl overflow-hidden select-none">
         {/* Header */}
-        <div className="flex items-center justify-between px-4 py-3.5 border-b border-zinc-800/80 bg-zinc-950/70">
+        <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3">
           <div className="flex items-center gap-2.5 min-w-0">
-            <div className="p-2 rounded-xl bg-purple-500/15 text-purple-400 border border-purple-500/30">
+            <div className="p-2 rounded-xl bg-purple-500/10 text-purple-600 dark:text-purple-400">
               <Layers className="w-4 h-4" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-bold text-white truncate">Virtual Macro Pad</h3>
-                <span className="text-[9px] bg-purple-500/20 text-purple-300 border border-purple-500/40 px-1.5 py-0.2 rounded font-mono font-semibold uppercase">
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm font-semibold text-zinc-900 dark:text-white truncate">Virtual Macro Pad</h3>
+                <span className="text-[9px] bg-purple-500/10 text-purple-600 dark:text-purple-400 border border-purple-500/20 px-2 py-0.2 rounded-full font-mono font-medium uppercase">
                   Stream Deck
                 </span>
               </div>
-              <p className="text-[11px] text-zinc-400 truncate">
-                Terkoneksi ke: <span className="text-purple-300 font-medium">{targetPeer?.name || 'PC'}</span>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
+                Terkoneksi ke: <span className="text-purple-600 dark:text-purple-400 font-medium">{targetPeer?.name || 'PC'}</span>
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800 transition cursor-pointer"
+            className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        {/* Tab Selector */}
-        <div className="grid grid-cols-4 gap-1 p-2 bg-zinc-950/40 border-b border-zinc-800/60 text-xs font-semibold">
+        {/* Tab Selector - Apple Segmented Capsule */}
+        <div className="grid grid-cols-4 gap-1 p-1 m-3 rounded-full bg-black/5 dark:bg-white/8 border border-black/5 dark:border-white/5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('system')}
-            className={`py-2 rounded-xl transition cursor-pointer flex flex-col items-center gap-1 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
               activeTab === 'system'
-                ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/60'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <Monitor className="w-3.5 h-3.5 text-sky-400" />
+            <Monitor className="w-3.5 h-3.5" />
             <span className="text-[10px]">Sistem</span>
           </button>
 
           <button
             onClick={() => setActiveTab('media')}
-            className={`py-2 rounded-xl transition cursor-pointer flex flex-col items-center gap-1 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
               activeTab === 'media'
-                ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/60'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <Headphones className="w-3.5 h-3.5 text-purple-400" />
-            <span className="text-[10px]">Media & Voice</span>
+            <Headphones className="w-3.5 h-3.5" />
+            <span className="text-[10px]">Media</span>
           </button>
 
           <button
             onClick={() => setActiveTab('browser')}
-            className={`py-2 rounded-xl transition cursor-pointer flex flex-col items-center gap-1 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
               activeTab === 'browser'
-                ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/60'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <Globe className="w-3.5 h-3.5 text-emerald-400" />
+            <Globe className="w-3.5 h-3.5" />
             <span className="text-[10px]">Browser</span>
           </button>
 
           <button
             onClick={() => setActiveTab('custom')}
-            className={`py-2 rounded-xl transition cursor-pointer flex flex-col items-center gap-1 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
               activeTab === 'custom'
-                ? 'bg-zinc-800 text-white shadow-xs border border-zinc-700/60'
-                : 'text-zinc-400 hover:text-zinc-200'
+                ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
+                : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
             }`}
           >
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <Sparkles className="w-3.5 h-3.5" />
             <span className="text-[10px]">Kustom</span>
           </button>
         </div>
 
         {/* Tiles Area */}
-        <div className="flex-1 overflow-y-auto p-3.5 min-h-0">
+        <div className="flex-1 overflow-y-auto p-3.5 pt-0 min-h-0">
           {activeTab === 'system' && (
             <div className="grid grid-cols-2 gap-2.5">
               {systemMacros.map((macro, idx) => {
@@ -241,13 +242,13 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                     className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="p-1.5 rounded-lg bg-black/20 shrink-0">
+                      <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
                         <IconComponent className="w-4 h-4" />
                       </div>
                       <span className="text-[9px] font-mono opacity-60 font-semibold uppercase">{macro.hint}</span>
                     </div>
                     <div className="mt-2">
-                      <span className="text-xs font-bold leading-tight block text-white">{macro.label}</span>
+                      <span className="text-xs font-semibold leading-tight block text-zinc-900 dark:text-white">{macro.label}</span>
                     </div>
                   </button>
                 );
@@ -266,13 +267,13 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                     className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="p-1.5 rounded-lg bg-black/20 shrink-0">
+                      <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
                         <IconComponent className="w-4 h-4" />
                       </div>
                       <span className="text-[9px] font-mono opacity-60 font-semibold uppercase">{macro.hint}</span>
                     </div>
                     <div className="mt-2">
-                      <span className="text-xs font-bold leading-tight block text-white">{macro.label}</span>
+                      <span className="text-xs font-semibold leading-tight block text-zinc-900 dark:text-white">{macro.label}</span>
                     </div>
                   </button>
                 );
@@ -291,13 +292,13 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                     className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="p-1.5 rounded-lg bg-black/20 shrink-0">
+                      <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
                         <IconComponent className="w-4 h-4" />
                       </div>
                       <span className="text-[9px] font-mono opacity-60 font-semibold uppercase">{macro.hint}</span>
                     </div>
                     <div className="mt-2">
-                      <span className="text-xs font-bold leading-tight block text-white">{macro.label}</span>
+                      <span className="text-xs font-semibold leading-tight block text-zinc-900 dark:text-white">{macro.label}</span>
                     </div>
                   </button>
                 );
@@ -312,22 +313,22 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <div
                     key={macro.id}
                     onClick={() => executeCommand(macro.cmd)}
-                    className={`relative flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[84px] text-left group ${colorStyles[macro.color] || colorStyles.emerald}`}
+                    className={`relative flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[84px] text-left group ${colorStyles[macro.color] || colorStyles.blue}`}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <div className="p-1.5 rounded-lg bg-black/20 shrink-0">
+                      <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
                         <Sparkles className="w-4 h-4" />
                       </div>
                       <button
                         onClick={(e) => handleDeleteCustomMacro(macro.id, e)}
-                        className="p-1 text-zinc-400 hover:text-red-400 rounded hover:bg-black/30 transition cursor-pointer"
+                        className="p-1 text-zinc-400 hover:text-red-500 rounded-full hover:bg-black/10 dark:hover:bg-white/10 transition cursor-pointer"
                         title="Hapus Macro"
                       >
                         <Trash2 className="w-3.5 h-3.5" />
                       </button>
                     </div>
                     <div className="mt-2 w-full">
-                      <span className="text-xs font-bold leading-tight block text-white truncate">{macro.label}</span>
+                      <span className="text-xs font-semibold leading-tight block text-zinc-900 dark:text-white truncate">{macro.label}</span>
                       <span className="text-[9px] font-mono opacity-60 block truncate">{macro.hint}</span>
                     </div>
                   </div>
@@ -337,9 +338,9 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
               {/* Add New Custom Macro Button */}
               <button
                 onClick={() => setIsAddingMacro(true)}
-                className="w-full py-3 rounded-2xl border-2 border-dashed border-zinc-700 hover:border-emerald-500/50 bg-zinc-950/40 hover:bg-emerald-500/5 text-zinc-300 hover:text-emerald-300 flex items-center justify-center gap-2 text-xs font-bold transition cursor-pointer active:scale-[0.98]"
+                className="w-full py-3 rounded-2xl border border-dashed border-black/15 dark:border-white/20 bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 text-zinc-700 dark:text-zinc-300 flex items-center justify-center gap-2 text-xs font-medium transition cursor-pointer active:scale-[0.98]"
               >
-                <Plus className="w-4 h-4 text-emerald-400" />
+                <Plus className="w-4 h-4 text-[#0071e3]" />
                 <span>Tambah Tombol Macro Baru</span>
               </button>
             </div>
@@ -348,37 +349,37 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
         {/* Modal: Tambah Custom Macro */}
         {isAddingMacro && (
-          <div className="absolute inset-0 bg-black/85 backdrop-blur-xs z-30 flex items-center justify-center p-4">
-            <div className="bg-zinc-900 border border-zinc-700 rounded-2xl max-w-sm w-full p-5 text-left shadow-2xl relative">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-30 flex items-center justify-center p-4">
+            <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl max-w-sm w-full p-6 text-left shadow-2xl relative">
               <button
                 onClick={() => setIsAddingMacro(false)}
-                className="absolute top-4 right-4 p-1 text-zinc-400 hover:text-white rounded-lg hover:bg-zinc-800"
+                className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10"
               >
                 <X className="w-4 h-4" />
               </button>
 
-              <h4 className="text-sm font-bold text-white mb-1">Buat Tombol Macro Baru</h4>
-              <p className="text-[11px] text-zinc-400 mb-4">Tambahkan aksi atau shortcut kustom untuk PC Anda</p>
+              <h4 className="text-sm font-semibold text-zinc-900 dark:text-white mb-1">Buat Tombol Macro Baru</h4>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-4">Tambahkan aksi atau shortcut kustom untuk PC Anda</p>
 
-              <form onSubmit={handleAddCustomMacro} className="space-y-3 text-xs">
+              <form onSubmit={handleAddCustomMacro} className="space-y-3.5 text-xs">
                 <div>
-                  <label className="text-zinc-300 font-semibold block mb-1">Nama Tombol</label>
+                  <label className="text-zinc-700 dark:text-zinc-300 font-medium block mb-1">Nama Tombol</label>
                   <input
                     type="text"
                     required
                     placeholder="Contoh: Mute Discord / Paste Email"
                     value={newLabel}
                     onChange={(e) => setNewLabel(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3.5 py-2 bg-black/5 dark:bg-white/8 border border-black/8 dark:border-white/10 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
                   />
                 </div>
 
                 <div>
-                  <label className="text-zinc-300 font-semibold block mb-1">Tipe Aksi</label>
+                  <label className="text-zinc-700 dark:text-zinc-300 font-medium block mb-1">Tipe Aksi</label>
                   <select
                     value={newType}
                     onChange={(e) => setNewType(e.target.value)}
-                    className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                    className="w-full px-3.5 py-2 bg-black/5 dark:bg-white/8 border border-black/8 dark:border-white/10 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
                   >
                     <option value="hotkey">Shortcut Keyboard (Contoh: Ctrl+Alt+T)</option>
                     <option value="text">Ketik Teks Otomatis (Text Snippet)</option>
@@ -388,7 +389,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
                 {newType !== 'lock' && (
                   <div>
-                    <label className="text-zinc-300 font-semibold block mb-1">
+                    <label className="text-zinc-700 dark:text-zinc-300 font-medium block mb-1">
                       {newType === 'hotkey' ? 'Kombinasi Tombol' : 'Teks yang Diketik'}
                     </label>
                     <input
@@ -397,26 +398,27 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                       placeholder={newType === 'hotkey' ? 'Contoh: ctrl alt t atau win shift s' : 'Ketik teks atau template email...'}
                       value={newCommand}
                       onChange={(e) => setNewCommand(e.target.value)}
-                      className="w-full px-3 py-2 bg-zinc-950 border border-zinc-800 rounded-xl text-white focus:outline-none focus:border-emerald-500"
+                      className="w-full px-3.5 py-2 bg-black/5 dark:bg-white/8 border border-black/8 dark:border-white/10 rounded-xl text-zinc-900 dark:text-white focus:outline-none focus:border-[#0071e3]"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="text-zinc-300 font-semibold block mb-1">Warna Tombol</label>
+                  <label className="text-zinc-700 dark:text-zinc-300 font-medium block mb-1.5">Warna Tombol</label>
                   <div className="flex items-center gap-2">
-                    {['emerald', 'sky', 'rose', 'amber', 'purple', 'indigo'].map((c) => (
+                    {['blue', 'emerald', 'sky', 'rose', 'amber', 'purple', 'indigo'].map((c) => (
                       <button
                         key={c}
                         type="button"
                         onClick={() => setNewColor(c)}
                         className={`w-7 h-7 rounded-full border-2 transition active:scale-90 ${
+                          c === 'blue' ? 'bg-[#0071e3]' :
                           c === 'emerald' ? 'bg-emerald-500' :
                           c === 'sky' ? 'bg-sky-500' :
                           c === 'rose' ? 'bg-rose-500' :
                           c === 'amber' ? 'bg-amber-500' :
                           c === 'purple' ? 'bg-purple-500' : 'bg-indigo-500'
-                        } ${newColor === c ? 'border-white scale-110' : 'border-transparent opacity-60'}`}
+                        } ${newColor === c ? 'border-zinc-900 dark:border-white scale-110' : 'border-transparent opacity-60'}`}
                       />
                     ))}
                   </div>
@@ -426,13 +428,13 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <button
                     type="button"
                     onClick={() => setIsAddingMacro(false)}
-                    className="flex-1 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-semibold"
+                    className="flex-1 py-2 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-600 dark:text-zinc-400 font-medium"
                   >
                     Batal
                   </button>
                   <button
                     type="submit"
-                    className="flex-1 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold"
+                    className="flex-1 py-2 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium shadow-sm active:scale-95"
                   >
                     Simpan Macro
                   </button>
