@@ -60,6 +60,50 @@ export function App() {
   // Ring Phone Alarm States
   const [isRingingActive, setIsRingingActive] = useState(false);
   const [ringingSenderName, setRingingSenderName] = useState('');
+  const alarmIntervalRef = useRef(null);
+  const alarmCtxRef = useRef(null);
+
+  const startAlarmAudio = () => {
+    try {
+      const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
+      if (!AudioCtxClass) return;
+      if (!alarmCtxRef.current || alarmCtxRef.current.state === 'closed') {
+        alarmCtxRef.current = new AudioCtxClass();
+      }
+      const ctx = alarmCtxRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      let toneHigh = true;
+      if (alarmIntervalRef.current) clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = setInterval(() => {
+        if (!alarmCtxRef.current || alarmCtxRef.current.state === 'closed') return;
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(toneHigh ? 960 : 640, ctx.currentTime);
+        toneHigh = !toneHigh;
+        gain.gain.setValueAtTime(0.85, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, ctx.currentTime + 0.22);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.25);
+        if (navigator.vibrate) navigator.vibrate([200, 50]);
+      }, 250);
+    } catch (_) {}
+  };
+
+  const stopAlarmAudio = () => {
+    if (alarmIntervalRef.current) {
+      clearInterval(alarmIntervalRef.current);
+      alarmIntervalRef.current = null;
+    }
+    if (alarmCtxRef.current) {
+      try { alarmCtxRef.current.close(); } catch (_) {}
+      alarmCtxRef.current = null;
+    }
+  };
 
   // Virtual Touchpad & Numpad States
   const [isTouchpadModalOpen, setIsTouchpadModalOpen] = useState(false);
@@ -611,11 +655,13 @@ export function App() {
       if (window.AndroidRinger?.startRinging) {
         window.AndroidRinger.startRinging();
       }
+      startAlarmAudio();
       setIsRingingActive(true);
       setRingingSenderName(senderName || 'Laptop');
     });
 
     newSocket.on('stop-ring-device', () => {
+      stopAlarmAudio();
       if (window.AndroidRinger?.stopRinging) {
         window.AndroidRinger.stopRinging();
       }
@@ -949,9 +995,9 @@ export function App() {
   }, [socket]);
 
   // Ring My Phone Handlers
-  const handleRingDevice = (targetId) => {
-    if (!socket || !targetId) return;
-    socket.emit('ring-device', { targetId });
+  const handleRingDevice = (targetId, targetDeviceId) => {
+    if (!socket) return;
+    socket.emit('ring-device', { targetId, targetDeviceId });
     setIncomingToast({
       senderName: 'Sistem',
       text: 'Membunyikan alarm di ponsel target...',
@@ -959,13 +1005,14 @@ export function App() {
     });
   };
 
-  const handleStopRinging = () => {
+  const handleStopRinging = (targetId, targetDeviceId) => {
+    stopAlarmAudio();
     if (window.AndroidRinger?.stopRinging) {
       window.AndroidRinger.stopRinging();
     }
     setIsRingingActive(false);
     if (socket) {
-      socket.emit('stop-ring-device', {});
+      socket.emit('stop-ring-device', { targetId, targetDeviceId });
     }
   };
 
@@ -1352,22 +1399,22 @@ export function App() {
     socket.emit('request-camera-switch', { targetId });
   };
 
-  const handleRequestRemoteScreen = (targetId) => {
-    if (!socket || !targetId) return;
+  const handleRequestRemoteScreen = (targetId, targetDeviceId) => {
+    if (!socket) return;
     triggerHaptic([30]);
-    socket.emit('request-remote-screen', { targetId });
+    socket.emit('request-remote-screen', { targetId, targetDeviceId });
   };
 
-  const handleRequestRemoteCamera = (targetId) => {
-    if (!socket || !targetId) return;
+  const handleRequestRemoteCamera = (targetId, targetDeviceId) => {
+    if (!socket) return;
     triggerHaptic([30]);
-    socket.emit('request-remote-camera', { targetId });
+    socket.emit('request-remote-camera', { targetId, targetDeviceId });
   };
 
-  const handleRequestRemoteMic = (targetId) => {
-    if (!socket || !targetId) return;
+  const handleRequestRemoteMic = (targetId, targetDeviceId) => {
+    if (!socket) return;
     triggerHaptic([30]);
-    socket.emit('request-remote-mic', { targetId });
+    socket.emit('request-remote-mic', { targetId, targetDeviceId });
   };
 
   const handleOpenScrcpy = (peer, mode = 'display') => {

@@ -339,55 +339,65 @@ app.get('/api/media-stream-proxy', (req, res) => {
       });
     });
 
-    socket.on('signal-offer', ({ targetId, offer, metadata }) => {
-      io.to(targetId).emit('signal-offer', { senderId: socket.id, offer, metadata });
-    });
+    const isSocketActive = (id) =>
+      Boolean(id && (io.sockets?.sockets?.has ? io.sockets.sockets.has(id) : Boolean(io.sockets?.sockets?.[id])));
 
-    socket.on('signal-answer', ({ targetId, answer }) => {
-      io.to(targetId).emit('signal-answer', { senderId: socket.id, answer });
-    });
+    const resolveTargetSocket = (targetId, targetDeviceId) => {
+      if (!currentRoom || !rooms.has(currentRoom)) return targetId;
+      const roomPeers = rooms.get(currentRoom);
 
-    socket.on('signal-ice-candidate', ({ targetId, candidate }) => {
-      io.to(targetId).emit('signal-ice-candidate', { senderId: socket.id, candidate });
-    });
+      // 1. Direct deviceKey / targetDeviceId match
+      const searchKey = targetDeviceId || targetId;
+      if (searchKey && roomPeers.has(searchKey)) {
+        const p = roomPeers.get(searchKey);
+        if (p && isSocketActive(p.id)) return p.id;
+      }
 
-    socket.on('send-text-message', ({ targetId, text, timestamp }) => {
-      let resolvedTargetSocket = null;
-
-      const isSocketActive = (id) =>
-        io.sockets?.sockets?.has ? io.sockets.sockets.has(id) : Boolean(io.sockets?.sockets?.[id]);
-
-      if (currentRoom && rooms.has(currentRoom)) {
-        const roomPeers = rooms.get(currentRoom);
-
-        // 1. Direct deviceKey match (e.g. "client_192.168.1.15" or "host_pc")
-        if (targetId && roomPeers.has(targetId)) {
-          resolvedTargetSocket = roomPeers.get(targetId).id;
-        } else if (targetId) {
-          // 2. Search peers by socket.id or deviceId
-          for (const peer of roomPeers.values()) {
-            if (peer.id === targetId || peer.deviceId === targetId) {
-              resolvedTargetSocket = peer.id;
-              break;
-            }
-          }
+      // 2. Search peers by socket.id or deviceId
+      for (const peer of roomPeers.values()) {
+        if (
+          (targetId && peer.id === targetId) ||
+          (targetDeviceId && peer.deviceId === targetDeviceId) ||
+          (targetId && peer.deviceId === targetId)
+        ) {
+          if (isSocketActive(peer.id)) return peer.id;
         }
+      }
 
-        // 3. Check if targetId is an active socket ID
-        if (!resolvedTargetSocket && targetId && isSocketActive(targetId)) {
-          resolvedTargetSocket = targetId;
-        }
+      // 3. If targetId is directly active
+      if (targetId && isSocketActive(targetId)) {
+        return targetId;
+      }
 
-        // 4. Fallback: If 2 devices in room, route to the other device
-        if (!resolvedTargetSocket && roomPeers.size === 2) {
-          for (const [key, peer] of roomPeers.entries()) {
-            if (key !== deviceKey && isSocketActive(peer.id)) {
-              resolvedTargetSocket = peer.id;
-              break;
-            }
+      // 4. Fallback: If 2 devices in room, route to the other peer!
+      if (roomPeers.size === 2) {
+        for (const [key, peer] of roomPeers.entries()) {
+          if (key !== deviceKey && isSocketActive(peer.id)) {
+            return peer.id;
           }
         }
       }
+
+      return targetId;
+    };
+
+    socket.on('signal-offer', ({ targetId, targetDeviceId, offer, metadata }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) io.to(resolved).emit('signal-offer', { senderId: socket.id, offer, metadata });
+    });
+
+    socket.on('signal-answer', ({ targetId, targetDeviceId, answer }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) io.to(resolved).emit('signal-answer', { senderId: socket.id, answer });
+    });
+
+    socket.on('signal-ice-candidate', ({ targetId, targetDeviceId, candidate }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) io.to(resolved).emit('signal-ice-candidate', { senderId: socket.id, candidate });
+    });
+
+    socket.on('send-text-message', ({ targetId, targetDeviceId, text, timestamp }) => {
+      const resolvedTargetSocket = resolveTargetSocket(targetId, targetDeviceId);
 
       const payload = {
         senderId: socket.id,
@@ -406,18 +416,20 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
-    socket.on('screen-share-status', ({ targetId, isSharing, mode }) => {
+    socket.on('screen-share-status', ({ targetId, targetDeviceId, isSharing, mode }) => {
       const payload = { senderId: socket.id, isSharing, mode };
-      if (targetId) {
-        io.to(targetId).emit('peer-screen-share-status', payload);
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('peer-screen-share-status', payload);
       } else if (currentRoom) {
         socket.to(currentRoom).emit('peer-screen-share-status', payload);
       }
     });
 
-    socket.on('request-remote-scrcpy', ({ targetId, mode, cameraFacing }) => {
-      if (targetId) {
-        io.to(targetId).emit('remote-scrcpy-requested', {
+    socket.on('request-remote-scrcpy', ({ targetId, targetDeviceId, mode, cameraFacing }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('remote-scrcpy-requested', {
           senderId: socket.id,
           mode: mode || 'display',
           cameraFacing: cameraFacing || 'back'
@@ -425,27 +437,33 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
-    socket.on('request-camera-switch', ({ targetId }) => {
-      if (targetId) {
-        io.to(targetId).emit('camera-switch-requested', { requesterId: socket.id });
+    socket.on('request-camera-switch', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('camera-switch-requested', { requesterId: socket.id });
       }
     });
 
-    socket.on('request-remote-screen', ({ targetId }) => {
-      if (targetId) {
-        io.to(targetId).emit('remote-screen-requested', { requesterId: socket.id });
+    socket.on('request-remote-screen', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing request-remote-screen -> ${resolved}`);
+        io.to(resolved).emit('remote-screen-requested', { requesterId: socket.id });
       }
     });
 
-    socket.on('request-remote-camera', ({ targetId }) => {
-      if (targetId) {
-        io.to(targetId).emit('remote-camera-requested', { requesterId: socket.id });
+    socket.on('request-remote-camera', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing request-remote-camera -> ${resolved}`);
+        io.to(resolved).emit('remote-camera-requested', { requesterId: socket.id });
       }
     });
 
-    socket.on('request-remote-mic', ({ targetId }) => {
-      if (targetId) {
-        io.to(targetId).emit('remote-mic-requested', {
+    socket.on('request-remote-mic', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('remote-mic-requested', {
           requesterId: socket.id,
           requesterName: peerData?.name || 'PC',
           requesterDeviceId: deviceKey
@@ -453,13 +471,14 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
-    socket.on('camera-facing-changed', ({ targetId, facingMode }) => {
-      if (targetId) {
-        io.to(targetId).emit('camera-facing-changed', { senderId: socket.id, facingMode });
+    socket.on('camera-facing-changed', ({ targetId, targetDeviceId, facingMode }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('camera-facing-changed', { senderId: socket.id, facingMode });
       }
     });
 
-    socket.on('remote-input-event', ({ targetId, event }) => {
+    socket.on('remote-input-event', ({ targetId, targetDeviceId, event }) => {
       if (serverOptions?.onRemoteInput && typeof serverOptions.onRemoteInput === 'function') {
         try {
           serverOptions.onRemoteInput(event);
@@ -471,11 +490,37 @@ app.get('/api/media-stream-proxy', (req, res) => {
           senderId: socket.id,
           event
         };
-        if (targetId) {
-          io.to(targetId).emit('remote-input-event', payload);
+        const resolved = resolveTargetSocket(targetId, targetDeviceId);
+        if (resolved) {
+          io.to(resolved).emit('remote-input-event', payload);
         } else if (currentRoom) {
           socket.to(currentRoom).emit('remote-input-event', payload);
         }
+      }
+    });
+
+    // Ring Phone / Find My Phone Alarm Trigger
+    socket.on('ring-device', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      console.log(`[Server] Ring Device requested by ${socket.id} for target ${targetId}/${targetDeviceId} -> resolved: ${resolved}`);
+      const payload = {
+        senderId: socket.id,
+        senderName: peerData?.name || 'Laptop'
+      };
+      if (resolved) {
+        io.to(resolved).emit('ring-device', payload);
+      } else if (currentRoom) {
+        socket.to(currentRoom).emit('ring-device', payload);
+      }
+    });
+
+    socket.on('stop-ring-device', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      console.log(`[Server] Stop Ring Device requested by ${socket.id} -> resolved: ${resolved}`);
+      if (resolved) {
+        io.to(resolved).emit('stop-ring-device', { senderId: socket.id });
+      } else if (currentRoom) {
+        socket.to(currentRoom).emit('stop-ring-device', { senderId: socket.id });
       }
     });
 
@@ -483,18 +528,20 @@ app.get('/api/media-stream-proxy', (req, res) => {
       if (typeof cb === 'function') cb(Date.now());
     });
 
-    socket.on('fs-list-request', ({ targetId, dirPath }) => {
-      if (targetId) {
-        io.to(targetId).emit('fs-list-request', {
+    socket.on('fs-list-request', ({ targetId, targetDeviceId, dirPath }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('fs-list-request', {
           requesterId: socket.id,
           dirPath: dirPath || '/'
         });
       }
     });
 
-    socket.on('fs-list-response', ({ targetId, currentPath, items, error }) => {
-      if (targetId) {
-        io.to(targetId).emit('fs-list-response', {
+    socket.on('fs-list-response', ({ targetId, targetDeviceId, currentPath, items, error }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('fs-list-response', {
           senderId: socket.id,
           currentPath: currentPath || '/',
           items: items || [],

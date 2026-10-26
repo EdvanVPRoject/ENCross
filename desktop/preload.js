@@ -23,6 +23,11 @@ contextBridge.exposeInMainWorld('electronAPI', {
   updateScrcpyBounds: (bounds) => ipcRenderer.invoke('update-scrcpy-bounds', bounds),
   showScrcpy: () => ipcRenderer.invoke('show-scrcpy'),
   hideScrcpy: () => ipcRenderer.invoke('hide-scrcpy'),
+  onScrcpyStopped: (callback) => {
+    const handler = (_, data) => callback(data);
+    ipcRenderer.on('scrcpy-stopped', handler);
+    return () => ipcRenderer.removeListener('scrcpy-stopped', handler);
+  },
   onWindowBoundsChanged: (callback) => {
     const handler = () => callback();
     ipcRenderer.on('window-bounds-changed', handler);

@@ -8,6 +8,8 @@ import android.media.AudioManager;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.media.AudioAttributes;
+import android.media.MediaPlayer;
+import android.os.PowerManager;
 import android.os.BatteryManager;
 import android.os.Vibrator;
 import android.os.VibrationEffect;
@@ -77,6 +79,7 @@ public class MainActivity extends BridgeActivity {
     private volatile boolean isDispatchingFrame = false;
     private long lastFrameTime = 0;
     private Ringtone alarmRingtone = null;
+    private MediaPlayer alarmPlayer = null;
     private Vibrator phoneVibrator = null;
     private BroadcastReceiver batteryReceiver = null;
 
@@ -844,33 +847,86 @@ public class MainActivity extends BridgeActivity {
     public void startRinging() {
         runOnUiThread(() -> {
             try {
+                // 1. Wake screen up so user can find the phone visually
+                try {
+                    PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                    if (pm != null) {
+                        PowerManager.WakeLock wl = pm.newWakeLock(PowerManager.SCREEN_BRIGHT_WAKE_LOCK | PowerManager.ACQUIRE_CAUSES_WAKEUP, "encross:ring_wake");
+                        wl.acquire(15000); // 15 seconds wake
+                    }
+                } catch (Exception ignored) {}
+
+                // 2. Set max alarm volume
                 AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
                 if (am != null) {
                     int maxVol = am.getStreamMaxVolume(AudioManager.STREAM_ALARM);
                     am.setStreamVolume(AudioManager.STREAM_ALARM, maxVol, 0);
+                    // Also boost music stream as fallback
+                    int maxMusic = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC);
+                    am.setStreamVolume(AudioManager.STREAM_MUSIC, maxMusic, 0);
                 }
 
+                // 3. Stop any existing sounds
+                if (alarmPlayer != null) {
+                    try { alarmPlayer.stop(); alarmPlayer.release(); } catch (Exception ignored) {}
+                    alarmPlayer = null;
+                }
                 if (alarmRingtone != null && alarmRingtone.isPlaying()) {
-                    alarmRingtone.stop();
+                    try { alarmRingtone.stop(); } catch (Exception ignored) {}
                 }
 
+                // 4. Resolve default Alarm or Ringtone Uri
                 Uri alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_ALARM);
                 if (alarmUri == null) {
                     alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_RINGTONE);
                 }
-
-                alarmRingtone = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
-                if (alarmRingtone != null) {
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-                        AudioAttributes aa = new AudioAttributes.Builder()
-                                .setUsage(AudioAttributes.USAGE_ALARM)
-                                .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
-                                .build();
-                        alarmRingtone.setAudioAttributes(aa);
-                    }
-                    alarmRingtone.play();
+                if (alarmUri == null) {
+                    alarmUri = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
                 }
 
+                AudioAttributes aa = null;
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                    aa = new AudioAttributes.Builder()
+                            .setUsage(AudioAttributes.USAGE_ALARM)
+                            .setContentType(AudioAttributes.CONTENT_TYPE_SONIFICATION)
+                            .build();
+                }
+
+                // 5. Play with MediaPlayer in looping mode
+                boolean playedWithMediaPlayer = false;
+                if (alarmUri != null) {
+                    try {
+                        alarmPlayer = new MediaPlayer();
+                        alarmPlayer.setDataSource(getApplicationContext(), alarmUri);
+                        if (aa != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            alarmPlayer.setAudioAttributes(aa);
+                        } else {
+                            alarmPlayer.setAudioStreamType(AudioManager.STREAM_ALARM);
+                        }
+                        alarmPlayer.setLooping(true);
+                        alarmPlayer.prepare();
+                        alarmPlayer.start();
+                        playedWithMediaPlayer = true;
+                    } catch (Exception mpErr) {
+                        mpErr.printStackTrace();
+                    }
+                }
+
+                // Fallback to RingtoneManager if MediaPlayer failed
+                if (!playedWithMediaPlayer && alarmUri != null) {
+                    alarmRingtone = RingtoneManager.getRingtone(getApplicationContext(), alarmUri);
+                    if (alarmRingtone != null) {
+                        if (aa != null && Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+                            alarmRingtone.setAudioAttributes(aa);
+                        }
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                            alarmRingtone.setLooping(true);
+                        }
+                        alarmRingtone.play();
+                    }
+                }
+
+                // 6. Strong repeating vibration
                 if (phoneVibrator == null) {
                     phoneVibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
                 }
@@ -891,8 +947,15 @@ public class MainActivity extends BridgeActivity {
     public void stopRinging() {
         runOnUiThread(() -> {
             try {
+                if (alarmPlayer != null) {
+                    try {
+                        alarmPlayer.stop();
+                        alarmPlayer.release();
+                    } catch (Exception ignored) {}
+                    alarmPlayer = null;
+                }
                 if (alarmRingtone != null) {
-                    alarmRingtone.stop();
+                    try { alarmRingtone.stop(); } catch (Exception ignored) {}
                     alarmRingtone = null;
                 }
                 if (phoneVibrator != null) {

@@ -66,6 +66,7 @@ export function DeviceWorkspace({
 
   // In-App Mirroring states
   const [mirrorEngine, setMirrorEngine] = useState('scrcpy'); // 'scrcpy' | 'webrtc'
+  const [isDockedMode, setIsDockedMode] = useState(true);
   const [isMirrorActive, setIsMirrorActive] = useState(false);
   const [isScrcpyStarting, setIsScrcpyStarting] = useState(false);
   const [scrcpyError, setScrcpyError] = useState(null);
@@ -93,7 +94,7 @@ export function DeviceWorkspace({
 
   // Sync In-App Scrcpy window position to the DOM placeholder bounds
   const updateScrcpyPosition = () => {
-    if (!isElectron || !isMirrorActive || mirrorEngine !== 'scrcpy' || !mirrorContainerRef.current) return;
+    if (!isElectron || !isMirrorActive || mirrorEngine !== 'scrcpy' || !isDockedMode || !mirrorContainerRef.current) return;
     const rect = mirrorContainerRef.current.getBoundingClientRect();
     if (rect.width > 0 && rect.height > 0) {
       window.electronAPI?.updateScrcpyBounds?.({
@@ -106,7 +107,7 @@ export function DeviceWorkspace({
   };
 
   useEffect(() => {
-    if (isMirrorActive && mirrorEngine === 'scrcpy') {
+    if (isMirrorActive && mirrorEngine === 'scrcpy' && isDockedMode) {
       updateScrcpyPosition();
 
       // Listen to window resize / move events from Electron
@@ -131,7 +132,20 @@ export function DeviceWorkspace({
         window.removeEventListener('scroll', updateScrcpyPosition);
       };
     }
-  }, [isMirrorActive, mirrorEngine]);
+  }, [isMirrorActive, mirrorEngine, isDockedMode]);
+
+  // Handle Scrcpy process stopping externally
+  useEffect(() => {
+    if (isElectron && window.electronAPI?.onScrcpyStopped) {
+      const unsub = window.electronAPI.onScrcpyStopped((data) => {
+        setIsMirrorActive(false);
+        if (data?.error && data.code !== 0) {
+          setScrcpyError(data.error);
+        }
+      });
+      return () => unsub?.();
+    }
+  }, [isElectron]);
 
   // Clean up Scrcpy when leaving workspace or unmounting
   useEffect(() => {
@@ -144,24 +158,30 @@ export function DeviceWorkspace({
 
   // Hook WebRTC incomingStream if active
   useEffect(() => {
-    if (incomingStream && videoRef.current && mirrorEngine === 'webrtc') {
+    if (incomingStream && videoRef.current) {
       videoRef.current.srcObject = incomingStream;
       videoRef.current.play().catch(console.warn);
-    }
-  }, [incomingStream, mirrorEngine]);
-
-  // Start Scrcpy In-App
-  const handleStartScrcpyInApp = async () => {
-    if (!isElectron) {
+      setIsMirrorActive(true);
       setMirrorEngine('webrtc');
-      onRequestRemoteScreen?.(peer.id);
+    }
+  }, [incomingStream]);
+
+  // Start Screen Mirroring (Scrcpy or WebRTC)
+  const handleStartMirroring = async (forceEngine) => {
+    const engine = forceEngine || mirrorEngine;
+    triggerHaptic([30]);
+    setScrcpyError(null);
+
+    // If WebRTC selected or running in browser (non-Electron)
+    if (engine === 'webrtc' || !isElectron) {
+      setMirrorEngine('webrtc');
+      setIsMirrorActive(true);
+      onRequestRemoteScreen?.(peer.id, peer.deviceId);
       return;
     }
 
-    triggerHaptic([30]);
+    // Scrcpy via Electron
     setIsScrcpyStarting(true);
-    setScrcpyError(null);
-
     try {
       const rect = mirrorContainerRef.current?.getBoundingClientRect() || {
         left: 200,
@@ -171,9 +191,8 @@ export function DeviceWorkspace({
       };
 
       const res = await window.electronAPI.startScrcpy({
-        deviceId: peer.deviceId || null,
-        ip: peer.ip || null,
-        docked: true,
+        ip: peer.ip || peer.clientIp || null,
+        docked: isDockedMode,
         stayAwake: true,
         maxSize: 1200,
         bitRate: '8M',
@@ -188,9 +207,11 @@ export function DeviceWorkspace({
       if (res.success) {
         setIsMirrorActive(true);
         setScrcpyPid(res.pid);
-        setTimeout(updateScrcpyPosition, 600);
+        if (isDockedMode) {
+          setTimeout(updateScrcpyPosition, 500);
+        }
       } else {
-        setScrcpyError(res.error || 'Gagal memulai Scrcpy In-App.');
+        setScrcpyError(res.error || 'Gagal memulai Scrcpy.');
       }
     } catch (err) {
       setScrcpyError(err.message || 'Kesalahan saat menjalankan Scrcpy.');
@@ -199,7 +220,7 @@ export function DeviceWorkspace({
     }
   };
 
-  const handleStopScrcpyInApp = async () => {
+  const handleStopMirroring = async () => {
     triggerHaptic([30]);
     if (isElectron) {
       await window.electronAPI.stopScrcpy();
@@ -212,8 +233,7 @@ export function DeviceWorkspace({
     triggerHaptic([25]);
     if (isElectron && window.electronAPI?.sendAdbKeyevent) {
       await window.electronAPI.sendAdbKeyevent({
-        deviceId: peer.deviceId || null,
-        ip: peer.ip || null,
+        ip: peer.ip || peer.clientIp || null,
         keycode
       });
     }
@@ -391,13 +411,27 @@ export function DeviceWorkspace({
                     🌐 WebRTC
                   </button>
                 </div>
+
+                {/* Dock / Pop-out toggle if Scrcpy & Electron */}
+                {isElectron && mirrorEngine === 'scrcpy' && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([20]);
+                      setIsDockedMode(!isDockedMode);
+                    }}
+                    className="text-[10px] text-zinc-400 hover:text-zinc-200 bg-zinc-800 px-2 py-1 rounded-md border border-zinc-700 font-mono transition"
+                    title={isDockedMode ? 'Buka Scrcpy di jendela terpisah' : 'Tempelkan Scrcpy di dalam aplikasi'}
+                  >
+                    {isDockedMode ? '📌 In-App' : '🪟 Pop-Out'}
+                  </button>
+                )}
               </div>
 
               {/* Start / Stop Toggle */}
               <div className="flex items-center gap-2">
                 {isMirrorActive ? (
                   <button
-                    onClick={handleStopScrcpyInApp}
+                    onClick={handleStopMirroring}
                     className="flex items-center gap-1.5 bg-red-500/20 hover:bg-red-500/30 text-red-300 border border-red-500/40 px-3 py-1.5 rounded-xl text-xs font-bold transition cursor-pointer shadow-sm active:scale-95"
                   >
                     <Pause className="w-3.5 h-3.5" />
@@ -405,7 +439,7 @@ export function DeviceWorkspace({
                   </button>
                 ) : (
                   <button
-                    onClick={handleStartScrcpyInApp}
+                    onClick={() => handleStartMirroring()}
                     disabled={isScrcpyStarting}
                     className="flex items-center gap-1.5 bg-emerald-500 hover:bg-emerald-400 text-zinc-950 font-bold px-3.5 py-1.5 rounded-xl text-xs transition cursor-pointer shadow-md shadow-emerald-950/40 active:scale-95 disabled:opacity-50"
                   >
@@ -436,9 +470,19 @@ export function DeviceWorkspace({
                 {/* If Scrcpy Active: Win32 native window is docked directly at this rectangle! */}
                 {isMirrorActive && mirrorEngine === 'scrcpy' ? (
                   <div className="w-full h-full flex flex-col items-center justify-center text-center p-4">
-                    <p className="text-xs text-zinc-500 font-mono animate-pulse">
-                      [Scrcpy 60 FPS Native Docked Inside Frame]
-                    </p>
+                    {isDockedMode ? (
+                      <p className="text-xs text-zinc-500 font-mono animate-pulse">
+                        [Scrcpy 60 FPS Native Docked Inside Frame]
+                      </p>
+                    ) : (
+                      <div className="flex flex-col items-center">
+                        <Smartphone className="w-12 h-12 text-emerald-400 mb-2" />
+                        <h4 className="text-sm font-bold text-zinc-200 mb-1">Mirroring Aktif (Pop-Out)</h4>
+                        <p className="text-[11px] text-zinc-400 max-w-[200px]">
+                          Tampilan layar ponsel Anda terbuka pada jendela terpisah di Windows.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : mirrorEngine === 'webrtc' && incomingStream ? (
                   /* WebRTC stream view */
@@ -457,7 +501,7 @@ export function DeviceWorkspace({
                       Tampilan layar ponsel Vivo Anda akan muncul dan dapat dikontrol langsung di sini.
                     </p>
                     <button
-                      onClick={handleStartScrcpyInApp}
+                      onClick={() => handleStartMirroring()}
                       className="bg-emerald-500 hover:bg-emerald-400 text-zinc-950 text-xs font-bold py-2 px-4 rounded-xl transition cursor-pointer shadow-lg active:scale-95"
                     >
                       Buka Layar HP Sekarang
@@ -652,7 +696,7 @@ export function DeviceWorkspace({
                 <button
                   onClick={() => {
                     triggerHaptic([30]);
-                    onRingDevice?.(peer.id);
+                    onRingDevice?.(peer.id, peer.deviceId);
                   }}
                   className="flex items-center gap-2 p-2.5 rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/30 text-xs font-semibold transition cursor-pointer text-left"
                 >

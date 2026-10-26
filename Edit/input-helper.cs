@@ -31,11 +31,49 @@ namespace ENCrossInput {
         [DllImport("user32.dll", SetLastError = true)]
         static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
 
+        [DllImport("user32.dll", EntryPoint = "SetWindowLongPtr", SetLastError = true)]
+        static extern IntPtr SetWindowLongPtr64(IntPtr hWnd, int nIndex, IntPtr dwNewLong);
+
+        [DllImport("user32.dll", EntryPoint = "SetWindowLong", SetLastError = true)]
+        static extern int SetWindowLong32(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        static IntPtr SetWindowLongPtr(IntPtr hWnd, int nIndex, IntPtr dwNewLong) {
+            if (IntPtr.Size == 8)
+                return SetWindowLongPtr64(hWnd, nIndex, dwNewLong);
+            else
+                return new IntPtr(SetWindowLong32(hWnd, nIndex, dwNewLong.ToInt32()));
+        }
+
+        public delegate bool EnumWindowsProc(IntPtr hWnd, IntPtr lParam);
         [DllImport("user32.dll")]
-        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+        static extern bool EnumWindows(EnumWindowsProc lpEnumFunc, IntPtr lParam);
 
         [DllImport("user32.dll")]
-        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+        static extern int GetWindowText(IntPtr hWnd, System.Text.StringBuilder lpString, int nMaxCount);
+
+        [DllImport("user32.dll")]
+        static extern bool IsWindowVisible(IntPtr hWnd);
+
+        static IntPtr FindScrcpyWindow(string title) {
+            IntPtr found = FindWindow("SDL_app", title);
+            if (found != IntPtr.Zero) return found;
+            found = FindWindow(null, title);
+            if (found != IntPtr.Zero) return found;
+
+            IntPtr result = IntPtr.Zero;
+            EnumWindows((hWnd, lParam) => {
+                if (!IsWindowVisible(hWnd)) return true;
+                System.Text.StringBuilder sb = new System.Text.StringBuilder(256);
+                GetWindowText(hWnd, sb, 256);
+                string t = sb.ToString();
+                if (!string.IsNullOrEmpty(t) && (t.Contains(title) || (t.Contains("ENCross") && (t.Contains("Mirror") || t.Contains("Layar") || t.Contains("HP"))))) {
+                    result = hWnd;
+                    return false;
+                }
+                return true;
+            }, IntPtr.Zero);
+            return result;
+        }
 
         [DllImport("user32.dll")]
         static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
@@ -157,7 +195,7 @@ namespace ENCrossInput {
                             keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
                         }
                     } else if (cmd == "dock" && parts.Length >= 7) {
-                        // dock <windowTitle> <parentHwndLong> <x> <y> <w> <h>
+                        // dock <windowTitle> <parentHwndLong> <screenX> <screenY> <w> <h>
                         string winTitle = parts[1];
                         long parentHwndVal = long.Parse(parts[2]);
                         int x = int.Parse(parts[3]);
@@ -167,22 +205,17 @@ namespace ENCrossInput {
 
                         ThreadPool.QueueUserWorkItem((_) => {
                             IntPtr childHwnd = IntPtr.Zero;
-                            for (int retry = 0; retry < 25; retry++) {
-                                childHwnd = FindWindow(null, winTitle);
+                            for (int retry = 0; retry < 50; retry++) {
+                                childHwnd = FindScrcpyWindow(winTitle);
                                 if (childHwnd != IntPtr.Zero) break;
-                                Thread.Sleep(150);
+                                Thread.Sleep(100);
                             }
 
                             if (childHwnd != IntPtr.Zero) {
-                                int style = GetWindowLong(childHwnd, GWL_STYLE);
-                                style &= ~WS_POPUP;
-                                style &= ~WS_CAPTION;
-                                style &= ~WS_THICKFRAME;
-                                style |= WS_CHILD;
-                                SetWindowLong(childHwnd, GWL_STYLE, style);
-
                                 IntPtr parentHwnd = new IntPtr(parentHwndVal);
-                                SetParent(childHwnd, parentHwnd);
+                                if (parentHwnd != IntPtr.Zero) {
+                                    SetWindowLongPtr(childHwnd, GWL_HWNDPARENT, parentHwnd);
+                                }
                                 SetWindowPos(childHwnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
                                 Console.WriteLine("DOCK_OK " + childHwnd);
                             } else {
@@ -197,28 +230,28 @@ namespace ENCrossInput {
                         int w = int.Parse(parts[4]);
                         int h = int.Parse(parts[5]);
 
-                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        IntPtr childHwnd = FindScrcpyWindow(winTitle);
                         if (childHwnd != IntPtr.Zero) {
                             SetWindowPos(childHwnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
                         }
                     } else if (cmd == "show" && parts.Length >= 2) {
                         // show <windowTitle>
                         string winTitle = parts[1];
-                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        IntPtr childHwnd = FindScrcpyWindow(winTitle);
                         if (childHwnd != IntPtr.Zero) {
                             ShowWindow(childHwnd, SW_SHOW);
                         }
                     } else if (cmd == "hide" && parts.Length >= 2) {
                         // hide <windowTitle>
                         string winTitle = parts[1];
-                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        IntPtr childHwnd = FindScrcpyWindow(winTitle);
                         if (childHwnd != IntPtr.Zero) {
                             ShowWindow(childHwnd, SW_HIDE);
                         }
                     } else if (cmd == "close" && parts.Length >= 2) {
                         // close <windowTitle>
                         string winTitle = parts[1];
-                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        IntPtr childHwnd = FindScrcpyWindow(winTitle);
                         if (childHwnd != IntPtr.Zero) {
                             SendMessage(childHwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                         }

@@ -451,11 +451,17 @@ let currentScrcpyTitle = 'ENCross_InApp_Mirror';
 function dockScrcpy(bounds) {
   if (!mainWindow || !bounds) return;
   try {
+    const contentBounds = mainWindow.getContentBounds();
+    const screenX = Math.round(contentBounds.x + (bounds.x || 0));
+    const screenY = Math.round(contentBounds.y + (bounds.y || 0));
+    const w = Math.round(bounds.width || 340);
+    const h = Math.round(bounds.height || 540);
+
     const handleBuf = mainWindow.getNativeWindowHandle();
     const parentHwnd = process.arch === 'x64'
       ? handleBuf.readBigInt64LE(0).toString()
       : handleBuf.readInt32LE(0).toString();
-    const cmd = `dock ${currentScrcpyTitle} ${parentHwnd} ${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.width)} ${Math.round(bounds.height)}`;
+    const cmd = `dock ${currentScrcpyTitle} ${parentHwnd} ${screenX} ${screenY} ${w} ${h}`;
     sendInputCommand(cmd);
   } catch (err) {
     console.warn('[Scrcpy] dock error:', err);
@@ -552,10 +558,35 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
     }
   }
 
-  if (deviceId) {
-    args.push('-s', deviceId);
+  // Auto-resolve real ADB device serial (prioritize USB connected, then wireless, then IP)
+  let targetAdbSerial = null;
+  try {
+    const adbOut = await new Promise((res) => {
+      execFile('adb', ['devices'], (err, stdout) => res(stdout || ''));
+    });
+    const lines = (adbOut || '').split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('List of devices'));
+    const onlineAdbDevices = lines.map((l) => l.split(/\s+/)[0]).filter(Boolean);
+
+    // If explicit valid ADB serial passed
+    if (deviceId && onlineAdbDevices.includes(deviceId)) {
+      targetAdbSerial = deviceId;
+    } else if (ip && onlineAdbDevices.includes(`${String(ip).trim()}:5555`)) {
+      targetAdbSerial = `${String(ip).trim()}:5555`;
+    } else if (onlineAdbDevices.length > 0) {
+      // Prioritize USB device (no colon in serial)
+      const usbDev = onlineAdbDevices.find((d) => !d.includes(':'));
+      targetAdbSerial = usbDev || onlineAdbDevices[0];
+    }
+  } catch (adbErr) {
+    console.warn('[Scrcpy] ADB device check error:', adbErr);
+  }
+
+  if (targetAdbSerial) {
+    console.log(`[Scrcpy] Using resolved ADB device: ${targetAdbSerial}`);
+    args.push('-s', targetAdbSerial);
   } else if (ip) {
     const cleanIp = String(ip).trim();
+    console.log(`[Scrcpy] Using wireless IP target: ${cleanIp}:5555`);
     args.push(`--tcpip=${cleanIp}:5555`);
   }
 
@@ -602,6 +633,10 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
       child.on('exit', (code) => {
         console.log('[Scrcpy process exited]', code);
         activeScrcpyProcess = null;
+        activeScrcpyDocked = false;
+        if (mainWindow && !mainWindow.isDestroyed()) {
+          mainWindow.webContents.send('scrcpy-stopped', { code, error: errorOutput });
+        }
         if (!hasReported) {
           hasReported = true;
           resolve({ success: false, error: errorOutput || `Scrcpy keluar dengan kode ${code}` });
@@ -745,8 +780,13 @@ ipcMain.handle('stop-scrcpy', async () => {
 });
 
 ipcMain.handle('update-scrcpy-bounds', async (_, bounds) => {
-  if (bounds && activeScrcpyDocked) {
-    sendInputCommand(`setpos ${currentScrcpyTitle} ${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.width)} ${Math.round(bounds.height)}`);
+  if (bounds && activeScrcpyDocked && mainWindow) {
+    const contentBounds = mainWindow.getContentBounds();
+    const screenX = Math.round(contentBounds.x + (bounds.x || 0));
+    const screenY = Math.round(contentBounds.y + (bounds.y || 0));
+    const w = Math.round(bounds.width || 340);
+    const h = Math.round(bounds.height || 540);
+    sendInputCommand(`setpos ${currentScrcpyTitle} ${screenX} ${screenY} ${w} ${h}`);
     return { success: true };
   }
   return { success: false };
