@@ -32,7 +32,7 @@ export function App() {
   const [pingMs, setPingMs] = useState(null);
 
   // Modals & Drawers
-  const [isQrOpen, setIsQrOpen] = useState(false);
+  const [isQrOpen, setIsQrOpen] = useState(!isMobileDevice);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
   const [isServerIpModalOpen, setIsServerIpModalOpen] = useState(false);
@@ -108,6 +108,17 @@ export function App() {
   useEffect(() => { isFileExplorerOpenRef.current = isFileExplorerOpen; }, [isFileExplorerOpen]);
   useEffect(() => { isTouchpadModalOpenRef.current = isTouchpadModalOpen; }, [isTouchpadModalOpen]);
   useEffect(() => { pendingRemoteRequestRef.current = pendingRemoteRequest; }, [pendingRemoteRequest]);
+
+  // Otomatis kontrol modal QR:
+  // Jika ada perangkat terhubung (peers.length > 0) -> otomatis tutup modal QR
+  // Jika tidak ada perangkat terhubung (peers.length === 0) -> otomatis buka modal QR (desktop/laptop)
+  useEffect(() => {
+    if (peers.length > 0) {
+      setIsQrOpen(false);
+    } else if (peers.length === 0 && !isMobileDevice) {
+      setIsQrOpen(true);
+    }
+  }, [peers.length, isMobileDevice]);
 
   useEffect(() => {
     // 1. Parse or assign room ID from URL query
