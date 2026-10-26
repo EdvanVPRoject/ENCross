@@ -117,19 +117,27 @@ function createMainWindow() {
     mainWindow.focus();
   });
 
-  // Intercept close to minimize to System Tray
+  // Intercept close to minimize to System Tray only if tray is active
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
+      if (tray && !tray.isDestroyed()) {
+        event.preventDefault();
+        mainWindow.hide();
 
-      if (!hasShownTrayTip && Notification.isSupported()) {
-        hasShownTrayTip = true;
-        new Notification({
-          title: 'ENCross Hub',
-          body: 'Aplikasi tetap aktif di latar belakang (System Tray) untuk menerima file dan teks.',
-          icon: appIcon
-        }).show();
+        if (!hasShownTrayTip && Notification.isSupported()) {
+          hasShownTrayTip = true;
+          try {
+            new Notification({
+              title: 'ENCross Hub',
+              body: 'Aplikasi tetap aktif di latar belakang (System Tray) untuk menerima file dan teks.',
+              icon: appIcon
+            }).show();
+          } catch (_) {}
+        }
+      } else {
+        // If system tray is not available, quit cleanly to avoid zombie background processes
+        app.isQuitting = true;
+        app.quit();
       }
     }
   });
@@ -153,6 +161,10 @@ function createSystemTray() {
       trayIcon = getAppIcon();
     }
 
+    if (trayIcon && !trayIcon.isEmpty() && process.platform === 'win32') {
+      trayIcon = trayIcon.resize({ width: 16, height: 16 });
+    }
+
     tray = new Tray(trayIcon);
     tray.setToolTip('ENCross Hub - Aktif di Jaringan LAN');
 
@@ -162,7 +174,9 @@ function createSystemTray() {
           label: 'Buka ENCross Hub',
           click: () => {
             if (mainWindow) {
+              if (mainWindow.isMinimized()) mainWindow.restore();
               mainWindow.show();
+              mainWindow.setSkipTaskbar(false);
               mainWindow.focus();
             }
           }
@@ -197,7 +211,9 @@ function createSystemTray() {
         if (mainWindow.isVisible()) {
           mainWindow.hide();
         } else {
+          if (mainWindow.isMinimized()) mainWindow.restore();
           mainWindow.show();
+          mainWindow.setSkipTaskbar(false);
           mainWindow.focus();
         }
       }
@@ -205,12 +221,15 @@ function createSystemTray() {
 
     tray.on('double-click', () => {
       if (mainWindow) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.show();
+        mainWindow.setSkipTaskbar(false);
         mainWindow.focus();
       }
     });
   } catch (err) {
     console.warn('[Tray] Warning creating tray icon:', err.message);
+    tray = null;
   }
 }
 
@@ -802,8 +821,13 @@ if (!gotTheLock) {
   app.on('second-instance', () => {
     if (mainWindow) {
       if (mainWindow.isMinimized()) mainWindow.restore();
-      mainWindow.show();
+      if (!mainWindow.isVisible()) mainWindow.show();
+      mainWindow.setSkipTaskbar(false);
       mainWindow.focus();
+      try {
+        mainWindow.setAlwaysOnTop(true);
+        mainWindow.setAlwaysOnTop(false);
+      } catch (_) {}
     }
   });
 
