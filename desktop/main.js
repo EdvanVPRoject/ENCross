@@ -47,6 +47,10 @@ async function ensureServerRunning() {
 }
 
 function getAppIcon() {
+  const icoUnpacked = path.join(__dirname, 'assets/icon.ico').replace('app.asar', 'app.asar.unpacked');
+  if (process.platform === 'win32' && fs.existsSync(icoUnpacked)) {
+    return nativeImage.createFromPath(icoUnpacked);
+  }
   const icoPath = path.join(__dirname, 'assets/icon.ico');
   const pngPath = path.join(__dirname, 'assets/icon.png');
   if (process.platform === 'win32' && fs.existsSync(icoPath)) {
@@ -131,65 +135,81 @@ function createMainWindow() {
 
 // 4. Create System Tray
 function createSystemTray() {
-  const iconPath = path.join(__dirname, 'assets/icon.png');
-  const trayIcon = nativeImage.createFromPath(iconPath);
+  try {
+    let trayIcon = null;
+    const icoPath = path.join(__dirname, 'assets/icon.ico').replace('app.asar', 'app.asar.unpacked');
+    if (process.platform === 'win32' && fs.existsSync(icoPath)) {
+      trayIcon = nativeImage.createFromPath(icoPath);
+    }
+    if (!trayIcon || trayIcon.isEmpty()) {
+      const pngPath = path.join(__dirname, 'assets/icon.png').replace('app.asar', 'app.asar.unpacked');
+      if (fs.existsSync(pngPath)) {
+        trayIcon = nativeImage.createFromPath(pngPath);
+      }
+    }
+    if (!trayIcon || trayIcon.isEmpty()) {
+      trayIcon = getAppIcon();
+    }
 
-  tray = new Tray(trayIcon);
-  tray.setToolTip('ENCross Hub - Aktif di Jaringan LAN');
+    tray = new Tray(trayIcon);
+    tray.setToolTip('ENCross Hub - Aktif di Jaringan LAN');
 
-  const updateContextMenu = () => {
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Buka ENCross Hub',
-        click: () => {
-          if (mainWindow) {
-            mainWindow.show();
-            mainWindow.focus();
+    const updateContextMenu = () => {
+      const contextMenu = Menu.buildFromTemplate([
+        {
+          label: 'Buka ENCross Hub',
+          click: () => {
+            if (mainWindow) {
+              mainWindow.show();
+              mainWindow.focus();
+            }
+          }
+        },
+        {
+          label: `LAN: http://${serverLocalIp}:3001`,
+          enabled: false
+        },
+        { type: 'separator' },
+        {
+          label: 'Buat Shortcut di Desktop',
+          click: () => {
+            createDesktopShortcut(true);
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Keluar',
+          click: () => {
+            app.isQuitting = true;
+            app.quit();
           }
         }
-      },
-      {
-        label: `LAN: http://${serverLocalIp}:3001`,
-        enabled: false
-      },
-      { type: 'separator' },
-      {
-        label: 'Buat Shortcut di Desktop',
-        click: () => {
-          createDesktopShortcut(true);
-        }
-      },
-      { type: 'separator' },
-      {
-        label: 'Keluar',
-        click: () => {
-          app.isQuitting = true;
-          app.quit();
+      ]);
+      tray.setContextMenu(contextMenu);
+    };
+
+    updateContextMenu();
+
+    tray.on('click', () => {
+      if (mainWindow) {
+        if (mainWindow.isVisible()) {
+          mainWindow.hide();
+        } else {
+          mainWindow.show();
+          mainWindow.focus();
         }
       }
-    ]);
-    tray.setContextMenu(contextMenu);
-  };
+    });
 
-  updateContextMenu();
-
-  tray.on('click', () => {
-    if (mainWindow) {
-      if (mainWindow.isVisible()) {
-        mainWindow.hide();
-      } else {
+    tray.on('double-click', () => {
+      if (mainWindow) {
         mainWindow.show();
         mainWindow.focus();
       }
-    }
-  });
-
-  tray.on('double-click', () => {
-    if (mainWindow) {
-      mainWindow.show();
-      mainWindow.focus();
-    }
-  });
+    });
+  } catch (err) {
+    console.warn('[Tray] Warning creating tray icon:', err.message);
+  }
 }
 
 // 5. Automatic Desktop Shortcut Creation on Windows
@@ -627,7 +647,13 @@ let inputProcess = null;
 
 function ensureInputHelperRunning() {
   if (inputProcess && !inputProcess.killed) return;
-  const exePath = path.join(__dirname, 'assets/input-helper.exe');
+  let exePath = path.join(__dirname, 'assets/input-helper.exe');
+  if (exePath.includes('app.asar')) {
+    const unpacked = exePath.replace('app.asar', 'app.asar.unpacked');
+    if (fs.existsSync(unpacked)) {
+      exePath = unpacked;
+    }
+  }
   if (fs.existsSync(exePath)) {
     try {
       inputProcess = spawn(exePath, [], { windowsHide: true });

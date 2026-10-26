@@ -24,6 +24,9 @@
       "server/**/*",
       "client/dist/**/*"
     ],
+    "asarUnpack": [
+      "desktop/assets/**/*"
+    ],
     "win": {
       "target": [
         "nsis",
