@@ -640,13 +640,22 @@ export class WebRTCManager {
 
     // Check if mic mode, camera mode, or screen share is requested
     if (mode === 'mic') {
+      if (typeof window !== 'undefined' && window.AndroidDownloader?.enableHardwareNoiseCancellation) {
+        try { window.AndroidDownloader.enableHardwareNoiseCancellation(true); } catch (_) {}
+      }
+      const audioConstraints = {
+        echoCancellation: { ideal: true },
+        noiseSuppression: { ideal: true },
+        autoGainControl: { ideal: true },
+        googEchoCancellation: { ideal: true },
+        googAutoGainControl: { ideal: true },
+        googNoiseSuppression: { ideal: true },
+        googHighpassFilter: { ideal: true },
+        googTypingNoiseDetection: { ideal: true }
+      };
       try {
         stream = await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
-          },
+          audio: audioConstraints,
           video: false
         });
       } catch (micErr) {
@@ -657,7 +666,18 @@ export class WebRTCManager {
       }
     } else if (mode === 'camera') {
       this.currentFacingMode = isMobile ? 'environment' : 'user';
-      const audioOption = Boolean(includeAudio);
+      if (includeAudio && typeof window !== 'undefined' && window.AndroidDownloader?.enableHardwareNoiseCancellation) {
+        try { window.AndroidDownloader.enableHardwareNoiseCancellation(true); } catch (_) {}
+      }
+      const audioOption = includeAudio ? {
+        echoCancellation: { ideal: true },
+        noiseSuppression: { ideal: true },
+        autoGainControl: { ideal: true },
+        googEchoCancellation: { ideal: true },
+        googAutoGainControl: { ideal: true },
+        googNoiseSuppression: { ideal: true },
+        googHighpassFilter: { ideal: true }
+      } : false;
       try {
         stream = await navigator.mediaDevices.getUserMedia({
           video: {
@@ -923,10 +943,13 @@ export class WebRTCManager {
   }
 
   stopScreenShare(peerId) {
-    if (typeof window !== 'undefined' && window.AndroidScreenShare?.stopScreenCapture) {
-      try {
-        window.AndroidScreenShare.stopScreenCapture();
-      } catch (_) {}
+    if (typeof window !== 'undefined') {
+      if (window.AndroidScreenShare?.stopScreenCapture) {
+        try { window.AndroidScreenShare.stopScreenCapture(); } catch (_) {}
+      }
+      if (window.AndroidDownloader?.enableHardwareNoiseCancellation) {
+        try { window.AndroidDownloader.enableHardwareNoiseCancellation(false); } catch (_) {}
+      }
     }
     const peerObj = this.peers.get(peerId);
     if (peerObj && peerObj.localStream) {
@@ -955,6 +978,9 @@ export class WebRTCManager {
   }
 
   cleanup() {
+    if (typeof window !== 'undefined' && window.AndroidDownloader?.enableHardwareNoiseCancellation) {
+      try { window.AndroidDownloader.enableHardwareNoiseCancellation(false); } catch (_) {}
+    }
     this.peers.forEach((_, peerId) => this.closePeer(peerId));
   }
 }

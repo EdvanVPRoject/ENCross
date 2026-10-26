@@ -251,6 +251,25 @@ public class MainActivity extends BridgeActivity {
             }
 
             @JavascriptInterface
+            public void enableHardwareNoiseCancellation(boolean enable) {
+                runOnUiThread(() -> {
+                    try {
+                        AudioManager am = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
+                        if (am != null) {
+                            if (enable) {
+                                am.setMode(AudioManager.MODE_IN_COMMUNICATION);
+                                am.setMicrophoneMute(false);
+                            } else {
+                                am.setMode(AudioManager.MODE_NORMAL);
+                            }
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
+            }
+
+            @JavascriptInterface
             public boolean saveToEncross(String fileName, String base64Data, String subfolder) {
                 try {
                     File downloadsDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS);
