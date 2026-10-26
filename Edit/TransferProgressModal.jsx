@@ -1,4 +1,4 @@
-﻿import React, { useEffect } from 'react';
+import React, { useEffect } from 'react';
 import { Upload, Download, CheckCircle2, X, ArrowDownToLine, Play, Pause } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
 import { getEncrossSubfolder } from '../utils/fileCategorizer';
@@ -75,8 +75,8 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
   }, [transfer.completed, transfer.direction]);
 
   return (
-    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl p-4 shadow-2xl relative">
+    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200 smooth-gpu">
+      <div className="bg-zinc-900/95 border border-zinc-800 rounded-2xl p-4 shadow-2xl relative backdrop-blur-md transition-all">
         {/* Close button if finished */}
         {isDone && (
           <button

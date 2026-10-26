@@ -17,7 +17,7 @@ export function QRCodeModal({ isOpen, onClose, joinUrl, roomId, localIp, onOpenM
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-fadeIn">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm p-4 sm:p-5 shadow-2xl relative text-center max-h-[92vh] overflow-y-auto">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-sm p-4 sm:p-5 shadow-2xl relative text-center max-h-[92vh] overflow-y-auto animate-modal-pop smooth-gpu">
         {/* Close Button */}
         <button
           onClick={onClose}

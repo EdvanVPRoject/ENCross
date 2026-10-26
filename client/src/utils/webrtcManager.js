@@ -970,9 +970,20 @@ export class WebRTCManager {
   closePeer(peerId) {
     if (this.peers.has(peerId)) {
       const peer = this.peers.get(peerId);
-      if (peer.dataChannel) peer.dataChannel.close();
-      if (peer.localStream) peer.localStream.getTracks().forEach(t => t.stop());
-      if (peer.pc) peer.pc.close();
+      if (peer.dataChannel) {
+        try { peer.dataChannel.close(); } catch (_) {}
+      }
+      if (peer.localStream) {
+        try { peer.localStream.getTracks().forEach((t) => t.stop()); } catch (_) {}
+      }
+      if (peer.pc) {
+        try {
+          peer.pc.ontrack = null;
+          peer.pc.ondatachannel = null;
+          peer.pc.onicecandidate = null;
+          peer.pc.close();
+        } catch (_) {}
+      }
       this.peers.delete(peerId);
     }
   }

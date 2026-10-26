@@ -63,6 +63,7 @@ export function DeviceWorkspace({
   const folderInputRef = useRef(null);
   const mirrorContainerRef = useRef(null);
   const videoRef = useRef(null);
+  const rafRef = useRef(null);
 
   // In-App Mirroring states
   const [mirrorEngine, setMirrorEngine] = useState('scrcpy'); // 'scrcpy' | 'webrtc'
@@ -92,18 +93,22 @@ export function DeviceWorkspace({
     }
   };
 
-  // Sync In-App Scrcpy window position to the DOM placeholder bounds
+  // Sync In-App Scrcpy window position to the DOM placeholder bounds (RAF throttled to eliminate IPC lag/stutter)
   const updateScrcpyPosition = () => {
     if (!isElectron || !isMirrorActive || mirrorEngine !== 'scrcpy' || !isDockedMode || !mirrorContainerRef.current) return;
-    const rect = mirrorContainerRef.current.getBoundingClientRect();
-    if (rect.width > 0 && rect.height > 0) {
-      window.electronAPI?.updateScrcpyBounds?.({
-        x: rect.left,
-        y: rect.top,
-        width: rect.width,
-        height: rect.height
-      });
-    }
+    if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    rafRef.current = requestAnimationFrame(() => {
+      if (!mirrorContainerRef.current) return;
+      const rect = mirrorContainerRef.current.getBoundingClientRect();
+      if (rect.width > 0 && rect.height > 0) {
+        window.electronAPI?.updateScrcpyBounds?.({
+          x: Math.round(rect.left),
+          y: Math.round(rect.top),
+          width: Math.round(rect.width),
+          height: Math.round(rect.height)
+        });
+      }
+    });
   };
 
   useEffect(() => {
@@ -122,14 +127,15 @@ export function DeviceWorkspace({
         ro.observe(mirrorContainerRef.current);
       }
 
-      window.addEventListener('resize', updateScrcpyPosition);
-      window.addEventListener('scroll', updateScrcpyPosition);
+      window.addEventListener('resize', updateScrcpyPosition, { passive: true });
+      window.addEventListener('scroll', updateScrcpyPosition, { passive: true });
 
       return () => {
         unsub?.();
         ro.disconnect();
         window.removeEventListener('resize', updateScrcpyPosition);
         window.removeEventListener('scroll', updateScrcpyPosition);
+        if (rafRef.current) cancelAnimationFrame(rafRef.current);
       };
     }
   }, [isMirrorActive, mirrorEngine, isDockedMode]);
@@ -147,23 +153,33 @@ export function DeviceWorkspace({
     }
   }, [isElectron]);
 
-  // Clean up Scrcpy when leaving workspace or unmounting
+  // Clean up Scrcpy & RAF when leaving workspace or unmounting
   useEffect(() => {
     return () => {
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
       if (isElectron && isMirrorActive) {
         window.electronAPI?.stopScrcpy?.();
       }
     };
   }, [isMirrorActive, isElectron]);
 
-  // Hook WebRTC incomingStream if active
+  // Hook WebRTC incomingStream if active with full cleanup to prevent memory leaks
   useEffect(() => {
-    if (incomingStream && videoRef.current) {
-      videoRef.current.srcObject = incomingStream;
-      videoRef.current.play().catch(console.warn);
+    const videoEl = videoRef.current;
+    if (incomingStream && videoEl) {
+      videoEl.srcObject = incomingStream;
+      videoEl.play().catch(console.warn);
       setIsMirrorActive(true);
       setMirrorEngine('webrtc');
     }
+    return () => {
+      if (videoEl) {
+        try {
+          videoEl.pause();
+          videoEl.srcObject = null;
+        } catch (_) {}
+      }
+    };
   }, [incomingStream]);
 
   // Start Screen Mirroring (Scrcpy or WebRTC)
@@ -258,7 +274,7 @@ export function DeviceWorkspace({
       }}
       onDragLeave={() => setIsDragOver(false)}
       onDrop={handleDropFiles}
-      className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-3 flex flex-col gap-4 animate-in fade-in duration-200 min-h-[85vh] relative"
+      className="w-full max-w-6xl mx-auto px-3 sm:px-6 py-3 flex flex-col gap-4 animate-view-enter smooth-gpu min-h-[85vh] relative"
     >
       {/* Hidden file & folder inputs */}
       <input

@@ -65,14 +65,14 @@ export function DeviceDiscoveryView({
   const resolvedLocalIp = localIp || selfIp || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1');
 
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 flex flex-col gap-6 animate-in fade-in duration-200">
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 flex flex-col gap-6 animate-view-enter smooth-gpu">
       {/* 1. Header Card: "Perangkat Ini" (My Device - AnyDesk style) */}
-      <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xl backdrop-blur-md relative overflow-hidden">
+      <div className="bg-zinc-900/90 border border-zinc-800 rounded-3xl p-4 sm:p-5 shadow-xl backdrop-blur-md relative overflow-hidden transition-all duration-300 hover:border-zinc-700/80">
         <div className="absolute top-0 right-0 w-64 h-32 bg-emerald-500/5 rounded-full blur-3xl pointer-events-none" />
 
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
           <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-zinc-800/90 border border-zinc-700/70 rounded-2xl shrink-0 shadow-inner">
+            <div className="p-3 bg-zinc-800/90 border border-zinc-700/70 rounded-2xl shrink-0 shadow-inner group-hover:scale-105 transition-transform">
               {getDeviceIcon(selfInfo?.deviceType || 'laptop', 'w-7 h-7')}
             </div>
             <div className="min-w-0">
@@ -80,8 +80,8 @@ export function DeviceDiscoveryView({
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-400 font-mono">
                   Perangkat Ini (This Device)
                 </span>
-                <span className="inline-flex items-center gap-1 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-mono font-medium">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse-glow" />
                   ONLINE LAN
                 </span>
               </div>
@@ -164,7 +164,7 @@ export function DeviceDiscoveryView({
                     triggerHaptic([35]);
                     onSelectDevice(peer);
                   }}
-                  className="group bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-800/90 hover:border-emerald-500/60 rounded-2xl p-4 transition-all duration-200 cursor-pointer shadow-lg hover:shadow-emerald-950/20 active:scale-[0.99] flex flex-col justify-between relative overflow-hidden"
+                  className="group bg-zinc-900/90 hover:bg-zinc-850 border border-zinc-800/90 hover:border-emerald-500/60 rounded-2xl p-4 transition-all duration-200 ease-out cursor-pointer shadow-lg hover:shadow-emerald-950/20 hover:-translate-y-0.5 active:scale-[0.985] flex flex-col justify-between relative overflow-hidden smooth-gpu"
                 >
                   <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/0 group-hover:bg-emerald-500/5 rounded-full blur-2xl transition-all" />
 

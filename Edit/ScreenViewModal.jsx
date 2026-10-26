@@ -49,6 +49,16 @@ export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCam
       video.onloadedmetadata = attemptPlay;
       attemptPlay();
     }
+
+    return () => {
+      if (video) {
+        try {
+          video.onloadedmetadata = null;
+          video.pause();
+          video.srcObject = null;
+        } catch (_) {}
+      }
+    };
   }, [stream]);
 
   if (!stream) return null;

@@ -24,7 +24,7 @@ export function RenameModal({ isOpen, onClose, currentName, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-xs">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-xs p-5 shadow-2xl relative">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-xl w-full max-w-xs p-5 shadow-2xl relative animate-modal-pop smooth-gpu">
         <button
           onClick={onClose}
           className="absolute top-3.5 right-3.5 p-1 text-zinc-400 hover:text-white rounded hover:bg-zinc-800 transition"

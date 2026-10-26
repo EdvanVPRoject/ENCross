@@ -69,6 +69,14 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
         console.warn('[WirelessMic] Audio play error:', err);
       });
     }
+    return () => {
+      if (audio) {
+        try {
+          audio.pause();
+          audio.srcObject = null;
+        } catch (_) {}
+      }
+    };
   }, [stream]);
 
   // Sync volume & mute changes
@@ -79,13 +87,14 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
     }
   }, [isMuted, volume]);
 
-  // 2. Real-time VU meter via Web Audio API
+  // 2. Real-time VU meter via Web Audio API (throttled to 20fps to eliminate lagging & CPU spiking)
   useEffect(() => {
     if (!stream) return;
     let audioCtx;
     let analyser;
     let source;
     let animId;
+    let lastLevelUpdate = 0;
 
     try {
       const AudioCtxClass = window.AudioContext || window.webkitAudioContext;
@@ -100,13 +109,17 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
 
         const checkLevel = () => {
           analyser.getByteFrequencyData(dataArray);
-          let sum = 0;
-          for (let i = 0; i < dataArray.length; i++) {
-            sum += dataArray[i];
+          const now = performance.now();
+          if (now - lastLevelUpdate > 50) {
+            lastLevelUpdate = now;
+            let sum = 0;
+            for (let i = 0; i < dataArray.length; i++) {
+              sum += dataArray[i];
+            }
+            const avg = sum / dataArray.length;
+            const level = Math.min(100, Math.round((avg / 128) * 100));
+            setAudioLevel(level);
           }
-          const avg = sum / dataArray.length;
-          const level = Math.min(100, Math.round((avg / 128) * 100));
-          setAudioLevel(level);
           animId = requestAnimationFrame(checkLevel);
         };
         checkLevel();
