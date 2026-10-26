@@ -3,6 +3,8 @@ import { io } from 'socket.io-client';
 import { Navbar } from './components/Navbar';
 import { QRCodeModal } from './components/QRCodeModal';
 import { PeersRadar } from './components/PeersRadar';
+import { DeviceDiscoveryView } from './components/DeviceDiscoveryView';
+import { DeviceWorkspace } from './components/DeviceWorkspace';
 import { TransferProgressModal } from './components/TransferProgressModal';
 import { TextSyncDrawer } from './components/TextSyncDrawer';
 import { ScreenViewModal } from './components/ScreenViewModal';
@@ -29,6 +31,7 @@ export function App() {
   const [localIp, setLocalIp] = useState('');
   const [selfIp, setSelfIp] = useState('');
   const [peers, setPeers] = useState([]);
+  const [selectedPeer, setSelectedPeer] = useState(null);
   const [socket, setSocket] = useState(null);
   const [pingMs, setPingMs] = useState(null);
 
@@ -148,52 +151,167 @@ export function App() {
       }
     }
 
-    // 3. Connect to backend signaling server
+    // 3. Connect to backend signaling server with Permanent Memory & Auto-LAN Discovery
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    const savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
-
-    // Auto-prompt connection options on mobile startup
-    if (isMobileDevice) {
-      setIsServerIpModalOpen(true);
-    }
+    let savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
     let backendHost = window.location.hostname || 'localhost';
     if (isLocalhost && savedServerIp) {
       backendHost = savedServerIp;
     }
 
-    const serverUrl = `http://${backendHost}:3001`;
-
-    // Fetch network information
-    fetch(`${serverUrl}/api/network-info`)
-      .then((res) => res.json())
-      .then((data) => {
-        if (data.localIps && data.localIps.length > 0) {
-          setLocalIp(data.localIps[0].address);
-        }
-        const storedName = localStorage.getItem('encross_device_name') || localStorage.getItem('vancross_device_name');
-        if (data.serverHostname && (!storedName || storedName.includes('Nova') || storedName.includes('Hyper'))) {
-          if (device.deviceType === 'desktop') {
-            const accurateName = `${data.serverHostname} (PC)`;
-            setCustomDeviceName(accurateName);
-            setSelfInfo((prev) => ({ ...prev, name: accurateName }));
-            device.name = accurateName;
-          }
-        }
-      })
-      .catch((err) => {
-        console.warn('Network info fetch warning:', err);
-        setLocalIp(backendHost);
-      });
+    let serverUrl = `http://${backendHost}:3001`;
 
     const newSocket = io(serverUrl, {
       transports: ['websocket', 'polling'],
       reconnection: true,
       reconnectionAttempts: Infinity,
       reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 20000
+      reconnectionDelayMax: 4000,
+      timeout: 15000
     });
+
+    // Auto-Discovery: Scans local Wi-Fi subnet to automatically locate and connect to ENCross Host
+    let isScanningLan = false;
+    const scanLanForServer = async (hintIp) => {
+      if (isScanningLan) return;
+      isScanningLan = true;
+      let candidateIp = hintIp;
+      if (!candidateIp && typeof window !== 'undefined' && window.AndroidDownloader?.getDeviceIp) {
+        try { candidateIp = window.AndroidDownloader.getDeviceIp(); } catch (_) {}
+      }
+      if (!candidateIp && selfIp && selfIp !== '127.0.0.1') candidateIp = selfIp;
+      if (!candidateIp && localIp && localIp !== '127.0.0.1') candidateIp = localIp;
+
+      // 1. First test saved IP and 127.0.0.1 (USB ADB Reverse)
+      const directCandidates = [];
+      if (savedServerIp && !directCandidates.includes(savedServerIp)) directCandidates.push(savedServerIp);
+      directCandidates.push('127.0.0.1');
+
+      for (const host of directCandidates) {
+        try {
+          const ctrl = new AbortController();
+          const t = setTimeout(() => ctrl.abort(), 750);
+          const r = await fetch(`http://${host}:3001/api/network-info`, { signal: ctrl.signal });
+          clearTimeout(t);
+          if (r.ok) {
+            const info = await r.json();
+            if (info) {
+              applyDiscoveredServer(host, info);
+              isScanningLan = false;
+              return;
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. Subnet sweep based on mobile device's Wi-Fi IP
+      if (!candidateIp || !candidateIp.includes('.')) {
+        isScanningLan = false;
+        if (isMobileDevice && !savedServerIp) setIsServerIpModalOpen(true);
+        return;
+      }
+
+      const parts = candidateIp.split('.');
+      if (parts.length !== 4) {
+        isScanningLan = false;
+        return;
+      }
+      const prefix = `${parts[0]}.${parts[1]}.${parts[2]}.`;
+      const prioritySuffixes = [4, 5, 2, 1, 3, 6, 7, 8, 9, 10, 11, 12, 15, 20, 50, 100];
+      const allSuffixes = [...prioritySuffixes, ...Array.from({ length: 254 }, (_, i) => i + 1).filter((n) => !prioritySuffixes.includes(n))];
+
+      let found = false;
+      const batchSize = 16;
+      for (let i = 0; i < allSuffixes.length && !found; i += batchSize) {
+        const batch = allSuffixes.slice(i, i + batchSize);
+        await Promise.all(
+          batch.map(async (num) => {
+            if (found) return;
+            const targetIp = `${prefix}${num}`;
+            if (targetIp === candidateIp) return;
+            try {
+              const ctrl = new AbortController();
+              const timer = setTimeout(() => ctrl.abort(), 850);
+              const r = await fetch(`http://${targetIp}:3001/api/network-info`, { signal: ctrl.signal });
+              clearTimeout(timer);
+              if (r.ok) {
+                const info = await r.json();
+                if (info && (info.encross || info.serverHostname || info.localIps)) {
+                  found = true;
+                  applyDiscoveredServer(targetIp, info);
+                }
+              }
+            } catch (_) {}
+          })
+        );
+      }
+
+      isScanningLan = false;
+      if (!found && isMobileDevice && !savedServerIp) {
+        setIsServerIpModalOpen(true);
+      }
+    };
+
+    const applyDiscoveredServer = (host, info) => {
+      console.log(`[LAN Discovery] Automatically paired with ENCross Host: ${host}`);
+      localStorage.setItem('encross_server_ip', host);
+      localStorage.setItem('vancross_server_ip', host);
+      savedServerIp = host;
+      setIsServerIpModalOpen(false);
+      if (info?.localIps && info.localIps.length > 0) {
+        setLocalIp(info.localIps[0].address);
+      }
+      setIncomingToast({
+        senderName: 'ENCross Hub',
+        text: `✓ Otomatis terhubung ke ${info?.serverHostname || 'PC'} (${host})`
+      });
+      if (newSocket && (!newSocket.connected || backendHost !== host)) {
+        backendHost = host;
+        newSocket.io.uri = `http://${host}:3001`;
+        newSocket.disconnect().connect();
+      }
+    };
+
+    // On startup: test connection or start background scan
+    if (isMobileDevice) {
+      if (!savedServerIp) {
+        scanLanForServer();
+      } else {
+        fetch(`${serverUrl}/api/network-info`, { signal: AbortSignal.timeout(1800) })
+          .then((res) => res.json())
+          .then((data) => {
+            if (data?.localIps && data.localIps.length > 0) {
+              setLocalIp(data.localIps[0].address);
+            }
+          })
+          .catch(() => {
+            scanLanForServer();
+          });
+      }
+    } else {
+      // Desktop / PC startup
+      fetch(`${serverUrl}/api/network-info`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.localIps && data.localIps.length > 0) {
+            setLocalIp(data.localIps[0].address);
+          }
+          const storedName = localStorage.getItem('encross_device_name') || localStorage.getItem('vancross_device_name');
+          if (data.serverHostname && (!storedName || storedName.includes('Nova') || storedName.includes('Hyper'))) {
+            if (device.deviceType === 'desktop') {
+              const accurateName = `${data.serverHostname} (PC)`;
+              setCustomDeviceName(accurateName);
+              setSelfInfo((prev) => ({ ...prev, name: accurateName }));
+              device.name = accurateName;
+            }
+          }
+        })
+        .catch((err) => {
+          console.warn('Network info fetch warning:', err);
+          setLocalIp(backendHost);
+        });
+    }
 
     // Keep JS execution alive on mobile in background using inaudible silent audio node
     let keepAliveAudioCtx = null;
@@ -557,10 +675,11 @@ export function App() {
       }
     });
 
-    // Socket Event: Connection Error
-    newSocket.on('connect_error', () => {
-      if (isMobileDevice && isLocalhost) {
-        setIsServerIpModalOpen(true);
+    // Socket Event: Connection Error - quietly retry and scan subnet on mobile instead of intrusive popup
+    newSocket.on('connect_error', (err) => {
+      console.warn('[Socket] Connect error:', err?.message || err);
+      if (isMobileDevice) {
+        scanLanForServer();
       }
     });
 
@@ -568,6 +687,10 @@ export function App() {
     newSocket.on('connect', () => {
       console.log('Connected to ENCross signaling server');
       setIsServerIpModalOpen(false);
+      if (backendHost && backendHost !== 'localhost' && backendHost !== '127.0.0.1') {
+        localStorage.setItem('encross_server_ip', backendHost);
+        localStorage.setItem('vancross_server_ip', backendHost);
+      }
       newSocket.emit('join-room', {
         roomId: roomParam,
         device
@@ -1080,7 +1203,9 @@ export function App() {
       localStorage.removeItem('vancross_server_ip');
     } else {
       localStorage.setItem('encross_server_ip', newIp);
+      localStorage.setItem('vancross_server_ip', newIp);
     }
+    setIsServerIpModalOpen(false);
     window.location.reload();
   };
 
@@ -1529,41 +1654,52 @@ export function App() {
       <main className="flex-1 flex flex-col justify-center py-2">
         <PwaInstallBanner selfInfo={selfInfo} />
 
-        <PeersRadar
-          peers={peers}
-          localIp={resolvedIp}
-          selfIp={selfIp}
-          activeSharingPeerId={activeSharingPeerId}
-          activeSharingMode={activeSharingMode}
-          cameraFacingMode={cameraFacingMode}
-          onSwitchCamera={handleSwitchCamera}
-          unreadPeerId={incomingToast?.senderId || incomingToast?.senderDeviceId}
-          onSendFile={handleSendFile}
-          onOpenTextSync={(peer) => {
-            setTextTargetPeer(peer);
-            setIsTextSyncOpen(true);
-            if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
-              setIncomingToast(null);
-            }
-          }}
-          onStartScreenShare={handleStartScreenShare}
-          onRequestRemoteScreen={handleRequestRemoteScreen}
-          onRequestRemoteCamera={handleRequestRemoteCamera}
-          onRequestRemoteMic={handleRequestRemoteMic}
-          onOpenScrcpy={handleOpenScrcpy}
-          onOpenQR={() => setIsQrOpen(true)}
-          isMobile={isMobileDevice}
-          onOpenConnect={() => setIsServerIpModalOpen(true)}
-          onOpenFileExplorer={handleOpenFileExplorer}
-          onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
-          onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
-          onRingDevice={handleRingDevice}
-          pingMs={pingMs}
-          transferHistory={transferHistory}
-          onClearTransferHistory={handleClearTransferHistory}
-          onOpenFolder={handleOpenFolder}
-          onMountPhoneStorage={handleMountPhoneStorage}
-        />
+        {selectedPeer ? (
+          <DeviceWorkspace
+            peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
+            selfInfo={selfInfo}
+            isMobile={isMobileDevice}
+            pingMs={pingMs}
+            onBack={() => setSelectedPeer(null)}
+            onSendFile={handleSendFile}
+            onOpenTextSync={(peer) => {
+              setTextTargetPeer(peer);
+              setIsTextSyncOpen(true);
+              if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
+                setIncomingToast(null);
+              }
+            }}
+            onOpenFileExplorer={handleOpenFileExplorer}
+            onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
+            onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
+            onRingDevice={handleRingDevice}
+            onMountPhoneStorage={handleMountPhoneStorage}
+            onStartScreenShare={handleStartScreenShare}
+            onRequestRemoteScreen={handleRequestRemoteScreen}
+            onRequestRemoteCamera={handleRequestRemoteCamera}
+            onRequestRemoteMic={handleRequestRemoteMic}
+            incomingStream={incomingStream}
+            incomingStreamMode={incomingStreamMode}
+            onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+          />
+        ) : (
+          <DeviceDiscoveryView
+            peers={peers}
+            selfInfo={selfInfo}
+            localIp={resolvedIp}
+            selfIp={selfIp}
+            pingMs={pingMs}
+            onSelectDevice={(peer) => {
+              setSelectedPeer(peer);
+            }}
+            onOpenQR={() => setIsQrOpen(true)}
+            onOpenConnect={() => setIsServerIpModalOpen(true)}
+            onOpenRename={() => setIsRenameOpen(true)}
+            transferHistory={transferHistory}
+            onClearTransferHistory={handleClearTransferHistory}
+            onOpenFolder={handleOpenFolder}
+          />
+        )}
       </main>
 
       {/* Scrcpy Phone Mirroring Hub Modal (Native Desktop 60 FPS) */}
@@ -1747,7 +1883,7 @@ export function App() {
       )}
 
       {/* Live Remote Screen / Camera Monitoring Modal or Wireless Mic Modal */}
-      {incomingStream && (
+      {incomingStream && (!selectedPeer || incomingStreamMode === 'mic') && (
         incomingStreamMode === 'mic' ? (
           <WirelessMicModal
             stream={incomingStream}

@@ -124,6 +124,18 @@ function createMainWindow() {
     mainWindow.focus();
   });
 
+  mainWindow.on('resize', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window-bounds-changed');
+    }
+  });
+
+  mainWindow.on('move', () => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('window-bounds-changed');
+    }
+  });
+
   // Intercept close to minimize to System Tray only if tray is active
   mainWindow.on('close', (event) => {
     if (!app.isQuitting) {
@@ -433,6 +445,22 @@ ipcMain.handle('save-file-to-encross', async (_, { fileName, base64Data, mimeTyp
 
 // Scrcpy & ADB Integration for Ultra-Smooth Phone Mirroring
 let activeScrcpyProcess = null;
+let activeScrcpyDocked = false;
+let currentScrcpyTitle = 'ENCross_InApp_Mirror';
+
+function dockScrcpy(bounds) {
+  if (!mainWindow || !bounds) return;
+  try {
+    const handleBuf = mainWindow.getNativeWindowHandle();
+    const parentHwnd = process.arch === 'x64'
+      ? handleBuf.readBigInt64LE(0).toString()
+      : handleBuf.readInt32LE(0).toString();
+    const cmd = `dock ${currentScrcpyTitle} ${parentHwnd} ${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.width)} ${Math.round(bounds.height)}`;
+    sendInputCommand(cmd);
+  } catch (err) {
+    console.warn('[Scrcpy] dock error:', err);
+  }
+}
 
 function parseAdbDevices(stdout) {
   if (!stdout) return [];
@@ -463,6 +491,13 @@ ipcMain.handle('get-scrcpy-status', async () => {
       execFile('adb', ['devices', '-l'], (aErr, aOut) => {
         const isAdbAvailable = !aErr;
         const devices = (!aErr && aOut) ? parseAdbDevices(aOut) : [];
+        if (devices.length > 0) {
+          devices.forEach((d) => {
+            if (d.status === 'device') {
+              execFile('adb', ['-s', d.id, 'reverse', 'tcp:3001', 'tcp:3001'], () => {});
+            }
+          });
+        }
         resolve({
           isScrcpyAvailable,
           scrcpyVersion,
@@ -497,10 +532,14 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   }
 
   const isCamera = videoSource === 'camera';
-  const title = isCamera ? 'ENCross - Wireless Webcam HP (60 FPS)' : 'ENCross - Layar HP';
+  const isDocked = Boolean(options.docked);
+  activeScrcpyDocked = isDocked;
+  const title = isDocked ? 'ENCross_InApp_Mirror' : (isCamera ? 'ENCross - Wireless Webcam HP (60 FPS)' : 'ENCross - Layar HP');
+  currentScrcpyTitle = title;
   const args = [`--window-title=${title}`];
+  if (isDocked) args.push('--window-borderless');
   if (stayAwake) args.push('--stay-awake');
-  if (alwaysOnTop) args.push('--always-on-top');
+  if (alwaysOnTop && !isDocked) args.push('--always-on-top');
   if (maxSize && Number(maxSize) > 0) args.push(`--max-size=${Number(maxSize)}`);
   if (bitRate && typeof bitRate === 'string') args.push(`--video-bit-rate=${bitRate}`);
   if (turnScreenOff && !isCamera) args.push('--turn-screen-off');
@@ -527,6 +566,12 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
         detached: true
       });
       activeScrcpyProcess = child;
+
+      if (isDocked && options.bounds) {
+        setTimeout(() => {
+          dockScrcpy(options.bounds);
+        }, 400);
+      }
 
       let hasReported = false;
       let errorOutput = '';
@@ -573,6 +618,21 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
     } catch (err) {
       resolve({ success: false, error: err.message });
     }
+  });
+});
+
+ipcMain.handle('send-adb-keyevent', async (_, { deviceId, ip, keycode }) => {
+  return new Promise((resolve) => {
+    const args = [];
+    if (deviceId) {
+      args.push('-s', deviceId);
+    } else if (ip) {
+      args.push('-s', `${String(ip).trim()}:5555`);
+    }
+    args.push('shell', 'input', 'keyevent', String(keycode));
+    execFile('adb', args, (err) => {
+      resolve({ success: !err });
+    });
   });
 });
 
@@ -671,14 +731,39 @@ ipcMain.handle('open-encross-folder', async () => {
 });
 
 ipcMain.handle('stop-scrcpy', async () => {
+  if (currentScrcpyTitle) {
+    sendInputCommand(`close ${currentScrcpyTitle}`);
+  }
   if (activeScrcpyProcess && !activeScrcpyProcess.killed) {
     try {
       activeScrcpyProcess.kill();
     } catch (_) {}
     activeScrcpyProcess = null;
+  }
+  activeScrcpyDocked = false;
+  return { success: true };
+});
+
+ipcMain.handle('update-scrcpy-bounds', async (_, bounds) => {
+  if (bounds && activeScrcpyDocked) {
+    sendInputCommand(`setpos ${currentScrcpyTitle} ${Math.round(bounds.x)} ${Math.round(bounds.y)} ${Math.round(bounds.width)} ${Math.round(bounds.height)}`);
     return { success: true };
   }
-  return { success: false, message: 'Tidak ada proses Scrcpy yang berjalan' };
+  return { success: false };
+});
+
+ipcMain.handle('show-scrcpy', async () => {
+  if (activeScrcpyDocked) {
+    sendInputCommand(`show ${currentScrcpyTitle}`);
+  }
+  return { success: true };
+});
+
+ipcMain.handle('hide-scrcpy', async () => {
+  if (activeScrcpyDocked) {
+    sendInputCommand(`hide ${currentScrcpyTitle}`);
+  }
+  return { success: true };
 });
 
 // =============================================================================
@@ -922,6 +1007,21 @@ if (!gotTheLock) {
 
     // 5. Automatically ensure Desktop Shortcut exists on launch
     createDesktopShortcut(false);
+
+    // 6. Background ADB port-reverse (ensures USB-connected phones always reach server at localhost:3001)
+    setInterval(() => {
+      execFile('adb', ['devices'], (err, out) => {
+        if (!err && out) {
+          const lines = out.split('\n');
+          for (const line of lines) {
+            const parts = line.trim().split(/\s+/);
+            if (parts.length >= 2 && parts[1] === 'device') {
+              execFile('adb', ['-s', parts[0], 'reverse', 'tcp:3001', 'tcp:3001'], () => {});
+            }
+          }
+        }
+      });
+    }, 6000);
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) {

@@ -45,6 +45,8 @@ function startServer(port = 3001, customDistPath = null, serverOptions = {}) {
   app.get('/api/network-info', (req, res) => {
     const localIps = getLocalIpAddresses();
     res.json({
+      encross: true,
+      service: 'encross-hub',
       localIps,
       port,
       serverHostname: os.hostname(),

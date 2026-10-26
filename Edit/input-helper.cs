@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -21,6 +22,27 @@ namespace ENCrossInput {
         [DllImport("user32.dll")]
         static extern bool LockWorkStation();
 
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr FindWindow(string lpClassName, string lpWindowName);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern IntPtr SetParent(IntPtr hWndChild, IntPtr hWndNewParent);
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+
+        [DllImport("user32.dll")]
+        static extern int GetWindowLong(IntPtr hWnd, int nIndex);
+
+        [DllImport("user32.dll")]
+        static extern int SetWindowLong(IntPtr hWnd, int nIndex, int dwNewLong);
+
+        [DllImport("user32.dll")]
+        static extern bool ShowWindow(IntPtr hWnd, int nCmdShow);
+
+        [DllImport("user32.dll", CharSet = CharSet.Auto)]
+        static extern IntPtr SendMessage(IntPtr hWnd, uint Msg, IntPtr wParam, IntPtr lParam);
+
         [StructLayout(LayoutKind.Sequential)]
         struct POINT { public int X; public int Y; }
 
@@ -32,6 +54,21 @@ namespace ENCrossInput {
         const uint MOUSEEVENTF_MIDDLEUP = 0x0040;
         const uint MOUSEEVENTF_WHEEL = 0x0800;
         const uint KEYEVENTF_KEYUP = 0x0002;
+
+        const int GWL_STYLE = -16;
+        const int GWL_HWNDPARENT = -8;
+        const int WS_CHILD = 0x40000000;
+        const int WS_POPUP = unchecked((int)0x80000000);
+        const int WS_CAPTION = 0x00C00000;
+        const int WS_THICKFRAME = 0x00040000;
+        const uint SWP_NOZORDER = 0x0004;
+        const uint SWP_FRAMECHANGED = 0x0020;
+        const uint SWP_SHOWWINDOW = 0x0040;
+        const uint SWP_NOACTIVATE = 0x0010;
+
+        const int SW_HIDE = 0;
+        const int SW_SHOW = 5;
+        const uint WM_CLOSE = 0x0010;
 
         static void Main(string[] args) {
             Console.WriteLine("ENCROSS_INPUT_READY");
@@ -118,6 +155,72 @@ namespace ENCrossInput {
                         if (vk > 0) {
                             keybd_event(vk, 0, 0, 0);
                             keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
+                        }
+                    } else if (cmd == "dock" && parts.Length >= 7) {
+                        // dock <windowTitle> <parentHwndLong> <x> <y> <w> <h>
+                        string winTitle = parts[1];
+                        long parentHwndVal = long.Parse(parts[2]);
+                        int x = int.Parse(parts[3]);
+                        int y = int.Parse(parts[4]);
+                        int w = int.Parse(parts[5]);
+                        int h = int.Parse(parts[6]);
+
+                        ThreadPool.QueueUserWorkItem((_) => {
+                            IntPtr childHwnd = IntPtr.Zero;
+                            for (int retry = 0; retry < 25; retry++) {
+                                childHwnd = FindWindow(null, winTitle);
+                                if (childHwnd != IntPtr.Zero) break;
+                                Thread.Sleep(150);
+                            }
+
+                            if (childHwnd != IntPtr.Zero) {
+                                int style = GetWindowLong(childHwnd, GWL_STYLE);
+                                style &= ~WS_POPUP;
+                                style &= ~WS_CAPTION;
+                                style &= ~WS_THICKFRAME;
+                                style |= WS_CHILD;
+                                SetWindowLong(childHwnd, GWL_STYLE, style);
+
+                                IntPtr parentHwnd = new IntPtr(parentHwndVal);
+                                SetParent(childHwnd, parentHwnd);
+                                SetWindowPos(childHwnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
+                                Console.WriteLine("DOCK_OK " + childHwnd);
+                            } else {
+                                Console.WriteLine("DOCK_NOT_FOUND " + winTitle);
+                            }
+                        });
+                    } else if (cmd == "setpos" && parts.Length >= 6) {
+                        // setpos <windowTitle> <x> <y> <w> <h>
+                        string winTitle = parts[1];
+                        int x = int.Parse(parts[2]);
+                        int y = int.Parse(parts[3]);
+                        int w = int.Parse(parts[4]);
+                        int h = int.Parse(parts[5]);
+
+                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        if (childHwnd != IntPtr.Zero) {
+                            SetWindowPos(childHwnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_NOACTIVATE | SWP_SHOWWINDOW);
+                        }
+                    } else if (cmd == "show" && parts.Length >= 2) {
+                        // show <windowTitle>
+                        string winTitle = parts[1];
+                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        if (childHwnd != IntPtr.Zero) {
+                            ShowWindow(childHwnd, SW_SHOW);
+                        }
+                    } else if (cmd == "hide" && parts.Length >= 2) {
+                        // hide <windowTitle>
+                        string winTitle = parts[1];
+                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        if (childHwnd != IntPtr.Zero) {
+                            ShowWindow(childHwnd, SW_HIDE);
+                        }
+                    } else if (cmd == "close" && parts.Length >= 2) {
+                        // close <windowTitle>
+                        string winTitle = parts[1];
+                        IntPtr childHwnd = FindWindow(null, winTitle);
+                        if (childHwnd != IntPtr.Zero) {
+                            SendMessage(childHwnd, WM_CLOSE, IntPtr.Zero, IntPtr.Zero);
                         }
                     }
                 } catch {
