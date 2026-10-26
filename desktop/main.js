@@ -204,13 +204,15 @@ function createDesktopShortcut(force = false) {
       return true;
     }
 
-    const targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
-    // Skip if in development mode running electron.exe
+    let targetExe = process.env.PORTABLE_EXECUTABLE_FILE || process.execPath;
+    let targetArgs = '';
+    let workDir = path.dirname(targetExe);
+
     if (path.basename(targetExe).toLowerCase().includes('electron.exe')) {
-      return false;
+      targetArgs = `"${app.getAppPath()}"`;
+      workDir = app.getAppPath();
     }
 
-    const workDir = path.dirname(targetExe);
     const icoPath = path.join(__dirname, 'assets/icon.ico');
     const hasIco = fs.existsSync(icoPath);
     const vbsPath = path.join(app.getPath('temp'), `encross_sc_${Date.now()}.vbs`);
@@ -218,6 +220,7 @@ function createDesktopShortcut(force = false) {
       'Set ws = CreateObject("WScript.Shell")',
       `Set lnk = ws.CreateShortcut("${shortcutPath.replace(/\\/g, '\\\\')}")`,
       `lnk.TargetPath = "${targetExe.replace(/\\/g, '\\\\')}"`,
+      targetArgs ? `lnk.Arguments = ${JSON.stringify(targetArgs)}` : '',
       `lnk.WorkingDirectory = "${workDir.replace(/\\/g, '\\\\')}"`,
       hasIco ? `lnk.IconLocation = "${icoPath.replace(/\\/g, '\\\\')},0"` : '',
       'lnk.Description = "ENCross LAN Hub - P2P File Transfer & Screen Hub"',
