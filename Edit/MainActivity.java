@@ -28,6 +28,7 @@ import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
 import android.os.Looper;
+import android.os.PowerManager;
 import android.provider.Settings;
 import android.util.Base64;
 import android.util.DisplayMetrics;
@@ -135,9 +136,41 @@ public class MainActivity extends BridgeActivity {
         });
     }
 
+    public void startBackgroundSyncService() {
+        try {
+            Intent serviceIntent = new Intent(this, BackgroundSyncService.class);
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent);
+            } else {
+                startService(serviceIntent);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    public void checkAndRequestBatteryOptimization() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            try {
+                PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+                if (pm != null && !pm.isIgnoringBatteryOptimizations(getPackageName())) {
+                    Intent intent = new Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS);
+                    intent.setData(Uri.parse("package:" + getPackageName()));
+                    intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                    startActivity(intent);
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+        // Start Foreground Service to keep app and network connections alive in background
+        startBackgroundSyncService();
 
         // Dark status bar and navigation bar matching dark theme
         getWindow().setStatusBarColor(Color.parseColor("#09090b"));
@@ -274,6 +307,11 @@ public class MainActivity extends BridgeActivity {
             public void requestStoragePermission() {
                 checkAndRequestStoragePermission();
             }
+
+            @JavascriptInterface
+            public void minimizeToBackground() {
+                runOnUiThread(() -> moveTaskToBack(true));
+            }
         }, "AndroidDownloader");
 
         // Native Remote Two-Way File System Bridge
@@ -292,6 +330,11 @@ public class MainActivity extends BridgeActivity {
             @JavascriptInterface
             public void requestStoragePermission() {
                 checkAndRequestStoragePermission();
+            }
+
+            @JavascriptInterface
+            public void minimizeToBackground() {
+                runOnUiThread(() -> moveTaskToBack(true));
             }
 
             @JavascriptInterface
@@ -761,11 +804,20 @@ public class MainActivity extends BridgeActivity {
 
     @Override
     public void onPause() {
-        if (isCapturingScreen) {
-            // Keep WebView rendering active during background screen mirroring
-            return;
-        }
         super.onPause();
+        // Keep WebView timers running in background so WebSockets, WebRTC, and LAN transfers remain alive
+        if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().resumeTimers();
+        }
+    }
+
+    @Override
+    public void onStop() {
+        super.onStop();
+        // Keep WebView timers running when activity is stopped in background
+        if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().resumeTimers();
+        }
     }
 
     public void startRinging() {
@@ -870,6 +922,7 @@ public class MainActivity extends BridgeActivity {
             try { mediaStreamServer.stop(); } catch (Exception ignored) {}
         }
         stopScreenCaptureInternal();
+        try { stopService(new Intent(this, BackgroundSyncService.class)); } catch (Exception ignored) {}
         super.onDestroy();
     }
 
@@ -882,12 +935,12 @@ public class MainActivity extends BridgeActivity {
                     if (value != null && value.contains("true")) {
                         return;
                     }
-                    runOnUiThread(() -> MainActivity.super.onBackPressed());
+                    runOnUiThread(() -> moveTaskToBack(true));
                 }
             );
             return;
         }
-        super.onBackPressed();
+        moveTaskToBack(true);
     }
 
     // =========================================================================
