@@ -229,6 +229,7 @@ export function DeviceWorkspace({
       };
 
       const res = await window.electronAPI.startScrcpy({
+        deviceId: peer.deviceId || peer.adbSerial || null,
         ip: peer.ip || peer.clientIp || null,
         docked: isDockedMode,
         stayAwake: true,

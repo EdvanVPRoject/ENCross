@@ -490,17 +490,17 @@ function parseAdbDevices(stdout) {
 
 ipcMain.handle('get-scrcpy-status', async () => {
   return new Promise((resolve) => {
-    execFile('scrcpy', ['--version'], (sErr, sOut) => {
+    execFile('scrcpy', ['--version'], { windowsHide: true }, (sErr, sOut) => {
       const isScrcpyAvailable = !sErr && Boolean(sOut && sOut.includes('scrcpy'));
       const scrcpyVersion = isScrcpyAvailable ? (sOut.match(/scrcpy\s+([^\s]+)/)?.[1] || '4.1') : null;
 
-      execFile('adb', ['devices', '-l'], (aErr, aOut) => {
+      execFile('adb', ['devices', '-l'], { windowsHide: true }, (aErr, aOut) => {
         const isAdbAvailable = !aErr;
         const devices = (!aErr && aOut) ? parseAdbDevices(aOut) : [];
         if (devices.length > 0) {
           devices.forEach((d) => {
             if (d.status === 'device') {
-              execFile('adb', ['-s', d.id, 'reverse', 'tcp:3001', 'tcp:3001'], () => {});
+              execFile('adb', ['-s', d.id, 'reverse', 'tcp:3001', 'tcp:3001'], { windowsHide: true }, () => {});
             }
           });
         }
@@ -562,7 +562,7 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   let targetAdbSerial = null;
   try {
     const adbOut = await new Promise((res) => {
-      execFile('adb', ['devices'], (err, stdout) => res(stdout || ''));
+      execFile('adb', ['devices'], { windowsHide: true }, (err, stdout) => res(stdout || ''));
     });
     const lines = (adbOut || '').split(/\r?\n/).filter((l) => l.trim() && !l.startsWith('List of devices'));
     const onlineAdbDevices = lines.map((l) => l.split(/\s+/)[0]).filter(Boolean);
@@ -593,8 +593,8 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   return new Promise((resolve) => {
     try {
       const child = spawn('scrcpy', args, {
-        windowsHide: false,
-        detached: true
+        windowsHide: true,
+        detached: false
       });
       activeScrcpyProcess = child;
 
@@ -665,7 +665,7 @@ ipcMain.handle('send-adb-keyevent', async (_, { deviceId, ip, keycode }) => {
       args.push('-s', `${String(ip).trim()}:5555`);
     }
     args.push('shell', 'input', 'keyevent', String(keycode));
-    execFile('adb', args, (err) => {
+    execFile('adb', args, { windowsHide: true }, (err) => {
       resolve({ success: !err });
     });
   });
@@ -689,7 +689,7 @@ ipcMain.handle('connect-adb-tcpip', async (_, arg1, arg2) => {
   }
 
   return new Promise((resolve) => {
-    execFile('adb', ['connect', target], (err, stdout, stderr) => {
+    execFile('adb', ['connect', target], { windowsHide: true }, (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
       const isConnected = out.includes('connected to') && !out.includes('cannot connect') && !out.includes('failed');
       resolve({
@@ -709,7 +709,7 @@ ipcMain.handle('enable-adb-tcpip', async (_, arg1) => {
     port = arg1;
   }
   return new Promise((resolve) => {
-    execFile('adb', ['tcpip', String(port)], (err, stdout, stderr) => {
+    execFile('adb', ['tcpip', String(port)], { windowsHide: true }, (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
       if (err) {
         return resolve({ success: false, error: out || err.message });
@@ -740,7 +740,7 @@ ipcMain.handle('pair-adb-wifi', async (_, arg1, arg2) => {
   }
 
   return new Promise((resolve) => {
-    execFile('adb', ['pair', cleanTarget, cleanCode], (err, stdout, stderr) => {
+    execFile('adb', ['pair', cleanTarget, cleanCode], { windowsHide: true }, (err, stdout, stderr) => {
       const out = (stdout || '') + (stderr || '');
       const isSuccess = out.toLowerCase().includes('successfully paired');
       resolve({
@@ -1050,13 +1050,13 @@ if (!gotTheLock) {
 
     // 6. Background ADB port-reverse (ensures USB-connected phones always reach server at localhost:3001)
     setInterval(() => {
-      execFile('adb', ['devices'], (err, out) => {
+      execFile('adb', ['devices'], { windowsHide: true }, (err, out) => {
         if (!err && out) {
           const lines = out.split('\n');
           for (const line of lines) {
             const parts = line.trim().split(/\s+/);
             if (parts.length >= 2 && parts[1] === 'device') {
-              execFile('adb', ['-s', parts[0], 'reverse', 'tcp:3001', 'tcp:3001'], () => {});
+              execFile('adb', ['-s', parts[0], 'reverse', 'tcp:3001', 'tcp:3001'], { windowsHide: true }, () => {});
             }
           }
         }
