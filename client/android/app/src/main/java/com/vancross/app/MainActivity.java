@@ -1142,6 +1142,12 @@ public class MainActivity extends BridgeActivity {
             if (lower.endsWith(".m4a")) return "audio/mp4";
             if (lower.endsWith(".aac")) return "audio/aac";
             if (lower.endsWith(".flac")) return "audio/flac";
+            if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "image/jpeg";
+            if (lower.endsWith(".png")) return "image/png";
+            if (lower.endsWith(".webp")) return "image/webp";
+            if (lower.endsWith(".gif")) return "image/gif";
+            if (lower.endsWith(".bmp")) return "image/bmp";
+            if (lower.endsWith(".svg")) return "image/svg+xml";
             return "application/octet-stream";
         }
     }

@@ -156,7 +156,15 @@ app.get('/api/pc-files/stream', (req, res) => {
       '.m4a': 'audio/mp4',
       '.aac': 'audio/aac',
       '.flac': 'audio/flac',
-      '.opus': 'audio/opus'
+      '.opus': 'audio/opus',
+      // Images
+      '.jpg': 'image/jpeg',
+      '.jpeg': 'image/jpeg',
+      '.png': 'image/png',
+      '.webp': 'image/webp',
+      '.gif': 'image/gif',
+      '.bmp': 'image/bmp',
+      '.svg': 'image/svg+xml'
     };
     const contentType = mimeTypes[ext] || 'application/octet-stream';
 

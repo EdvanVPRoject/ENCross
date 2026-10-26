@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import {
   Folder,
   FileText,
@@ -16,7 +16,8 @@ import {
   FileCode,
   FileArchive,
   ChevronRight,
-  Play
+  Play,
+  Eye
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
@@ -34,6 +35,8 @@ export function FileExplorerModal({
   onStreamMedia,
   onRequestPermission
 }) {
+  const [previewItem, setPreviewItem] = useState(null);
+
   if (!isOpen) return null;
 
   const isTargetMobile =
@@ -58,6 +61,33 @@ export function FileExplorerModal({
       });
     } catch {
       return '';
+    }
+  };
+
+  const isImageFile = (fileName = '') => {
+    const ext = fileName.split('.').pop()?.toLowerCase() || '';
+    return ['jpg', 'jpeg', 'png', 'webp', 'gif', 'bmp', 'svg'].includes(ext);
+  };
+
+  const getFileUrl = (item) => {
+    if (!item?.path) return '';
+    const host = window.location.hostname || 'localhost';
+    if (isTargetMobile) {
+      const phoneIp = targetPeer?.clientIp || targetPeer?.ip || host;
+      return `http://${phoneIp}:8088/stream?path=${encodeURIComponent(item.path)}`;
+    } else {
+      return `http://${host}:3001/api/pc-files/stream?path=${encodeURIComponent(item.path)}`;
+    }
+  };
+
+  const getFileProxyUrl = (item) => {
+    if (!item?.path) return '';
+    const host = window.location.hostname || 'localhost';
+    if (isTargetMobile) {
+      const phoneIp = targetPeer?.clientIp || targetPeer?.ip || host;
+      return `http://${host}:3001/api/media-stream-proxy?targetIp=${encodeURIComponent(phoneIp)}&path=${encodeURIComponent(item.path)}`;
+    } else {
+      return `http://${host}:3001/api/pc-files/stream?path=${encodeURIComponent(item.path)}`;
     }
   };
 
@@ -271,13 +301,51 @@ export function FileExplorerModal({
                       item.isDirectory ? 'cursor-pointer' : ''
                     }`}
                   >
-                    <div className="p-1.5 rounded-lg bg-zinc-800 border border-zinc-700/60 shrink-0">
+                    <div className="shrink-0">
                       {item.isDrive ? (
-                        <HardDrive className="w-4 h-4 text-cyan-400 shrink-0" />
+                        <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700/60 flex items-center justify-center shrink-0">
+                          <HardDrive className="w-5 h-5 text-cyan-400 shrink-0" />
+                        </div>
                       ) : item.isDirectory ? (
-                        <Folder className="w-4 h-4 text-emerald-400 shrink-0" />
+                        <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700/60 flex items-center justify-center shrink-0">
+                          <Folder className="w-5 h-5 text-emerald-400 shrink-0" />
+                        </div>
+                      ) : isImageFile(item.name) ? (
+                        <div
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            triggerHaptic([20]);
+                            setPreviewItem(item);
+                          }}
+                          className="w-11 h-11 rounded-lg bg-zinc-900 border border-zinc-700/80 overflow-hidden shrink-0 relative group/thumb cursor-pointer shadow-sm flex items-center justify-center hover:border-emerald-500/80 transition"
+                          title="Klik untuk melihat foto lebih besar"
+                        >
+                          <img
+                            src={getFileUrl(item)}
+                            alt={item.name}
+                            loading="lazy"
+                            className="w-full h-full object-cover transition duration-200 group-hover/thumb:scale-110"
+                            onError={(e) => {
+                              const proxyUrl = getFileProxyUrl(item);
+                              if (e.currentTarget.src !== proxyUrl) {
+                                e.currentTarget.src = proxyUrl;
+                              } else {
+                                e.currentTarget.style.display = 'none';
+                                e.currentTarget.nextElementSibling?.classList.remove('hidden');
+                              }
+                            }}
+                          />
+                          <div className="hidden absolute inset-0 flex items-center justify-center bg-zinc-800 text-emerald-400">
+                            <ImageIcon className="w-4 h-4" />
+                          </div>
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition">
+                            <Eye className="w-4 h-4 text-white drop-shadow" />
+                          </div>
+                        </div>
                       ) : (
-                        getFileIcon(item.name)
+                        <div className="w-10 h-10 rounded-lg bg-zinc-800 border border-zinc-700/60 flex items-center justify-center shrink-0">
+                          {getFileIcon(item.name)}
+                        </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
@@ -325,6 +393,19 @@ export function FileExplorerModal({
                       </button>
                     ) : (
                       <div className="flex items-center gap-1.5">
+                        {isImageFile(item.name) && (
+                          <button
+                            onClick={() => {
+                              triggerHaptic([25]);
+                              setPreviewItem(item);
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-600 hover:bg-blue-500 active:scale-[0.98] text-white font-semibold text-xs transition cursor-pointer shadow-sm"
+                            title="Pratinjau / Perbesar Foto"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                            <span className="hidden sm:inline">Lihat</span>
+                          </button>
+                        )}
                         {isMediaFile(item.name) && (
                           <button
                             onClick={() => {
@@ -364,6 +445,64 @@ export function FileExplorerModal({
           <span className="text-zinc-400">ENCross P2P File System</span>
         </div>
       </div>
+
+      {/* Fullscreen Image Lightbox Preview Modal */}
+      {previewItem && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center bg-black/90 backdrop-blur-md p-3 sm:p-6 animate-fadeIn"
+          onClick={() => setPreviewItem(null)}
+        >
+          <div
+            className="relative max-w-4xl max-h-[92vh] w-full flex flex-col bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden shadow-2xl p-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            {/* Header */}
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-3 px-1 shrink-0">
+              <div className="min-w-0 flex-1 pr-3">
+                <h4 className="text-sm font-semibold text-white truncate">{previewItem.name}</h4>
+                <p className="text-[11px] text-zinc-400 font-mono mt-0.5">
+                  {formatFileSize(previewItem.size)} • {previewItem.path}
+                </p>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    triggerHaptic([35]);
+                    if (onPullFile) onPullFile(previewItem);
+                  }}
+                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 active:scale-[0.98] text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+                  title="Unduh & simpan file ini"
+                >
+                  <Download className="w-3.5 h-3.5" />
+                  <span>Ambil File</span>
+                </button>
+                <button
+                  onClick={() => setPreviewItem(null)}
+                  className="p-1.5 rounded-lg text-zinc-400 hover:text-white hover:bg-zinc-800 transition cursor-pointer"
+                  title="Tutup Pratinjau"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Image Canvas */}
+            <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden min-h-[280px] max-h-[75vh] rounded-xl bg-zinc-950/80 border border-zinc-800/80 p-2">
+              <img
+                src={getFileUrl(previewItem)}
+                alt={previewItem.name}
+                className="max-h-[72vh] max-w-full object-contain rounded-lg shadow-2xl transition duration-200"
+                onError={(e) => {
+                  const proxyUrl = getFileProxyUrl(previewItem);
+                  if (e.currentTarget.src !== proxyUrl) {
+                    e.currentTarget.src = proxyUrl;
+                  }
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -1482,7 +1482,17 @@ export function App() {
         onNavigate={handleExplorerNavigate}
         onRefresh={handleExplorerRefresh}
         onPullFile={handleExplorerPullFile}
+        onStreamMedia={(item) => setStreamingMediaItem(item)}
         onRequestPermission={handleRequestStoragePermission}
+      />
+
+      {/* Instant Media Streaming Modal */}
+      <MediaStreamingModal
+        isOpen={Boolean(streamingMediaItem)}
+        onClose={() => setStreamingMediaItem(null)}
+        mediaItem={streamingMediaItem}
+        targetPeer={explorerTargetPeer}
+        onDownloadFile={handleExplorerPullFile}
       />
 
       {/* Stream Source Selector for Mobile */}
