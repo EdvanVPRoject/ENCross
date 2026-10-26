@@ -27,6 +27,7 @@ import android.os.Bundle;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.HandlerThread;
+import android.os.Looper;
 import android.provider.Settings;
 import android.util.Base64;
 import android.util.DisplayMetrics;
@@ -78,6 +79,62 @@ public class MainActivity extends BridgeActivity {
     private Vibrator phoneVibrator = null;
     private BroadcastReceiver batteryReceiver = null;
 
+    public void checkAndRequestStoragePermission() {
+        runOnUiThread(() -> {
+            try {
+                // 1. Standard Runtime Storage Permissions
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) { // Android 13+
+                    java.util.List<String> perms = new java.util.ArrayList<>();
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_IMAGES) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        perms.add(android.Manifest.permission.READ_MEDIA_IMAGES);
+                    }
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_VIDEO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        perms.add(android.Manifest.permission.READ_MEDIA_VIDEO);
+                    }
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_MEDIA_AUDIO) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        perms.add(android.Manifest.permission.READ_MEDIA_AUDIO);
+                    }
+                    if (!perms.isEmpty()) {
+                        ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
+                    }
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    java.util.List<String> perms = new java.util.ArrayList<>();
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.READ_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        perms.add(android.Manifest.permission.READ_EXTERNAL_STORAGE);
+                    }
+                    if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE) != android.content.pm.PackageManager.PERMISSION_GRANTED) {
+                        perms.add(android.Manifest.permission.WRITE_EXTERNAL_STORAGE);
+                    }
+                    if (!perms.isEmpty()) {
+                        ActivityCompat.requestPermissions(this, perms.toArray(new String[0]), 1001);
+                    }
+                }
+
+                // 2. All Files Access (MANAGE_EXTERNAL_STORAGE) for Android 11+
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    if (!Environment.isExternalStorageManager()) {
+                        try {
+                            Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
+                            intent.setData(Uri.parse("package:" + getPackageName()));
+                            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                            startActivity(intent);
+                        } catch (Exception e) {
+                            try {
+                                Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
+                                intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+                                startActivity(intent);
+                            } catch (Exception ex) {
+                                ex.printStackTrace();
+                            }
+                        }
+                    }
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        });
+    }
+
     @Override
     public void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -86,6 +143,9 @@ public class MainActivity extends BridgeActivity {
         getWindow().setStatusBarColor(Color.parseColor("#09090b"));
         getWindow().setNavigationBarColor(Color.parseColor("#09090b"));
         findViewById(android.R.id.content).setBackgroundColor(Color.parseColor("#09090b"));
+
+        // Prompt storage permission on launch
+        new Handler(Looper.getMainLooper()).postDelayed(this::checkAndRequestStoragePermission, 600);
 
         // Start embedded HTTP media range stream server on port 8088
         try {
@@ -198,6 +258,22 @@ public class MainActivity extends BridgeActivity {
                     return false;
                 }
             }
+
+            @JavascriptInterface
+            public boolean hasStoragePermission() {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                    return Environment.isExternalStorageManager();
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                } else {
+                    return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
+                }
+            }
+
+            @JavascriptInterface
+            public void requestStoragePermission() {
+                checkAndRequestStoragePermission();
+            }
         }, "AndroidDownloader");
 
         // Native Remote Two-Way File System Bridge
@@ -206,6 +282,8 @@ public class MainActivity extends BridgeActivity {
             public boolean hasStoragePermission() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                     return Environment.isExternalStorageManager();
+                } else if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                    return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_MEDIA_IMAGES) == android.content.pm.PackageManager.PERMISSION_GRANTED;
                 } else {
                     return ContextCompat.checkSelfPermission(MainActivity.this, android.Manifest.permission.READ_EXTERNAL_STORAGE) == android.content.pm.PackageManager.PERMISSION_GRANTED;
                 }
@@ -213,20 +291,7 @@ public class MainActivity extends BridgeActivity {
 
             @JavascriptInterface
             public void requestStoragePermission() {
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                    try {
-                        Intent intent = new Intent(Settings.ACTION_MANAGE_APP_ALL_FILES_ACCESS_PERMISSION);
-                        intent.setData(Uri.parse("package:" + getPackageName()));
-                        startActivity(intent);
-                    } catch (Exception e) {
-                        try {
-                            Intent intent = new Intent(Settings.ACTION_MANAGE_ALL_FILES_ACCESS_PERMISSION);
-                            startActivity(intent);
-                        } catch (Exception ex) {
-                            ex.printStackTrace();
-                        }
-                    }
-                }
+                checkAndRequestStoragePermission();
             }
 
             @JavascriptInterface

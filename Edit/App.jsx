@@ -1233,6 +1233,8 @@ export function App() {
   const handleRequestStoragePermission = () => {
     if (typeof window !== 'undefined' && window.AndroidFileSystem?.requestStoragePermission) {
       window.AndroidFileSystem.requestStoragePermission();
+    } else if (typeof window !== 'undefined' && window.AndroidDownloader?.requestStoragePermission) {
+      window.AndroidDownloader.requestStoragePermission();
     } else {
       alert('Buka Pengaturan di HP Anda dan aktifkan "Izin Pengelolaan Semua File" untuk aplikasi ENCross.');
     }
