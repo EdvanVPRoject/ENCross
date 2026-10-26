@@ -130,6 +130,13 @@ export function PeersRadar({
     }
   };
 
+  const handleFileChange = (e) => {
+    const rawFiles = Array.from(e.target.files || []);
+    if (rawFiles.length > 0 && selectedPeerRef.current && onSendFile) {
+      onSendFile(selectedPeerRef.current, rawFiles);
+    }
+  };
+
   const handleFolderSelect = (peerId) => {
     triggerHaptic([35]);
     selectedPeerRef.current = peerId;

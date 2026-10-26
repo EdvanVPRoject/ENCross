@@ -68,11 +68,18 @@ function createMainWindow() {
     icon: appIcon,
     backgroundColor: '#09090b',
     autoHideMenuBar: true,
-    show: false,
+    show: true,
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true
+    }
+  });
+
+  mainWindow.webContents.on('did-finish-load', () => {
+    if (mainWindow) {
+      mainWindow.show();
+      mainWindow.focus();
     }
   });
 
@@ -660,10 +667,12 @@ function startClipboardWatcher() {
   clipboardWatcher = setInterval(() => {
     try {
       const current = clipboard.readText();
-      if (current && current !== lastCopiedText) {
+      if (typeof current === 'string' && current.length > 0 && current !== lastCopiedText) {
         lastCopiedText = current;
-        if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('clipboard-changed', current);
+        if (mainWindow && !mainWindow.isDestroyed() && !mainWindow.webContents.isDestroyed()) {
+          try {
+            mainWindow.webContents.send('clipboard-changed', current);
+          } catch (_) {}
         }
       }
     } catch (_) {}
