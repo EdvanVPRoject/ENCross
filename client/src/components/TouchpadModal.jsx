@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   X,
   MousePointer,
@@ -107,6 +107,23 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose }) {
       touchState.current.isTwoFinger = false;
     }
   };
+
+  // Attach non-passive native listeners to eliminate touch jitter & prevent pull-to-refresh
+  useEffect(() => {
+    const el = touchAreaRef.current;
+    if (!el) return;
+    const onStart = (e) => handleTouchStart(e);
+    const onMove = (e) => handleTouchMove(e);
+    const onEnd = (e) => handleTouchEnd(e);
+    el.addEventListener('touchstart', onStart, { passive: false });
+    el.addEventListener('touchmove', onMove, { passive: false });
+    el.addEventListener('touchend', onEnd, { passive: false });
+    return () => {
+      el.removeEventListener('touchstart', onStart);
+      el.removeEventListener('touchmove', onMove);
+      el.removeEventListener('touchend', onEnd);
+    };
+  }, [sensitivity]);
 
   // Keyboard and Button handlers
   const handleKeyClick = (key) => {

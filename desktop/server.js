@@ -19,7 +19,7 @@ function getLocalIpAddresses() {
   return addresses;
 }
 
-function startServer(port = 3001, customDistPath = null) {
+function startServer(port = 3001, customDistPath = null, serverOptions = {}) {
   const app = express();
   app.use(cors());
   app.use(express.json());
@@ -440,6 +440,26 @@ app.get('/api/media-stream-proxy', (req, res) => {
     socket.on('camera-facing-changed', ({ targetId, facingMode }) => {
       if (targetId) {
         io.to(targetId).emit('camera-facing-changed', { senderId: socket.id, facingMode });
+      }
+    });
+
+    socket.on('remote-input-event', ({ targetId, event }) => {
+      if (serverOptions?.onRemoteInput && typeof serverOptions.onRemoteInput === 'function') {
+        try {
+          serverOptions.onRemoteInput(event);
+        } catch (err) {
+          console.warn('[Server] Error handling onRemoteInput:', err);
+        }
+      } else {
+        const payload = {
+          senderId: socket.id,
+          event
+        };
+        if (targetId) {
+          io.to(targetId).emit('remote-input-event', payload);
+        } else if (currentRoom) {
+          socket.to(currentRoom).emit('remote-input-event', payload);
+        }
       }
     });
 

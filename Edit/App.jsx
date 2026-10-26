@@ -238,6 +238,13 @@ export function App() {
       setIncomingStreamPeerId(null);
     };
 
+    // Handle incoming WebRTC DataChannel remote input commands (trackpad/keyboard)
+    rtcManager.onRemoteInput = (event) => {
+      if (window.electronAPI?.sendRemoteInput) {
+        window.electronAPI.sendRemoteInput(event);
+      }
+    };
+
     // Socket Event: Peer started or stopped screen sharing
     newSocket.on('peer-screen-share-status', ({ senderId, isSharing }) => {
       if (!isSharing) {

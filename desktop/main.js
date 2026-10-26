@@ -34,7 +34,9 @@ async function ensureServerRunning() {
   console.log('[Electron] Initializing embedded server with distPath:', distPath);
 
   try {
-    const result = await startServer(3001, distPath);
+    const result = await startServer(3001, distPath, {
+      onRemoteInput: (cmd) => sendInputCommand(cmd)
+    });
     console.log(`[Electron] Server is running on port 3001 (isExisting: ${result.isExisting})`);
   } catch (err) {
     console.error('[Electron] Server initialization warning:', err);
@@ -658,6 +660,8 @@ function ensureInputHelperRunning() {
     try {
       inputProcess = spawn(exePath, [], { windowsHide: true });
       inputProcess.stdin.setDefaultEncoding('utf-8');
+      inputProcess.stdout?.on('data', () => {});
+      inputProcess.stderr?.on('data', () => {});
       inputProcess.on('exit', () => { inputProcess = null; });
       inputProcess.on('error', (err) => console.warn('[InputHelper] process error:', err));
     } catch (e) {
