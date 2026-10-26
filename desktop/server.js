@@ -34,7 +34,10 @@ function startServer(port = 3001, customDistPath = null, serverOptions = {}) {
   const server = http.createServer(app);
   const io = new Server(server, {
     cors: { origin: '*', methods: ['GET', 'POST'] },
-    maxHttpBufferSize: 1e8
+    maxHttpBufferSize: 1e8,
+    pingInterval: 10000,
+    pingTimeout: 60000,
+    connectTimeout: 45000
   });
 
   const rooms = new Map();
@@ -575,19 +578,29 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
-    socket.on('disconnect', () => {
-      console.log(`[Socket Disconnected] ID: ${socket.id}`);
+    socket.on('disconnect', (reason) => {
+      console.log(`[Socket Disconnected] ID: ${socket.id}, reason: ${reason}`);
       if (currentRoom && rooms.has(currentRoom) && peerData) {
-        const roomPeers = rooms.get(currentRoom);
-        const active = roomPeers.get(peerData.deviceId);
-        if (active && active.id === socket.id) {
-          roomPeers.delete(peerData.deviceId);
-          if (roomPeers.size === 0) {
-            rooms.delete(currentRoom);
-          } else {
-            socket.to(currentRoom).emit('peer-left', { id: socket.id, deviceId: peerData.deviceId });
+        const targetDeviceId = peerData.deviceId;
+        const targetRoom = currentRoom;
+        const targetSocketId = socket.id;
+
+        // Grace period (6 seconds) before announcing peer-left
+        // to prevent false disconnects when switching apps on mobile or brief background pause
+        setTimeout(() => {
+          if (rooms.has(targetRoom)) {
+            const peersMap = rooms.get(targetRoom);
+            const currentActive = peersMap.get(targetDeviceId);
+            if (currentActive && currentActive.id === targetSocketId) {
+              peersMap.delete(targetDeviceId);
+              if (peersMap.size === 0) {
+                rooms.delete(targetRoom);
+              } else {
+                io.to(targetRoom).emit('peer-left', { id: targetSocketId, deviceId: targetDeviceId });
+              }
+            }
           }
-        }
+        }, 6000);
       }
     });
   });

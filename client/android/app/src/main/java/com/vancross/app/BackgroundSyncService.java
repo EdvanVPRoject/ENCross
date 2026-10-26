@@ -11,6 +11,7 @@ import android.content.pm.ServiceInfo;
 import android.os.Build;
 import android.os.IBinder;
 import android.os.PowerManager;
+import android.net.wifi.WifiManager;
 import androidx.core.app.NotificationCompat;
 
 public class BackgroundSyncService extends Service {
@@ -19,12 +20,14 @@ public class BackgroundSyncService extends Service {
     public static final String ACTION_STOP_SERVICE = "com.vancross.app.STOP_BACKGROUND_SERVICE";
 
     private PowerManager.WakeLock wakeLock = null;
+    private WifiManager.WifiLock wifiLock = null;
 
     @Override
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
         acquireWakeLock();
+        acquireWifiLock();
     }
 
     @Override
@@ -64,6 +67,34 @@ public class BackgroundSyncService extends Service {
             if (wakeLock != null && wakeLock.isHeld()) {
                 wakeLock.release();
                 wakeLock = null;
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void acquireWifiLock() {
+        try {
+            WifiManager wm = (WifiManager) getApplicationContext().getSystemService(Context.WIFI_SERVICE);
+            if (wm != null && wifiLock == null) {
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
+                    wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_LOW_LATENCY, "ENCross:BackgroundSyncWifiLock");
+                } else {
+                    wifiLock = wm.createWifiLock(WifiManager.WIFI_MODE_FULL_HIGH_PERF, "ENCross:BackgroundSyncWifiLock");
+                }
+                wifiLock.setReferenceCounted(false);
+                wifiLock.acquire();
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void releaseWifiLock() {
+        try {
+            if (wifiLock != null && wifiLock.isHeld()) {
+                wifiLock.release();
+                wifiLock = null;
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -124,6 +155,7 @@ public class BackgroundSyncService extends Service {
     @Override
     public void onDestroy() {
         releaseWakeLock();
+        releaseWifiLock();
         super.onDestroy();
     }
 

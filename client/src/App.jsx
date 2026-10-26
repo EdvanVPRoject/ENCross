@@ -187,8 +187,28 @@ export function App() {
       });
 
     const newSocket = io(serverUrl, {
-      transports: ['websocket', 'polling']
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 20000
     });
+
+    // Keep JS execution alive on mobile in background using inaudible silent audio node
+    let keepAliveAudioCtx = null;
+    try {
+      const AudioCtx = window.AudioContext || window.webkitAudioContext;
+      if (AudioCtx && (device.os === 'Android' || device.deviceType === 'mobile')) {
+        keepAliveAudioCtx = new AudioCtx();
+        const osc = keepAliveAudioCtx.createOscillator();
+        const gain = keepAliveAudioCtx.createGain();
+        gain.gain.value = 0.00001; // Inaudible
+        osc.connect(gain);
+        gain.connect(keepAliveAudioCtx.destination);
+        osc.start();
+      }
+    } catch (_) {}
 
     setSocket(newSocket);
 
@@ -635,7 +655,37 @@ export function App() {
       }
     });
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        if (newSocket && !newSocket.connected) {
+          console.log('[App] App returned to foreground, reconnecting socket...');
+          newSocket.connect();
+        } else if (newSocket && newSocket.connected) {
+          // Re-announce presence just in case server lost peer state while asleep
+          newSocket.emit('join-room', {
+            roomId: 'encross-default-room',
+            device
+          });
+        }
+      }
+    };
+    const handleOnline = () => {
+      if (newSocket && !newSocket.connected) {
+        newSocket.connect();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('online', handleOnline);
+    window.addEventListener('focus', handleVisibilityChange);
+
     return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('online', handleOnline);
+      window.removeEventListener('focus', handleVisibilityChange);
+      try {
+        if (keepAliveAudioCtx) keepAliveAudioCtx.close();
+      } catch (_) {}
       newSocket.disconnect();
       rtcManager.cleanup();
     };

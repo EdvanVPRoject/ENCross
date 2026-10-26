@@ -805,8 +805,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onPause() {
         super.onPause();
-        // Keep WebView timers running in background so WebSockets, WebRTC, and LAN transfers remain alive
+        // Keep WebView fully active in background so WebSockets, WebRTC, and LAN transfers remain alive
         if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().onResume();
             this.getBridge().getWebView().resumeTimers();
         }
     }
@@ -814,8 +815,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     public void onStop() {
         super.onStop();
-        // Keep WebView timers running when activity is stopped in background
+        // Keep WebView fully active when activity is stopped in background
         if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+            this.getBridge().getWebView().onResume();
             this.getBridge().getWebView().resumeTimers();
         }
     }

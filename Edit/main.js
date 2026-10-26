@@ -1,4 +1,4 @@
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell, clipboard } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell, clipboard, powerSaveBlocker } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
@@ -78,9 +78,16 @@ function createMainWindow() {
     webPreferences: {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
-      contextIsolation: true
+      contextIsolation: true,
+      backgroundThrottling: false
     }
   });
+
+  try {
+    if (powerSaveBlocker && !powerSaveBlocker.isStarted?.(1)) {
+      powerSaveBlocker.start('prevent-app-suspension');
+    }
+  } catch (_) {}
 
   mainWindow.webContents.on('did-finish-load', () => {
     if (mainWindow) {
