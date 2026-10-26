@@ -712,7 +712,7 @@ export function DeviceWorkspace({
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium py-2.5 px-3 rounded-full text-xs transition cursor-pointer shadow-sm active:scale-95"
+                  className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium py-2.5 px-3 rounded-full text-xs transition cursor-pointer shadow-sm"
                 >
                   <Upload className="w-4 h-4 shrink-0" />
                   <span>Kirim File</span>
@@ -720,7 +720,7 @@ export function DeviceWorkspace({
 
                 <button
                   onClick={() => folderInputRef.current?.click()}
-                  className="flex items-center justify-center gap-1.5 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 py-2.5 px-3 rounded-full text-xs font-medium transition cursor-pointer active:scale-95"
+                  className="ios-pressable flex items-center justify-center gap-1.5 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 py-2.5 px-3 rounded-full text-xs font-medium transition cursor-pointer"
                 >
                   <FolderUp className="w-4 h-4 shrink-0 text-amber-500" />
                   <span>Kirim Folder</span>
@@ -747,7 +747,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenFileExplorer?.(peer);
                 }}
-                className="w-full flex items-center justify-between p-3 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-left transition cursor-pointer active:scale-98"
+                className="ios-pressable w-full flex items-center justify-between p-3 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-left transition cursor-pointer"
               >
                 <div className="flex items-center gap-2.5">
                   <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
@@ -767,7 +767,7 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onMountPhoneStorage?.(peer);
                   }}
-                  className="w-full flex items-center justify-between p-3 rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 hover:bg-blue-500/10 dark:hover:bg-blue-500/15 border border-blue-500/15 text-left transition cursor-pointer active:scale-98"
+                  className="ios-pressable w-full flex items-center justify-between p-3 rounded-2xl bg-blue-500/5 dark:bg-blue-500/10 hover:bg-blue-500/10 dark:hover:bg-blue-500/15 border border-blue-500/15 text-left transition cursor-pointer"
                 >
                   <div className="flex items-center gap-2.5">
                     <div className="p-2 rounded-xl bg-blue-500/20 text-[#0071e3]">
@@ -796,7 +796,7 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRequestRemoteCamera?.(peer.id);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
+                  className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
                   <Camera className="w-4 h-4 text-emerald-500 shrink-0" />
                   <span className="truncate">Webcam HP</span>
@@ -808,7 +808,7 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRequestRemoteMic?.(peer.id);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
+                  className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
                   <Mic className="w-4 h-4 text-teal-500 shrink-0" />
                   <span className="truncate">Mic HP (PC Mic)</span>
@@ -820,7 +820,7 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onOpenTextSync?.(peer);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
+                  className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
                   <MessageSquare className="w-4 h-4 text-[#0071e3] shrink-0" />
                   <span className="truncate">Kirim Teks</span>
@@ -832,7 +832,7 @@ export function DeviceWorkspace({
                     triggerHaptic([30]);
                     onRingDevice?.(peer.id, peer.deviceId);
                   }}
-                  className="flex items-center gap-2 p-2.5 rounded-2xl bg-red-500/5 dark:bg-red-500/10 hover:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/15 text-xs font-medium transition cursor-pointer text-left"
+                  className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-red-500/5 dark:bg-red-500/10 hover:bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/15 text-xs font-medium transition cursor-pointer text-left"
                 >
                   <BellRing className="w-4 h-4 text-red-500 shrink-0" />
                   <span className="truncate">Deringkan HP</span>
@@ -860,7 +860,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenTouchpad?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                   <MousePointer className="w-6 h-6" />
@@ -879,7 +879,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenMacroPad?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
                   <Layers className="w-6 h-6" />
@@ -895,7 +895,7 @@ export function DeviceWorkspace({
               {/* 3. Send Files & Folder */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
                   <Upload className="w-6 h-6" />
@@ -914,7 +914,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenFileExplorer?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
                   <Folder className="w-6 h-6" />
@@ -933,7 +933,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'camera');
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
                   <Camera className="w-6 h-6" />
@@ -952,7 +952,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'mic');
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0">
                   <Mic className="w-6 h-6" />
@@ -971,7 +971,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenTextSync?.(peer);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
                   <MessageSquare className="w-6 h-6" />
@@ -990,7 +990,7 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onRequestRemoteScreen?.(peer.id);
                 }}
-                className="flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer active:scale-98 shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
               >
                 <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
                   <MonitorPlay className="w-6 h-6" />

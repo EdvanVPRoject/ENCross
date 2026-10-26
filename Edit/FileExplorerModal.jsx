@@ -149,7 +149,7 @@ export function FileExplorerModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[88vh] text-left overflow-hidden">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-2xl shadow-2xl flex flex-col max-h-[88vh] text-left overflow-hidden animate-ios-sheet smooth-gpu">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-black/8 dark:border-white/10 flex items-center justify-between gap-3 bg-black/3 dark:bg-white/3">
           <div className="flex items-center gap-3 min-w-0">
@@ -179,14 +179,14 @@ export function FileExplorerModal({
               }}
               title="Segarkan daftar file"
               disabled={loading}
-              className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer disabled:opacity-50"
+              className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer disabled:opacity-50 ios-pressable"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-[#0071e3]' : ''}`} />
             </button>
             <button
               onClick={onClose}
               title="Tutup explorer"
-              className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+              className="p-2 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer ios-pressable"
             >
               <X className="w-5 h-5" />
             </button>
@@ -199,7 +199,7 @@ export function FileExplorerModal({
           <button
             onClick={handleGoUp}
             disabled={!currentPath || currentPath === '/' || currentPath === '.'}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 border border-black/8 dark:border-white/10 transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none active:scale-[0.98]"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 border border-black/8 dark:border-white/10 transition cursor-pointer disabled:opacity-30 disabled:pointer-events-none ios-pressable"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Naik 1 Folder</span>
@@ -215,7 +215,7 @@ export function FileExplorerModal({
                   triggerHaptic([25]);
                   if (onNavigate) onNavigate(sc.path);
                 }}
-                className={`px-3 py-1 rounded-full text-[11px] transition shrink-0 cursor-pointer border ${
+                className={`px-3 py-1 rounded-full text-[11px] transition shrink-0 cursor-pointer border ios-pressable ${
                   currentPath === sc.path
                     ? 'bg-[#0071e3] text-white border-[#0071e3] font-medium shadow-xs'
                     : 'bg-black/4 dark:bg-white/6 hover:bg-black/8 dark:hover:bg-white/10 text-zinc-700 dark:text-zinc-300 border-black/6 dark:border-white/8'
@@ -283,7 +283,8 @@ export function FileExplorerModal({
               {items.map((item, index) => (
                 <div
                   key={`${item.path}_${index}`}
-                  className="flex items-center justify-between p-2.5 rounded-2xl bg-black/2 dark:bg-white/4 hover:bg-black/5 dark:hover:bg-white/8 border border-black/5 dark:border-white/8 transition group"
+                  className="flex items-center justify-between p-2.5 rounded-2xl bg-black/2 dark:bg-white/4 hover:bg-black/5 dark:hover:bg-white/8 border border-black/5 dark:border-white/8 transition group ios-card-enter"
+                  style={{ animationDelay: `${Math.min(index * 25, 300)}ms` }}
                 >
                   {/* Left: Icon & Name */}
                   <div
@@ -395,7 +396,7 @@ export function FileExplorerModal({
                               triggerHaptic([25]);
                               setPreviewItem(item);
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 active:scale-[0.98] text-[#0071e3] dark:text-blue-400 font-medium text-xs transition cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-[#0071e3] dark:text-blue-400 font-medium text-xs transition cursor-pointer ios-pressable"
                             title="Pratinjau / Perbesar Foto"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -408,7 +409,7 @@ export function FileExplorerModal({
                               triggerHaptic([30]);
                               if (onStreamMedia) onStreamMedia(item);
                             }}
-                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/15 active:scale-[0.98] text-purple-600 dark:text-purple-400 font-medium text-xs transition cursor-pointer"
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 hover:bg-purple-500/15 text-purple-600 dark:text-purple-400 font-medium text-xs transition cursor-pointer ios-pressable"
                             title="Putar streaming langsung tanpa unduh"
                           >
                             <Play className="w-3.5 h-3.5 fill-current" />
@@ -420,7 +421,7 @@ export function FileExplorerModal({
                             triggerHaptic([35]);
                             if (onPullFile) onPullFile(item);
                           }}
-                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] active:scale-[0.98] text-white font-medium text-xs transition cursor-pointer shadow-xs"
+                          className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium text-xs transition cursor-pointer shadow-xs ios-pressable"
                           title="Tarik & simpan file ini ke perangkat Anda"
                         >
                           <Download className="w-3.5 h-3.5" />
@@ -449,7 +450,7 @@ export function FileExplorerModal({
           onClick={() => setPreviewItem(null)}
         >
           <div
-            className="relative max-w-4xl max-h-[92vh] w-full flex flex-col apple-card border border-black/10 dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl p-5"
+            className="relative max-w-4xl max-h-[92vh] w-full flex flex-col apple-card border border-black/10 dark:border-white/10 rounded-3xl overflow-hidden shadow-2xl p-5 animate-ios-sheet smooth-gpu"
             onClick={(e) => e.stopPropagation()}
           >
             {/* Header */}
@@ -466,7 +467,7 @@ export function FileExplorerModal({
                     triggerHaptic([35]);
                     if (onPullFile) onPullFile(previewItem);
                   }}
-                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] active:scale-[0.98] text-white text-xs font-medium transition cursor-pointer shadow-xs"
+                  className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-medium transition cursor-pointer shadow-xs ios-pressable"
                   title="Unduh & simpan file ini"
                 >
                   <Download className="w-3.5 h-3.5" />
@@ -474,7 +475,7 @@ export function FileExplorerModal({
                 </button>
                 <button
                   onClick={() => setPreviewItem(null)}
-                  className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+                  className="p-1.5 rounded-full text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer ios-pressable"
                   title="Tutup Pratinjau"
                 >
                   <X className="w-5 h-5" />

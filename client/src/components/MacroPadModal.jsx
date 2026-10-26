@@ -151,7 +151,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-lg h-[90vh] max-h-[720px] flex flex-col shadow-2xl overflow-hidden select-none">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-lg h-[90vh] max-h-[720px] flex flex-col shadow-2xl overflow-hidden select-none animate-ios-sheet smooth-gpu">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -172,7 +172,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+            className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer ios-pressable"
           >
             <X className="w-5 h-5" />
           </button>
@@ -182,7 +182,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
         <div className="grid grid-cols-4 gap-1 p-1 m-3 rounded-full bg-black/5 dark:bg-white/8 border border-black/5 dark:border-white/5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('system')}
-            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ios-pressable ${
               activeTab === 'system'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -194,7 +194,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
           <button
             onClick={() => setActiveTab('media')}
-            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ios-pressable ${
               activeTab === 'media'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -206,7 +206,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
           <button
             onClick={() => setActiveTab('browser')}
-            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ios-pressable ${
               activeTab === 'browser'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -218,7 +218,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
 
           <button
             onClick={() => setActiveTab('custom')}
-            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ${
+            className={`py-1.5 rounded-full transition cursor-pointer flex flex-col items-center gap-0.5 ios-pressable ${
               activeTab === 'custom'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -239,7 +239,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <button
                     key={idx}
                     onClick={() => executeCommand(macro.cmd)}
-                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
+                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition cursor-pointer shadow-xs min-h-[82px] text-left ios-pressable ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
@@ -264,7 +264,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <button
                     key={idx}
                     onClick={() => executeCommand(macro.cmd)}
-                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
+                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition cursor-pointer shadow-xs min-h-[82px] text-left ios-pressable ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
@@ -289,7 +289,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <button
                     key={idx}
                     onClick={() => executeCommand(macro.cmd)}
-                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[82px] text-left ${colorStyles[macro.color] || colorStyles.zinc}`}
+                    className={`flex flex-col items-start justify-between p-3.5 rounded-2xl border transition cursor-pointer shadow-xs min-h-[82px] text-left ios-pressable ${colorStyles[macro.color] || colorStyles.zinc}`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">
@@ -313,7 +313,7 @@ export function MacroPadModal({ targetPeer, onSendInput, onClose }) {
                   <div
                     key={macro.id}
                     onClick={() => executeCommand(macro.cmd)}
-                    className={`relative flex flex-col items-start justify-between p-3.5 rounded-2xl border transition active:scale-[0.96] cursor-pointer shadow-xs min-h-[84px] text-left group ${colorStyles[macro.color] || colorStyles.blue}`}
+                    className={`relative flex flex-col items-start justify-between p-3.5 rounded-2xl border transition cursor-pointer shadow-xs min-h-[84px] text-left group ios-pressable ${colorStyles[macro.color] || colorStyles.blue}`}
                   >
                     <div className="flex items-center justify-between w-full">
                       <div className="p-1.5 rounded-xl bg-black/5 dark:bg-white/10 shrink-0">

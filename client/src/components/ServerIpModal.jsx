@@ -111,14 +111,14 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp, isMobile = f
 
   return (
     <div className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md flex items-center justify-center p-4 animate-fadeIn">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative text-left">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-sm p-6 shadow-2xl relative text-left animate-ios-sheet smooth-gpu">
         {onClose && (
           <button
             onClick={() => {
               stopCamera();
               onClose();
             }}
-            className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+            className="ios-pressable absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -150,7 +150,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp, isMobile = f
               setActiveTab('ip');
               stopCamera();
             }}
-            className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition cursor-pointer ${
+            className={`ios-pressable py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition cursor-pointer ${
               activeTab === 'ip'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -165,7 +165,7 @@ export function ServerIpModal({ isOpen, onClose, onSave, currentIp, isMobile = f
               setActiveTab('qr');
               setScanError('');
             }}
-            className={`py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition cursor-pointer ${
+            className={`ios-pressable py-1.5 px-2 rounded-full flex items-center justify-center gap-1.5 transition cursor-pointer ${
               activeTab === 'qr'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'

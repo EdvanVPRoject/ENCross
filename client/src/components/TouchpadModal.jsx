@@ -134,7 +134,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-md h-[88vh] max-h-[680px] flex flex-col shadow-2xl overflow-hidden select-none">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-md h-[88vh] max-h-[680px] flex flex-col shadow-2xl overflow-hidden select-none animate-ios-sheet smooth-gpu">
         {/* Header */}
         <div className="flex items-center justify-between px-5 py-3.5 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3">
           <div className="flex items-center gap-2.5 min-w-0">
@@ -152,7 +152,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
           </div>
           <button
             onClick={onClose}
-            className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+            className="p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer ios-pressable"
           >
             <X className="w-5 h-5" />
           </button>
@@ -162,7 +162,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
         <div className="grid grid-cols-3 gap-1 p-1 m-3 rounded-full bg-black/5 dark:bg-white/8 border border-black/5 dark:border-white/5 text-xs font-medium">
           <button
             onClick={() => setActiveTab('touchpad')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ios-pressable ${
               activeTab === 'touchpad'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -173,7 +173,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
           </button>
           <button
             onClick={() => setActiveTab('numpad')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ios-pressable ${
               activeTab === 'numpad'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -184,7 +184,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
           </button>
           <button
             onClick={() => setActiveTab('media')}
-            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ${
+            className={`flex items-center justify-center gap-1.5 py-1.5 rounded-full transition cursor-pointer ios-pressable ${
               activeTab === 'media'
                 ? 'bg-white dark:bg-zinc-800 text-zinc-900 dark:text-white shadow-xs font-semibold'
                 : 'text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white'
@@ -226,7 +226,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
                     triggerHaptic(20);
                     sendCommand('c left');
                   }}
-                  className="rounded-2xl bg-black/4 dark:bg-white/6 hover:bg-black/8 dark:hover:bg-white/10 border border-black/8 dark:border-white/10 text-zinc-900 dark:text-white font-medium text-sm transition active:scale-[0.98] cursor-pointer flex flex-col items-center justify-center"
+                  className="rounded-2xl bg-black/4 dark:bg-white/6 hover:bg-black/8 dark:hover:bg-white/10 border border-black/8 dark:border-white/10 text-zinc-900 dark:text-white font-medium text-sm transition cursor-pointer flex flex-col items-center justify-center ios-pressable"
                 >
                   <span>Klik Kiri</span>
                   <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">Left Click</span>
@@ -236,7 +236,7 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad
                     triggerHaptic(20);
                     sendCommand('c right');
                   }}
-                  className="rounded-2xl bg-black/4 dark:bg-white/6 hover:bg-black/8 dark:hover:bg-white/10 border border-black/8 dark:border-white/10 text-zinc-900 dark:text-white font-medium text-sm transition active:scale-[0.98] cursor-pointer flex flex-col items-center justify-center"
+                  className="rounded-2xl bg-black/4 dark:bg-white/6 hover:bg-black/8 dark:hover:bg-white/10 border border-black/8 dark:border-white/10 text-zinc-900 dark:text-white font-medium text-sm transition cursor-pointer flex flex-col items-center justify-center ios-pressable"
                 >
                   <span>Klik Kanan</span>
                   <span className="text-[10px] text-zinc-500 dark:text-zinc-400 font-normal">Right Click</span>

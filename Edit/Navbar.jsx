@@ -81,7 +81,7 @@ export function Navbar({
                 triggerHaptic([20]);
                 onToggleTheme();
               }}
-              className="p-1.5 rounded-full bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 text-zinc-600 dark:text-zinc-300 transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+              className="ios-pressable p-1.5 rounded-full bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 text-zinc-600 dark:text-zinc-300 transition cursor-pointer shrink-0 shadow-xs"
               title={theme === 'light' ? 'Beralih ke Dark Mode (Hitam AMOLED)' : 'Beralih ke Light Mode (Pristine Silver)'}
             >
               {theme === 'light' ? (
@@ -99,7 +99,7 @@ export function Navbar({
                 triggerHaptic([30]);
                 onOpenConnect();
               }}
-              className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full h-7 px-2.5 sm:px-3 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer shrink-0"
+              className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full h-7 px-2.5 sm:px-3 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer shrink-0"
               title={isMobile ? 'Sambungkan ke IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
             >
               <Wifi className="w-3.5 h-3.5 text-blue-500 shrink-0" />
@@ -113,7 +113,7 @@ export function Navbar({
           {/* Self Device Badge (Click to Rename) */}
           <button
             onClick={handleRenameClick}
-            className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-2.5 sm:px-3 py-1 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[85px] sm:max-w-[180px] shrink-0"
+            className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-2.5 sm:px-3 py-1 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[85px] sm:max-w-[180px] shrink-0"
             title="Klik untuk mengubah nama perangkat Anda"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -131,7 +131,7 @@ export function Navbar({
                 triggerHaptic([30]);
                 onOpenQR();
               }}
-              className="flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-7 px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+              className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-7 px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
               title="Hubungkan Perangkat (Scan QR / Link LAN)"
             >
               <QrCode className="w-3.5 h-3.5 shrink-0" />

@@ -24,10 +24,10 @@ export function RenameModal({ isOpen, onClose, currentName, onSave }) {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-xs p-6 shadow-2xl relative animate-modal-pop smooth-gpu">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-xs p-6 shadow-2xl relative animate-ios-sheet smooth-gpu">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
+          className="ios-pressable absolute top-4 right-4 p-1.5 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition"
         >
           <X className="w-4 h-4" />
         </button>
@@ -55,14 +55,14 @@ export function RenameModal({ isOpen, onClose, currentName, onSave }) {
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-full text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/8 transition"
+              className="ios-pressable px-3.5 py-1.5 rounded-full text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/8 transition"
             >
               Batal
             </button>
             <button
               type="submit"
               disabled={!name.trim()}
-              className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full text-xs font-medium disabled:opacity-40 transition cursor-pointer shadow-sm active:scale-95"
+              className="ios-pressable flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full text-xs font-medium disabled:opacity-40 transition cursor-pointer shadow-sm"
             >
               <Check className="w-3.5 h-3.5" />
               <span>Simpan</span>

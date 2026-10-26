@@ -1744,53 +1744,57 @@ export function App() {
         <PwaInstallBanner selfInfo={selfInfo} />
 
         {selectedPeer ? (
-          <DeviceWorkspace
-            peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
-            selfInfo={selfInfo}
-            isMobile={isMobileDevice}
-            pingMs={pingMs}
-            onBack={() => setSelectedPeer(null)}
-            onSendFile={handleSendFile}
-            onOpenTextSync={(peer) => {
-              setTextTargetPeer(peer);
-              setIsTextSyncOpen(true);
-              if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
-                setIncomingToast(null);
-              }
-            }}
-            onOpenFileExplorer={handleOpenFileExplorer}
-            onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
-            onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
-            onRingDevice={handleRingDevice}
-            onMountPhoneStorage={handleMountPhoneStorage}
-            onStartScreenShare={handleStartScreenShare}
-            onRequestRemoteScreen={handleRequestRemoteScreen}
-            onRequestRemoteCamera={handleRequestRemoteCamera}
-            onRequestRemoteMic={handleRequestRemoteMic}
-            incomingStream={incomingStream}
-            incomingStreamMode={incomingStreamMode}
-            onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
-            transferHistory={transferHistory}
-            onClearTransferHistory={handleClearTransferHistory}
-            onOpenFolder={handleOpenFolder}
-          />
+          <div key="workspace" className="animate-ios-push flex-1 flex flex-col">
+            <DeviceWorkspace
+              peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
+              selfInfo={selfInfo}
+              isMobile={isMobileDevice}
+              pingMs={pingMs}
+              onBack={() => setSelectedPeer(null)}
+              onSendFile={handleSendFile}
+              onOpenTextSync={(peer) => {
+                setTextTargetPeer(peer);
+                setIsTextSyncOpen(true);
+                if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
+                  setIncomingToast(null);
+                }
+              }}
+              onOpenFileExplorer={handleOpenFileExplorer}
+              onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
+              onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
+              onRingDevice={handleRingDevice}
+              onMountPhoneStorage={handleMountPhoneStorage}
+              onStartScreenShare={handleStartScreenShare}
+              onRequestRemoteScreen={handleRequestRemoteScreen}
+              onRequestRemoteCamera={handleRequestRemoteCamera}
+              onRequestRemoteMic={handleRequestRemoteMic}
+              incomingStream={incomingStream}
+              incomingStreamMode={incomingStreamMode}
+              onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+              transferHistory={transferHistory}
+              onClearTransferHistory={handleClearTransferHistory}
+              onOpenFolder={handleOpenFolder}
+            />
+          </div>
         ) : (
-          <DeviceDiscoveryView
-            peers={peers}
-            selfInfo={selfInfo}
-            localIp={resolvedIp}
-            selfIp={selfIp}
-            pingMs={pingMs}
-            onSelectDevice={(peer) => {
-              setSelectedPeer(peer);
-            }}
-            onOpenQR={() => setIsQrOpen(true)}
-            onOpenConnect={() => setIsServerIpModalOpen(true)}
-            onOpenRename={() => setIsRenameOpen(true)}
-            transferHistory={transferHistory}
-            onClearTransferHistory={handleClearTransferHistory}
-            onOpenFolder={handleOpenFolder}
-          />
+          <div key="discovery" className="animate-ios-pop flex-1 flex flex-col">
+            <DeviceDiscoveryView
+              peers={peers}
+              selfInfo={selfInfo}
+              localIp={resolvedIp}
+              selfIp={selfIp}
+              pingMs={pingMs}
+              onSelectDevice={(peer) => {
+                setSelectedPeer(peer);
+              }}
+              onOpenQR={() => setIsQrOpen(true)}
+              onOpenConnect={() => setIsServerIpModalOpen(true)}
+              onOpenRename={() => setIsRenameOpen(true)}
+              transferHistory={transferHistory}
+              onClearTransferHistory={handleClearTransferHistory}
+              onOpenFolder={handleOpenFolder}
+            />
+          </div>
         )}
       </main>
 

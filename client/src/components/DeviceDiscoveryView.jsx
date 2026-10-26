@@ -159,7 +159,7 @@ export function DeviceDiscoveryView({
         {/* Device List or Quiet Minimal Empty State */}
         {peers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-            {peers.map((peer) => {
+            {peers.map((peer, idx) => {
               const isPeerMobile = peer.deviceType?.toLowerCase() === 'mobile' || peer.deviceType?.toLowerCase() === 'smartphone';
               return (
                 <div
@@ -168,7 +168,8 @@ export function DeviceDiscoveryView({
                     triggerHaptic([35]);
                     onSelectDevice(peer);
                   }}
-                  className="apple-card p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group hover:border-black/20 dark:hover:border-white/20 active:scale-[0.99] transition-all shadow-sm"
+                  style={{ animationDelay: `${idx * 70}ms` }}
+                  className="apple-card ios-card-enter ios-pressable p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group hover:border-black/20 dark:hover:border-white/20 shadow-sm"
                 >
                   <div>
                     {/* Top row: Icon, Type & Online Status */}
@@ -177,7 +178,7 @@ export function DeviceDiscoveryView({
                         {getDeviceIcon(peer.deviceType, 'w-6 h-6')}
                       </div>
 
-                      <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10">
+                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10">
                         <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                         <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">
                           {pingMs ? `${pingMs} ms` : 'LAN Siap'}
@@ -221,7 +222,7 @@ export function DeviceDiscoveryView({
                     </span>
                     <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-3.5 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
                       <span>Buka Kontrol</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform" />
+                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
                     </div>
                   </div>
                 </div>
@@ -229,10 +230,14 @@ export function DeviceDiscoveryView({
             })}
           </div>
         ) : (
-          /* Empty State: Pure Apple Clean Minimalist Empty State (No tacky neon circles) */
+          /* Empty State: Pure Apple Clean Minimalist Empty State with Organic AirDrop Breathing Beacon */
           <div className="apple-card border-dashed p-8 sm:p-12 text-center flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="w-14 h-14 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 flex items-center justify-center mb-3">
-              <Smartphone className="w-6 h-6 text-zinc-400 dark:text-zinc-500 animate-pulse" />
+            <div className="relative w-18 h-18 flex items-center justify-center mb-3">
+              <div className="airdrop-beacon absolute inset-0 border border-blue-500/25" />
+              <div className="airdrop-beacon absolute inset-0 border border-blue-500/20" style={{ animationDelay: '1s' }} />
+              <div className="w-14 h-14 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 flex items-center justify-center relative z-10 shadow-xs">
+                <Smartphone className="w-6 h-6 text-zinc-400 dark:text-zinc-500" />
+              </div>
             </div>
 
             <h4 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
@@ -245,7 +250,7 @@ export function DeviceDiscoveryView({
             <div className="flex flex-wrap items-center justify-center gap-2.5">
               <button
                 onClick={onOpenConnect}
-                className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs active:scale-95"
+                className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-4 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
               >
                 <Link className="w-3.5 h-3.5 text-blue-500" />
                 <span>Hubungkan Manual via IP</span>
@@ -253,7 +258,7 @@ export function DeviceDiscoveryView({
 
               <button
                 onClick={onOpenQR}
-                className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs active:scale-95"
+                className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-4 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
               >
                 <QrCode className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
                 <span>Pindai QR Code</span>

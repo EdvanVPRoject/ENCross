@@ -75,13 +75,13 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
   }, [transfer.completed, transfer.direction]);
 
   return (
-    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-in slide-in-from-bottom-4 duration-200 smooth-gpu">
+    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-ios-sheet smooth-gpu">
       <div className="apple-card border border-black/10 dark:border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all">
         {/* Close button if finished */}
         {isDone && (
           <button
             onClick={onClose}
-            className="absolute top-3 right-3 text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
+            className="ios-pressable absolute top-3 right-3 text-zinc-400 hover:text-zinc-900 dark:hover:text-white p-1 rounded-full hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"
           >
             <X className="w-4 h-4" />
           </button>
@@ -117,10 +117,10 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
           </div>
         </div>
 
-        {/* Progress Bar */}
+        {/* Progress Bar - Smooth iOS Fluid Easing */}
         <div className="w-full bg-black/5 dark:bg-white/10 rounded-full h-1.5 overflow-hidden mb-3">
           <div
-            className={`h-full transition-all duration-150 rounded-full ${
+            className={`h-full transition-all duration-300 ease-[cubic-bezier(0.32,0.72,0,1)] rounded-full ${
               isDone ? 'bg-emerald-500' : isPaused ? 'bg-amber-500' : 'bg-[#0071e3]'
             }`}
             style={{ width: `${transfer.progress}%` }}
@@ -149,7 +149,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
               {onTogglePause && isUpload && (
                 <button
                   onClick={() => onTogglePause(transfer.fileId)}
-                  className="flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium transition cursor-pointer"
+                  className="ios-pressable flex items-center gap-1 px-2.5 py-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-300 text-[11px] font-medium transition cursor-pointer"
                   title={isPaused ? "Lanjutkan Transfer" : "Jeda Transfer"}
                 >
                   {isPaused ? (
@@ -169,7 +169,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
               {onCancel && (
                 <button
                   onClick={() => onCancel(transfer.fileId, transfer.peerId)}
-                  className="p-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-400 hover:text-red-500 transition cursor-pointer"
+                  className="ios-pressable p-1 rounded-full bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-400 hover:text-red-500 transition cursor-pointer"
                   title="Batalkan Transfer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -181,7 +181,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
           {isDone && !isUpload && transfer.blobUrl && (
             <button
               onClick={handleDownloadBlob}
-              className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3 py-1 rounded-full text-xs transition cursor-pointer shadow-sm active:scale-95"
+              className="ios-pressable flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-medium px-3.5 py-1 rounded-full text-xs transition cursor-pointer shadow-sm"
             >
               <ArrowDownToLine className="w-3.5 h-3.5" />
               <span>Simpan Ulang</span>
@@ -191,7 +191,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
           {isDone && isUpload && (
             <button
               onClick={onClose}
-              className="text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1 rounded-full hover:bg-black/5 dark:hover:bg-white/8 cursor-pointer"
+              className="ios-pressable text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1 rounded-full hover:bg-black/5 dark:hover:bg-white/8 cursor-pointer"
             >
               Tutup
             </button>
