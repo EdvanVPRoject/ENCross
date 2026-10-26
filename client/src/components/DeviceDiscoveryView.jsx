@@ -23,7 +23,19 @@ import {
   Monitor
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
+import { formatBytes } from '../utils/deviceInfo';
 import logoImg from '../assets/logo.png';
+
+function formatTransferTime(ts) {
+  if (!ts) return '';
+  if (typeof ts === 'string') return ts;
+  try {
+    const d = new Date(ts);
+    return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  } catch {
+    return '';
+  }
+}
 
 export function DeviceDiscoveryView({
   peers = [],
@@ -40,7 +52,7 @@ export function DeviceDiscoveryView({
   onOpenFolder
 }) {
   const [isScanning, setIsScanning] = useState(false);
-  const [showHistory, setShowHistory] = useState(false);
+  const [showHistory, setShowHistory] = useState(true);
 
   const getDeviceIcon = (deviceType, className = 'w-6 h-6') => {
     switch (deviceType?.toLowerCase()) {
@@ -266,46 +278,88 @@ export function DeviceDiscoveryView({
 
       {/* 3. Collapsible Session Transfer History */}
       {transferHistory.length > 0 && (
-        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-4">
-          <div className="flex items-center justify-between mb-3">
+        <div className="bg-zinc-900/60 border border-zinc-800/80 rounded-2xl p-3.5 backdrop-blur-sm animate-view-enter">
+          <div className="flex items-center justify-between mb-2.5">
             <button
-              onClick={() => setShowHistory(!showHistory)}
-              className="flex items-center gap-2 text-xs font-bold text-zinc-400 hover:text-zinc-200 transition cursor-pointer"
+              onClick={() => {
+                triggerHaptic([15]);
+                setShowHistory(!showHistory);
+              }}
+              className="flex items-center gap-2 text-xs font-bold text-zinc-300 hover:text-white transition cursor-pointer"
             >
-              <Clock className="w-4 h-4 text-zinc-500" />
+              <Clock className="w-4 h-4 text-cyan-400" />
               <span>Riwayat Pengiriman Sesi Ini ({transferHistory.length})</span>
-              <span className="text-[10px] text-zinc-500">[{showHistory ? 'Sembunyikan' : 'Lihat'}]</span>
+              <span className="text-[10px] text-zinc-500 font-normal">[{showHistory ? 'Sembunyikan' : 'Lihat'}]</span>
             </button>
 
-            {onClearTransferHistory && showHistory && (
-              <button
-                onClick={onClearTransferHistory}
-                className="text-[11px] text-zinc-500 hover:text-red-400 transition cursor-pointer flex items-center gap-1"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                <span>Hapus</span>
-              </button>
-            )}
+            <div className="flex items-center gap-1.5">
+              {onOpenFolder && showHistory && (
+                <button
+                  onClick={onOpenFolder}
+                  className="text-[11px] text-zinc-400 hover:text-cyan-300 transition cursor-pointer flex items-center gap-1 bg-zinc-800/70 hover:bg-zinc-800 px-2 py-1 rounded-lg border border-zinc-700/50"
+                  title="Buka Folder Unduhan"
+                >
+                  <FolderOpen className="w-3.5 h-3.5 text-amber-400" />
+                  <span className="hidden sm:inline">Folder Unduhan</span>
+                </button>
+              )}
+              {onClearTransferHistory && showHistory && (
+                <button
+                  onClick={onClearTransferHistory}
+                  className="text-[11px] text-zinc-500 hover:text-red-400 transition cursor-pointer flex items-center gap-1 bg-zinc-800/50 hover:bg-red-950/40 px-2 py-1 rounded-lg border border-zinc-700/40 hover:border-red-800/50"
+                  title="Hapus riwayat sesi"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>Hapus</span>
+                </button>
+              )}
+            </div>
           </div>
 
           {showHistory && (
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
-              {transferHistory.map((item) => (
-                <div
-                  key={item.id}
-                  className="flex items-center justify-between bg-zinc-950/60 border border-zinc-800/50 rounded-xl p-2.5 text-xs text-zinc-300"
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    {item.direction === 'sent' ? (
-                      <ArrowUpRight className="w-4 h-4 text-cyan-400 shrink-0" />
-                    ) : (
-                      <ArrowDownLeft className="w-4 h-4 text-emerald-400 shrink-0" />
+            <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+              {transferHistory.map((item, idx) => {
+                const isUpload = item.direction === 'upload' || item.direction === 'sent';
+                const name = item.fileName || item.name || 'Berkas';
+                const sizeStr = item.fileSize ? formatBytes(item.fileSize) : '';
+                const timeStr = formatTransferTime(item.timestamp || item.time);
+                const statusLabel = isUpload ? 'Terkirim' : 'Diterima';
+
+                return (
+                  <div
+                    key={item.fileId || item.id || idx}
+                    className="flex items-center justify-between bg-zinc-950/70 border border-zinc-800/60 rounded-xl p-2.5 text-xs text-zinc-300 hover:border-zinc-700/70 transition gap-2"
+                  >
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1">
+                      <div className={`p-1.5 rounded-lg shrink-0 ${isUpload ? 'bg-cyan-950/60 text-cyan-400 border border-cyan-800/50' : 'bg-emerald-950/60 text-emerald-400 border border-emerald-800/50'}`}>
+                        {isUpload ? (
+                          <ArrowUpRight className="w-4 h-4" />
+                        ) : (
+                          <ArrowDownLeft className="w-4 h-4" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate font-semibold text-zinc-200 text-xs" title={name}>{name}</p>
+                        <p className="text-[10px] text-zinc-500 flex items-center gap-1.5">
+                          {sizeStr && <span>{sizeStr}</span>}
+                          {sizeStr && <span>•</span>}
+                          <span className={isUpload ? 'text-cyan-400 font-medium' : 'text-emerald-400 font-medium'}>{statusLabel}</span>
+                          {timeStr && <span>• {timeStr}</span>}
+                        </p>
+                      </div>
+                    </div>
+                    {item.blobUrl && (
+                      <a
+                        href={item.blobUrl}
+                        download={name}
+                        className="shrink-0 text-[11px] font-medium text-emerald-400 hover:text-emerald-300 bg-emerald-950/50 border border-emerald-800/60 px-2.5 py-1 rounded-lg transition active:scale-95"
+                      >
+                        Simpan
+                      </a>
                     )}
-                    <span className="truncate font-medium">{item.name}</span>
                   </div>
-                  <span className="text-[10px] text-zinc-500 shrink-0 font-mono">{item.time}</span>
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>

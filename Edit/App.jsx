@@ -1728,6 +1728,9 @@ export function App() {
             incomingStream={incomingStream}
             incomingStreamMode={incomingStreamMode}
             onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+            transferHistory={transferHistory}
+            onClearTransferHistory={handleClearTransferHistory}
+            onOpenFolder={handleOpenFolder}
           />
         ) : (
           <DeviceDiscoveryView
