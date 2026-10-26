@@ -77,6 +77,9 @@ export const FEATURE_TOGGLES = {
 
   // 21. Penyimpanan HP di Windows File Explorer (WebDAV Native Drive Z:)
   enableWindowsDriveMount: true,
+
+  // 22. Virtual Macro Pad & Mini Stream Deck (Shortcut PC di Layar HP)
+  enableMacroPad: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.Drawing;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -16,6 +17,9 @@ namespace ENCrossInput {
 
         [DllImport("user32.dll")]
         static extern void keybd_event(byte bVk, byte bScan, uint dwFlags, int dwExtraInfo);
+
+        [DllImport("user32.dll")]
+        static extern bool LockWorkStation();
 
         [StructLayout(LayoutKind.Sequential)]
         struct POINT { public int X; public int Y; }
@@ -84,16 +88,23 @@ namespace ENCrossInput {
                             keybd_event(vk, 0, 0, 0);
                             keybd_event(vk, 0, KEYEVENTF_KEYUP, 0);
                         }
-                    } else if (cmd == "combo" && parts.Length >= 3) {
-                        // Key combination, e.g. combo win d or combo alt tab
-                        byte mod = ParseKey(parts[1]);
-                        byte key = ParseKey(parts[2]);
-                        if (mod > 0 && key > 0) {
-                            keybd_event(mod, 0, 0, 0);
-                            keybd_event(key, 0, 0, 0);
-                            keybd_event(key, 0, KEYEVENTF_KEYUP, 0);
-                            keybd_event(mod, 0, KEYEVENTF_KEYUP, 0);
+                    } else if ((cmd == "combo" || cmd == "hotkey") && parts.Length >= 2) {
+                        // Arbitrary Multi-Key combination: combo ctrl shift esc / combo win d
+                        List<byte> keys = new List<byte>();
+                        for (int i = 1; i < parts.Length; i++) {
+                            byte vk = ParseKey(parts[i]);
+                            if (vk > 0) keys.Add(vk);
                         }
+                        for (int i = 0; i < keys.Count; i++) {
+                            keybd_event(keys[i], 0, 0, 0);
+                        }
+                        Thread.Sleep(30);
+                        for (int i = keys.Count - 1; i >= 0; i--) {
+                            keybd_event(keys[i], 0, KEYEVENTF_KEYUP, 0);
+                        }
+                    } else if (cmd == "lock") {
+                        // Lock Windows Workstation
+                        LockWorkStation();
                     } else if (cmd == "media" && parts.Length >= 2) {
                         // Media keys: volup, voldown, mute, playpause, next, prev
                         string m = parts[1].ToLowerInvariant();
@@ -121,8 +132,16 @@ namespace ENCrossInput {
             if (k.Length == 1 && k[0] >= 'a' && k[0] <= 'z') return (byte)(0x41 + (k[0] - 'a'));
             if (k.StartsWith("num") && k.Length == 4 && k[3] >= '0' && k[3] <= '9') return (byte)(0x60 + (k[3] - '0'));
 
+            // Function keys F1-F12
+            if (k.StartsWith("f") && k.Length >= 2 && k.Length <= 3) {
+                int fNum;
+                if (int.TryParse(k.Substring(1), out fNum) && fNum >= 1 && fNum <= 12) {
+                    return (byte)(0x70 + (fNum - 1));
+                }
+            }
+
             switch (k) {
-                case "enter": return 0x0D;
+                case "enter": case "return": return 0x0D;
                 case "back": case "backspace": return 0x08;
                 case "esc": case "escape": return 0x1B;
                 case "tab": return 0x09;
@@ -131,11 +150,18 @@ namespace ENCrossInput {
                 case "down": return 0x28;
                 case "left": return 0x25;
                 case "right": return 0x27;
-                case "win": case "windows": return 0x5B;
-                case "alt": return 0x12;
+                case "win": case "windows": case "meta": return 0x5B;
+                case "alt": case "menu": return 0x12;
                 case "ctrl": case "control": return 0x11;
                 case "shift": return 0x10;
                 case "prtscn": case "printscreen": return 0x2C;
+                case "del": case "delete": return 0x2E;
+                case "ins": case "insert": return 0x2D;
+                case "home": return 0x24;
+                case "end": return 0x23;
+                case "pageup": case "pgup": return 0x21;
+                case "pagedown": case "pgdn": return 0x22;
+                case "caps": case "capslock": return 0x14;
                 case "plus": case "add": return 0x6B;
                 case "minus": case "subtract": return 0x6D;
                 case "multiply": return 0x6A;

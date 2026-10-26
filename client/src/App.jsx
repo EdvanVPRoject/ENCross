@@ -15,6 +15,7 @@ import { FileExplorerModal } from './components/FileExplorerModal';
 import { MediaStreamingModal } from './components/MediaStreamingModal';
 import { WirelessMicModal } from './components/WirelessMicModal';
 import { TouchpadModal } from './components/TouchpadModal';
+import { MacroPadModal } from './components/MacroPadModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -60,6 +61,11 @@ export function App() {
   const [isTouchpadModalOpen, setIsTouchpadModalOpen] = useState(false);
   const [selectedPeerForTouchpad, setSelectedPeerForTouchpad] = useState(null);
   const isTouchpadModalOpenRef = useRef(isTouchpadModalOpen);
+
+  // Virtual Macro Pad & Stream Deck States
+  const [isMacroPadModalOpen, setIsMacroPadModalOpen] = useState(false);
+  const [selectedPeerForMacroPad, setSelectedPeerForMacroPad] = useState(null);
+  const isMacroPadModalOpenRef = useRef(isMacroPadModalOpen);
   const lastSyncedClipboardRef = useRef('');
 
   // Remote File Explorer States
@@ -107,6 +113,7 @@ export function App() {
   useEffect(() => { isScrcpyModalOpenRef.current = isScrcpyModalOpen; }, [isScrcpyModalOpen]);
   useEffect(() => { isFileExplorerOpenRef.current = isFileExplorerOpen; }, [isFileExplorerOpen]);
   useEffect(() => { isTouchpadModalOpenRef.current = isTouchpadModalOpen; }, [isTouchpadModalOpen]);
+  useEffect(() => { isMacroPadModalOpenRef.current = isMacroPadModalOpen; }, [isMacroPadModalOpen]);
   useEffect(() => { pendingRemoteRequestRef.current = pendingRemoteRequest; }, [pendingRemoteRequest]);
 
   // Otomatis kontrol modal QR:
@@ -811,13 +818,14 @@ export function App() {
     }
   };
 
-  // Send Remote Touchpad / Keyboard Command to PC
-  const handleSendInput = (event) => {
-    if (!selectedPeerForTouchpad) return;
-    const sentP2P = webrtcManagerRef.current?.sendRemoteInput(selectedPeerForTouchpad.id, event);
+  // Send Remote Touchpad / Keyboard / Macro Command to PC
+  const handleSendInput = (event, targetPeerParam = null) => {
+    const peer = targetPeerParam || selectedPeerForTouchpad || selectedPeerForMacroPad;
+    if (!peer) return;
+    const sentP2P = webrtcManagerRef.current?.sendRemoteInput(peer.id, event);
     if (!sentP2P && socket) {
       socket.emit('remote-input-event', {
-        targetId: selectedPeerForTouchpad.id,
+        targetId: peer.id,
         event
       });
     }
@@ -844,6 +852,11 @@ export function App() {
 
   // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
   const handleBackStep = () => {
+    if (isMacroPadModalOpenRef.current) {
+      setIsMacroPadModalOpen(false);
+      setSelectedPeerForMacroPad(null);
+      return true;
+    }
     if (isTouchpadModalOpenRef.current) {
       setIsTouchpadModalOpen(false);
       setSelectedPeerForTouchpad(null);
@@ -947,6 +960,7 @@ export function App() {
       Boolean(incomingStream) ||
       Boolean(pendingRemoteRequest) ||
       Boolean(isTouchpadModalOpen) ||
+      Boolean(isMacroPadModalOpen) ||
       isFileExplorerOpen ||
       isScrcpyModalOpen ||
       isTextSyncOpen ||
@@ -1460,8 +1474,9 @@ export function App() {
           isMobile={isMobileDevice}
           onOpenConnect={() => setIsServerIpModalOpen(true)}
           onOpenFileExplorer={handleOpenFileExplorer}
-        onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
-        onRingDevice={handleRingDevice}
+          onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
+          onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
+          onRingDevice={handleRingDevice}
           pingMs={pingMs}
           transferHistory={transferHistory}
           onClearTransferHistory={handleClearTransferHistory}
@@ -1679,9 +1694,25 @@ export function App() {
         <TouchpadModal
           targetPeer={selectedPeerForTouchpad}
           onSendInput={handleSendInput}
+          onOpenMacroPad={(peer) => {
+            setSelectedPeerForMacroPad(peer);
+            setIsMacroPadModalOpen(true);
+          }}
           onClose={() => {
             setIsTouchpadModalOpen(false);
             setSelectedPeerForTouchpad(null);
+          }}
+        />
+      )}
+
+      {/* Virtual Macro Pad & Stream Deck Modal */}
+      {isMacroPadModalOpen && (
+        <MacroPadModal
+          targetPeer={selectedPeerForMacroPad}
+          onSendInput={(cmd) => handleSendInput(cmd, selectedPeerForMacroPad)}
+          onClose={() => {
+            setIsMacroPadModalOpen(false);
+            setSelectedPeerForMacroPad(null);
           }}
         />
       )}

@@ -691,6 +691,19 @@ function ensureInputHelperRunning() {
 
 function sendInputCommand(cmdStr) {
   if (!cmdStr || typeof cmdStr !== 'string') return;
+
+  // Handle instant text snippet typing via clipboard paste
+  if (cmdStr.startsWith('type:')) {
+    const textToType = cmdStr.slice(5);
+    try {
+      clipboard.writeText(textToType);
+      setTimeout(() => {
+        sendInputCommand('combo ctrl v');
+      }, 40);
+    } catch (_) {}
+    return;
+  }
+
   ensureInputHelperRunning();
   if (inputProcess && inputProcess.stdin && !inputProcess.stdin.destroyed) {
     try {

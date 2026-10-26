@@ -27,7 +27,8 @@ import {
   BellRing,
   FolderUp,
   Mic,
-  HardDrive
+  HardDrive,
+  Layers
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from '../config/features';
@@ -58,6 +59,7 @@ export function PeersRadar({
   onClearTransferHistory,
   onOpenFolder,
   onOpenTouchpad,
+  onOpenMacroPad,
   onRingDevice,
   onMountPhoneStorage
 }) {
@@ -467,7 +469,7 @@ export function PeersRadar({
           )}
 
                     {/* Baris Khusus: Remote / Virtual Touchpad jika peer adalah Laptop/PC */}
-          {/* Baris Khusus jika peer adalah Laptop/PC (Remote Touchpad & Mic HP ke PC) */}
+          {/* Baris Khusus jika peer adalah Laptop/PC (Remote Touchpad, Macro Pad, Webcam HP & Mic HP) */}
           {!isPeerMobile && (
             <div className="pt-0.5 grid grid-cols-2 gap-2">
               {FEATURE_TOGGLES.enableVirtualTouchpad !== false && (
@@ -481,6 +483,40 @@ export function PeersRadar({
                 >
                   <MousePointer className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
                   <span className="truncate">Remote PC</span>
+                </button>
+              )}
+
+              {FEATURE_TOGGLES.enableMacroPad !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onOpenMacroPad) onOpenMacroPad(peer);
+                  }}
+                  className="flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold bg-purple-500/15 hover:bg-purple-500/25 text-purple-300 border border-purple-500/35 transition cursor-pointer active:scale-[0.98]"
+                  title="Buka Virtual Macro Pad & Stream Deck di HP untuk shortcut PC"
+                >
+                  <Layers className="w-3.5 h-3.5 text-purple-400 shrink-0" />
+                  <span className="truncate">Macro Pad</span>
+                </button>
+              )}
+
+              {FEATURE_TOGGLES.enableWirelessWebcam !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    if (onStartScreenShare) onStartScreenShare(peer.id, 'camera');
+                  }}
+                  className={`flex items-center justify-center gap-1.5 py-1.5 px-2 rounded-lg text-[11px] font-semibold transition cursor-pointer active:scale-[0.98] ${
+                    activeSharingPeerId === peer.id && activeSharingMode === 'camera'
+                      ? 'bg-red-500/20 text-red-300 border border-red-500/40 hover:bg-red-500/30'
+                      : 'bg-sky-500/15 hover:bg-sky-500/25 text-sky-300 border border-sky-500/35'
+                  }`}
+                  title="Jadikan kamera HP sebagai Wireless Webcam untuk Laptop / OBS"
+                >
+                  <Camera className={`w-3.5 h-3.5 shrink-0 ${activeSharingPeerId === peer.id && activeSharingMode === 'camera' ? 'text-red-400 animate-pulse' : 'text-sky-400'}`} />
+                  <span className="truncate">
+                    {activeSharingPeerId === peer.id && activeSharingMode === 'camera' ? 'Stop Cam' : 'Webcam HP'}
+                  </span>
                 </button>
               )}
 

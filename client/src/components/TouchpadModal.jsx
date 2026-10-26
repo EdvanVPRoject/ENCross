@@ -13,10 +13,12 @@ import {
   SkipForward,
   Monitor,
   Delete,
-  CornerDownLeft
+  CornerDownLeft,
+  Lock,
+  Layers
 } from 'lucide-react';
 
-export function TouchpadModal({ targetPeer, onSendInput, onClose }) {
+export function TouchpadModal({ targetPeer, onSendInput, onClose, onOpenMacroPad }) {
   const [activeTab, setActiveTab] = useState('touchpad'); // 'touchpad' | 'numpad' | 'media'
   const [sensitivity, setSensitivity] = useState(1.4);
   const touchAreaRef = useRef(null);
@@ -438,6 +440,16 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose }) {
                     <span>Show Desktop</span>
                   </button>
                   <button
+                    onClick={() => {
+                      triggerHaptic(20);
+                      sendCommand('lock');
+                    }}
+                    className="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium border border-zinc-700/50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
+                  >
+                    <Lock className="w-3.5 h-3.5 text-rose-400" />
+                    <span>Lock PC</span>
+                  </button>
+                  <button
                     onClick={() => handleKeyClick('prtscn')}
                     className="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium border border-zinc-700/50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                   >
@@ -445,10 +457,23 @@ export function TouchpadModal({ targetPeer, onSendInput, onClose }) {
                   </button>
                   <button
                     onClick={() => handleKeyClick('space')}
-                    className="col-span-2 py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium border border-zinc-700/50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
+                    className="py-2 rounded-lg bg-zinc-800 hover:bg-zinc-700 text-zinc-300 text-xs font-medium border border-zinc-700/50 flex items-center justify-center gap-1.5 cursor-pointer active:scale-95 transition"
                   >
-                    <span>Spasi (Play/Pause Web)</span>
+                    <span>Spasi</span>
                   </button>
+                  {onOpenMacroPad && (
+                    <button
+                      onClick={() => {
+                        triggerHaptic(25);
+                        onClose();
+                        onOpenMacroPad(targetPeer);
+                      }}
+                      className="col-span-2 py-2.5 rounded-xl bg-purple-500/20 hover:bg-purple-500/30 text-purple-300 border border-purple-500/40 text-xs font-bold flex items-center justify-center gap-2 cursor-pointer active:scale-95 transition"
+                    >
+                      <Layers className="w-4 h-4 text-purple-400" />
+                      <span>Buka Full Stream Deck / Macro Pad</span>
+                    </button>
+                  )}
                 </div>
               </div>
             </div>
