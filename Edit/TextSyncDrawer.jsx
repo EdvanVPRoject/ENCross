@@ -53,13 +53,16 @@ export function TextSyncDrawer({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-end bg-black/60 backdrop-blur-md">
-      <div className="apple-card border-l border-black/10 dark:border-white/10 w-full max-w-md h-full flex flex-col shadow-2xl">
+    <div
+      onClick={onClose}
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/60 backdrop-blur-md animate-in fade-in duration-200"
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className="apple-card border border-black/10 dark:border-white/10 w-full max-w-md max-h-[85vh] rounded-3xl flex flex-col shadow-2xl overflow-hidden"
+      >
         {/* Header */}
-        <div
-          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1rem)' }}
-          className="px-5 pb-3.5 border-b border-black/8 dark:border-white/10 flex items-center justify-between bg-black/3 dark:bg-white/3"
-        >
+        <div className="px-5 py-3.5 border-b border-black/8 dark:border-white/10 flex items-center justify-between bg-black/3 dark:bg-white/3">
           <div className="flex items-center gap-2.5">
             <div className="p-2 rounded-xl bg-[#0071e3]/10 text-[#0071e3]">
               <MessageSquare className="w-4 h-4" />

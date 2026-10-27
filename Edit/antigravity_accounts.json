@@ -2,7 +2,7 @@
     "edvanwlf":  {
                      "accountName":  "edvanwlf",
                      "email":  "edvanwlf@gmail.com",
-                     "lastSeen":  "2026-10-26T21:23:13Z",
+                     "lastSeen":  "2026-10-27T04:59:32Z",
                      "tokens":  {
                                     "Conversations":  11,
                                     "Input":  124141464,
@@ -11,17 +11,25 @@
                                     "Total":  138142849
                                 },
                      "quota":  {
-                                   "geminiWeekly":  4,
-                                   "geminiWeeklyReset":  "Resets in 1d 21h 09m 18s",
-                                   "gemini5h":  57,
-                                   "gemini5hReset":  "Resets in 3h 18m 40s",
+                                   "geminiWeekly":  0,
+                                   "geminiWeeklyReset":  "Resets in 1d 10h 41m 26s",
+                                   "gemini5h":  94,
+                                   "gemini5hReset":  "Resets in 1h 24m 50s",
                                    "claudeWeekly":  100,
                                    "claude5h":  100,
                                    "geminiWeeklyResetIso":  "2026-10-28T18:32:32Z",
-                                   "gemini5hResetIso":  "2026-10-27T00:41:54Z",
+                                   "gemini5hResetIso":  "2026-10-27T09:15:56Z",
                                    "claudeWeeklyResetIso":  null,
                                    "claude5hResetIso":  null
-                               }
+                               },
+                     "knownConvIds":  [
+                                          "0f7df61f-0ce2-4b24-b572-2929f6f94d9c",
+                                          "0fa24ecc-a8d6-44a2-8f43-9e2f26abb215",
+                                          "5076b0f7-8b17-484f-8181-90ff5ad4229b",
+                                          "643f4ea1-de32-40ee-bf89-6f5eadab3d44",
+                                          "b64990bc-93fb-468c-8d64-20d103e7e1af",
+                                          "dcc1f5d7-655f-45f0-a44d-ee39a0abf93f"
+                                      ]
                  },
     "edvannr9191":  {
                         "accountName":  "edvannr9191",
@@ -74,7 +82,7 @@
     "septiaedvan":  {
                         "accountName":  "septiaedvan",
                         "email":  "septiaedvan@gmail.com",
-                        "lastSeen":  "2026-10-26T19:38:47Z",
+                        "lastSeen":  "2026-10-27T05:04:25Z",
                         "tokens":  {
                                        "Conversations":  50,
                                        "Input":  170381170,
@@ -84,16 +92,26 @@
                                    },
                         "quota":  {
                                       "geminiWeekly":  0,
-                                      "geminiWeeklyReset":  "Resets in 2d 16h 51m 49s",
-                                      "gemini5h":  82,
-                                      "gemini5hReset":  "Resets in 2h 14m 14s",
+                                      "geminiWeeklyReset":  "Resets in 2d 6h 23m 56s",
+                                      "gemini5h":  99,
+                                      "gemini5hReset":  "Resets in 2h 09m 59s",
                                       "claudeWeekly":  100,
                                       "claude5h":  100,
                                       "geminiWeeklyResetIso":  "2026-10-29T14:15:02Z",
-                                      "gemini5hResetIso":  "2026-10-26T23:37:27Z",
+                                      "gemini5hResetIso":  "2026-10-27T10:01:05Z",
                                       "claudeWeeklyResetIso":  null,
                                       "claude5hResetIso":  null
-                                  }
+                                  },
+                        "knownConvIds":  [
+                                             "0f7df61f-0ce2-4b24-b572-2929f6f94d9c",
+                                             "0fa24ecc-a8d6-44a2-8f43-9e2f26abb215",
+                                             "5076b0f7-8b17-484f-8181-90ff5ad4229b",
+                                             "643f4ea1-de32-40ee-bf89-6f5eadab3d44",
+                                             "705906be-182f-4dc9-9da3-b70fac86b057",
+                                             "b64990bc-93fb-468c-8d64-20d103e7e1af",
+                                             "c346e4dd-2224-4dac-bcac-afed79393174",
+                                             "dcc1f5d7-655f-45f0-a44d-ee39a0abf93f"
+                                         ]
                     },
     "edvanaha":  {
                      "accountName":  "edvanaha",
@@ -108,7 +126,7 @@
                                 },
                      "quota":  {
                                    "geminiWeekly":  46,
-                                   "geminiWeeklyReset":  "Resets in 11h 42m 09s",
+                                   "geminiWeeklyReset":  "Resets in 1h 14m 16s",
                                    "gemini5h":  100,
                                    "gemini5hReset":  "Ready / Full",
                                    "claudeWeekly":  100,
@@ -118,5 +136,81 @@
                                    "claudeWeeklyResetIso":  null,
                                    "claude5hResetIso":  null
                                }
-                 }
+                 },
+    "edvanciblakseblak":  {
+                              "accountName":  "edvanciblakseblak",
+                              "email":  "edvanciblakseblak@gmail.com",
+                              "lastSeen":  "2026-10-27T07:51:05Z",
+                              "tokens":  {
+                                             "Conversations":  2,
+                                             "Input":  587290,
+                                             "Output":  63370,
+                                             "Cache":  11243668,
+                                             "Total":  650660
+                                         },
+                              "quota":  {
+                                            "geminiWeekly":  96,
+                                            "geminiWeeklyReset":  "Resets in 6d 21h 16m 18s",
+                                            "geminiWeeklyResetIso":  "2026-11-03T05:07:24Z",
+                                            "gemini5h":  88,
+                                            "gemini5hReset":  "Resets in 2h 16m 18s",
+                                            "gemini5hResetIso":  "2026-10-27T10:07:24Z",
+                                            "claudeWeekly":  100,
+                                            "claudeWeeklyResetIso":  null,
+                                            "claude5h":  100,
+                                            "claude5hResetIso":  null
+                                        },
+                              "convBaseline":  {
+                                                   "0f7df61f-0ce2-4b24-b572-2929f6f94d9c":  {
+                                                                                                "In":  13116108,
+                                                                                                "Out":  2077996,
+                                                                                                "Cache":  488364087
+                                                                                            },
+                                                   "0fa24ecc-a8d6-44a2-8f43-9e2f26abb215":  {
+                                                                                                "In":  23515388,
+                                                                                                "Out":  2471406,
+                                                                                                "Cache":  541334859
+                                                                                            },
+                                                   "5076b0f7-8b17-484f-8181-90ff5ad4229b":  {
+                                                                                                "In":  48064290,
+                                                                                                "Out":  4317400,
+                                                                                                "Cache":  1153977017
+                                                                                            },
+                                                   "643f4ea1-de32-40ee-bf89-6f5eadab3d44":  {
+                                                                                                "In":  4825862,
+                                                                                                "Out":  422206,
+                                                                                                "Cache":  118693839
+                                                                                            },
+                                                   "705906be-182f-4dc9-9da3-b70fac86b057":  {
+                                                                                                "In":  5647168,
+                                                                                                "Out":  692831,
+                                                                                                "Cache":  237872800
+                                                                                            },
+                                                   "b64990bc-93fb-468c-8d64-20d103e7e1af":  {
+                                                                                                "In":  20971232,
+                                                                                                "Out":  2173213,
+                                                                                                "Cache":  657319575
+                                                                                            },
+                                                   "c346e4dd-2224-4dac-bcac-afed79393174":  {
+                                                                                                "In":  298015,
+                                                                                                "Out":  30497,
+                                                                                                "Cache":  4597599
+                                                                                            },
+                                                   "dcc1f5d7-655f-45f0-a44d-ee39a0abf93f":  {
+                                                                                                "In":  33810,
+                                                                                                "Out":  3347,
+                                                                                                "Cache":  0
+                                                                                            }
+                                               },
+                              "knownConvIds":  [
+                                                   "0f7df61f-0ce2-4b24-b572-2929f6f94d9c",
+                                                   "0fa24ecc-a8d6-44a2-8f43-9e2f26abb215",
+                                                   "5076b0f7-8b17-484f-8181-90ff5ad4229b",
+                                                   "643f4ea1-de32-40ee-bf89-6f5eadab3d44",
+                                                   "705906be-182f-4dc9-9da3-b70fac86b057",
+                                                   "b64990bc-93fb-468c-8d64-20d103e7e1af",
+                                                   "c346e4dd-2224-4dac-bcac-afed79393174",
+                                                   "dcc1f5d7-655f-45f0-a44d-ee39a0abf93f"
+                                               ]
+                          }
 }

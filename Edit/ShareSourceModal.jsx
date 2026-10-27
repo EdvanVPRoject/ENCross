@@ -9,7 +9,7 @@ export function ShareSourceModal({ isOpen, onClose, onSelect }) {
   const canShareScreen = (typeof navigator !== 'undefined' && navigator.mediaDevices && Boolean(navigator.mediaDevices.getDisplayMedia)) || hasNativeCapture;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-3 sm:p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-xs animate-in fade-in duration-200">
       <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-xs p-5 shadow-2xl relative text-center">
         <button
           onClick={onClose}

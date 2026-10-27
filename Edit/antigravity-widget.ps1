@@ -6,6 +6,9 @@ $winApiCode = @"
     [DllImport("Kernel32.dll")] public static extern IntPtr GetConsoleWindow();
     [DllImport("user32.dll")] public static extern bool ShowWindow(IntPtr hWnd, Int32 nCmdShow);
     [DllImport("user32.dll", CharSet = CharSet.Auto)] public static extern bool DestroyIcon(IntPtr handle);
+    [DllImport("user32.dll")] public static extern bool SetWindowPos(IntPtr hWnd, IntPtr hWndInsertAfter, int X, int Y, int cx, int cy, uint uFlags);
+    [DllImport("user32.dll")] public static extern IntPtr GetForegroundWindow();
+    [DllImport("user32.dll")] public static extern bool SetForegroundWindow(IntPtr hWnd);
 "@
 try {
     Add-Type -Name WinAPI -Namespace Win32 -MemberDefinition $winApiCode -ErrorAction SilentlyContinue
@@ -57,6 +60,8 @@ try {
     Add-Type -TypeDefinition $robloxGuardCode -ErrorAction SilentlyContinue
 } catch {}
 
+
+
 # 2. Config Paths & High-Speed Cache State
 $script:profilesPath      = "C:\Users\edvan\AppData\Roaming\Antigravity\Profiles"
 $script:brainPath         = "C:\Users\edvan\.gemini\antigravity\brain"
@@ -69,10 +74,13 @@ $script:lsCsrf            = $null
 $script:lsPort            = $null
 $script:lsPid             = $null
 $script:lastLsCheck       = [DateTime]::MinValue
-$script:isPinned          = $true
+$script:isPinned          = $false
 $script:cardUiMap         = @{}
 $script:cachedActiveTokens= $null
+$script:cachedActiveTokensUser = ""
 $script:lastTokenScan     = [DateTime]::MinValue
+$script:cachedGlobalTotals = $null
+$script:lastGlobalScan     = [DateTime]::MinValue
 $script:cachedTaskInfo    = [PSCustomObject]@{ status = "IDLE"; chats = @("Tidak ada task aktif") }
 $script:taskProcess       = $null
 $script:taskProcessStart  = [DateTime]::MinValue
@@ -108,7 +116,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
         WindowStyle="None"
         AllowsTransparency="True"
         Background="Transparent"
-        Topmost="True"
+        Topmost="False"
         WindowStartupLocation="Manual"
         ShowInTaskbar="False"
         FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif">
@@ -161,9 +169,9 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
     <!-- Outer Shadow Padding -->
     <Grid Margin="10">
-        <Border Name="FullViewPanel" CornerRadius="14" Background="#090D14" BorderBrush="#1E293B" BorderThickness="1">
+        <Border Name="FullViewPanel" CornerRadius="14" Background="#CC0B1220" BorderBrush="#384C66" BorderThickness="1">
             <Border.Effect>
-                <DropShadowEffect BlurRadius="20" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.65"/>
+                <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.55"/>
             </Border.Effect>
             
             <StackPanel Margin="16,14,16,16">
@@ -178,7 +186,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
                     <!-- App Logo & Title -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="24" Height="24" CornerRadius="6" Background="#111827" BorderBrush="#1E293B" BorderThickness="1" Margin="0,0,8,0">
+                        <Border Width="24" Height="24" CornerRadius="6" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" Margin="0,0,8,0">
                             <Image Source="D:\ProjekAntigravity\antigravity_logo.png" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
@@ -186,7 +194,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                         </StackPanel>
                     </StackPanel>
                     <!-- Active Account Pill in Header -->
-                    <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#0D211B" BorderBrush="#14533C" BorderThickness="1" CornerRadius="5" Padding="7,2.5" Margin="0,0,8,0">
+                    <Border Grid.Column="1" HorizontalAlignment="Right" VerticalAlignment="Center" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" CornerRadius="5" Padding="7,2.5" Margin="0,0,8,0">
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="5" Height="5" Fill="#10B981" Margin="0,0,5,0" VerticalAlignment="Center"/>
                             <TextBlock Text="ACTIVE: " FontSize="8.5" FontWeight="Bold" Foreground="#6EE7B7" VerticalAlignment="Center"/>
@@ -196,25 +204,25 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
                     <!-- Window Action Buttons (Presisi Ditengah Kotak) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
-                        <!-- Tombol PIN -->
-                        <Button Name="BtnPin" Width="34" Height="22" Background="#111827" BorderBrush="#1E293B" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0">
-                            <TextBlock Name="TxtBtnPin" Text="PIN" FontSize="8.5" FontWeight="Bold" Foreground="#10B981" HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        <!-- Tombol PIN (Default: Desktop Mode, Klik untuk Pinned Always On Top) -->
+                        <Button Name="BtnPin" Width="34" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0" ToolTip="Klik untuk menampilkan widget selalu di atas aplikasi lain (PIN)">
+                            <TextBlock Name="TxtBtnPin" Text="PIN" FontSize="8.5" FontWeight="Bold" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Tombol Minimize (-) Vector Presisi Center -->
-                        <Button Name="BtnMinimize" Width="22" Height="22" Background="#111827" BorderBrush="#1E293B" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0">
+                        <Button Name="BtnMinimize" Width="22" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0">
                             <Border Width="8" Height="2" Background="#94A3B8" CornerRadius="0.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Tombol Close (X) Vector Presisi Center -->
-                        <Button Name="BtnClose" Width="22" Height="22" Background="#111827" BorderBrush="#1E293B" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                        <Button Name="BtnClose" Width="22" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                             <Path Data="M 0 0 L 7 7 M 0 7 L 7 0" Stroke="#94A3B8" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
                 </Grid>
 
                 <!-- 2. GLOBAL SUMMARY HERO CARD (Total + Global Input/Output/Cache + Est. Biaya) -->
-                <Border CornerRadius="10" Background="#0F1623" BorderBrush="#1E293B" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
+                <Border CornerRadius="10" Background="#59132036" BorderBrush="#293B52" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -231,7 +239,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             <TextBlock Grid.Column="1" Name="TxtGrandTotalTokens" Text="0 M" FontSize="19" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
                         </Grid>
 
-                        <Border Height="1" Background="#1E293B" Margin="0,8,0,8"/>
+                        <Border Height="1" Background="#263E56" Margin="0,8,0,8"/>
 
                         <!-- Global Input / Output / Cache Breakdown -->
                         <UniformGrid Columns="3">
@@ -270,11 +278,11 @@ if (-not (Test-Path $script:transparentIconPath)) {
                         </StackPanel>
 
                         <!-- Single Unified Account Selector Dropdown Button -->
-                        <Button Name="BtnAccountSelectorDropdown" HorizontalAlignment="Right" Padding="8,3.5" Background="#111827" BorderBrush="#1E293B" BorderThickness="1" VerticalAlignment="Center">
+                        <Button Name="BtnAccountSelectorDropdown" HorizontalAlignment="Right" Padding="8,3.5" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Name="DotSelectedAccountBtn" Width="6" Height="6" Fill="#10B981" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                 <TextBlock Name="TxtSelectedAccountBtnLabel" Text="edvanaha" FontSize="9.5" FontWeight="Bold" Foreground="#F8FAFC" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center" Margin="0,0,5,0"/>
-                                <Border Name="BadgeSelectedAccountBtn" CornerRadius="3" Padding="4,1" Background="#0D211B" BorderBrush="#14533C" BorderThickness="1" Margin="0,0,6,0" VerticalAlignment="Center">
+                                <Border Name="BadgeSelectedAccountBtn" CornerRadius="3" Padding="4,1" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" Margin="0,0,6,0" VerticalAlignment="Center">
                                     <TextBlock Name="TxtBadgeSelectedAccountBtn" Text="AKTIF" FontSize="7.0" FontWeight="Bold" Foreground="#34D399"/>
                                 </Border>
                                 <!-- Vector Arrow -->
@@ -284,7 +292,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                     </Grid>
 
                     <!-- Expandable Dropdown List Panel untuk Semua Akun (2 Kolom Kesamping) -->
-                    <Border Name="PanelAccountsDropdown" ClipToBounds="True" Visibility="Collapsed" Background="#0B0F19" BorderBrush="#1E293B" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,8">
+                    <Border Name="PanelAccountsDropdown" ClipToBounds="True" Visibility="Collapsed" Background="#E60D1728" BorderBrush="#384C66" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,8">
                         <StackPanel>
                             <TextBlock Text="PILIH AKUN UNTUK MEMANTAU KUOTA:" FontSize="7.2" FontWeight="Bold" Foreground="#64748B" Margin="4,2,4,5"/>
                             <UniformGrid Name="ListAccountsPanel" Columns="2"/>
@@ -292,14 +300,14 @@ if (-not (Test-Path $script:transparentIconPath)) {
                     </Border>
 
                     <!-- Featured Prominent Quota Card for Selected Account -->
-                    <Border Background="#0F1623" CornerRadius="10" Padding="12,11" BorderBrush="#1E293B" BorderThickness="1">
+                    <Border Background="#59132036" CornerRadius="10" Padding="12,11" BorderBrush="#293B52" BorderThickness="1">
                         <StackPanel>
                             <!-- Card Header: Dot + Name + Badge (Left), Token Total (Right) -->
                             <Grid Margin="0,0,0,8">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Ellipse Name="DotFeaturedAccount" Width="7" Height="7" Fill="#10B981" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                     <TextBlock Name="TxtFeaturedAccountName" Text="edvanaha" FontSize="11" FontWeight="Bold" Foreground="#F8FAFC" VerticalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" Margin="0,0,7,0"/>
-                                    <Border Name="BadgeFeaturedAccountState" CornerRadius="3" Padding="5,1.5" Background="#0D211B" BorderBrush="#14533C" BorderThickness="1" VerticalAlignment="Center">
+                                    <Border Name="BadgeFeaturedAccountState" CornerRadius="3" Padding="5,1.5" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" VerticalAlignment="Center">
                                         <TextBlock Name="TxtFeaturedAccountState" Text="ACTIVE" FontSize="7.5" FontWeight="Bold" Foreground="#34D399"/>
                                     </Border>
                                 </StackPanel>
@@ -311,7 +319,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             </Grid>
 
                             <!-- Fine Divider -->
-                            <Border Height="1" Background="#1E293B" Margin="0,0,0,9"/>
+                            <Border Height="1" Background="#263E56" Margin="0,0,0,9"/>
 
                             <!-- Quota Body: 2 Kolom Besar (Gemini Models Kiri, Claude and GPT Models Kanan) -->
                             <Grid>
@@ -330,7 +338,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                         <TextBlock Text="5-Hour Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
                                         <TextBlock Name="TxtFeaturedG5Val" Text="19%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#F59E0B" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <ProgressBar Name="ProgFeaturedG5" Value="19" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#F59E0B" Background="#1E293B" BorderThickness="0"/>
+                                    <ProgressBar Name="ProgFeaturedG5" Value="19" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#F59E0B" Background="#331E293B" BorderThickness="0"/>
                                     <TextBlock Name="TxtFeaturedG5Reset" Text="Resets in 3h 04m 30s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
 
                                     <Border Height="8"/>
@@ -340,7 +348,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                         <TextBlock Text="Weekly Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
                                         <TextBlock Name="TxtFeaturedGWVal" Text="48%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <ProgressBar Name="ProgFeaturedGW" Value="48" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#1E293B" BorderThickness="0"/>
+                                    <ProgressBar Name="ProgFeaturedGW" Value="48" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
                                     <TextBlock Name="TxtFeaturedGWReset" Text="Resets in 3d 21h 38m 06s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
                                 </StackPanel>
 
@@ -353,7 +361,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                         <TextBlock Text="5-Hour Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
                                         <TextBlock Name="TxtFeaturedC5Val" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <ProgressBar Name="ProgFeaturedC5" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#1E293B" BorderThickness="0"/>
+                                    <ProgressBar Name="ProgFeaturedC5" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
                                     <TextBlock Name="TxtFeaturedC5Reset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
 
                                     <Border Height="8"/>
@@ -363,13 +371,13 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                         <TextBlock Text="Weekly Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
                                         <TextBlock Name="TxtFeaturedCWVal" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
                                     </Grid>
-                                    <ProgressBar Name="ProgFeaturedCW" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#1E293B" BorderThickness="0"/>
+                                    <ProgressBar Name="ProgFeaturedCW" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
                                     <TextBlock Name="TxtFeaturedCWReset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
                                 </StackPanel>
                             </Grid>
 
                             <!-- Tombol Beralih Akun & Salin Prompt Resume -->
-                            <Button Name="BtnSwitchAccount" Visibility="Collapsed" Margin="0,10,0,0" Padding="8,6" Background="#064E3B" BorderBrush="#10B981" BorderThickness="1" Cursor="Hand">
+                            <Button Name="BtnSwitchAccount" Visibility="Collapsed" Margin="0,10,0,0" Padding="8,6" Background="#59064E3B" BorderBrush="#10B981" BorderThickness="1" Cursor="Hand">
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
                                     <TextBlock Text="⚡" FontSize="11" Margin="0,0,6,0" VerticalAlignment="Center"/>
                                     <TextBlock Name="TxtBtnSwitchAccount" Text="BERALIH KE AKUN INI &amp; SALIN RESUME PROMPT" FontSize="8.5" FontWeight="Bold" Foreground="#34D399" VerticalAlignment="Center"/>
@@ -381,7 +389,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
 
                 <!-- 5. ACTIVE TASK & CHAT MONITOR (Dengan Tombol 3-Stack Diperbesar & Daftar Dropdown) -->
-                <Border Name="CardTaskMonitor" Background="#0F1623" CornerRadius="10" Padding="12,10" Margin="0,0,0,0" BorderBrush="#1E293B" BorderThickness="1">
+                <Border Name="CardTaskMonitor" Background="#59132036" CornerRadius="10" Padding="12,10" Margin="0,0,0,0" BorderBrush="#293B52" BorderThickness="1">
                     <StackPanel>
                         <!-- Main Header Row -->
                         <Grid>
@@ -392,7 +400,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             </Grid.ColumnDefinitions>
 
                             <!-- Left: Status Badge -->
-                            <Border Name="BadgeTaskStatus" Grid.Column="0" CornerRadius="4" Padding="7,2.5" Margin="0,0,10,0" Background="#0D211B" BorderBrush="#14533C" BorderThickness="1" HorizontalAlignment="Left" VerticalAlignment="Center">
+                            <Border Name="BadgeTaskStatus" Grid.Column="0" CornerRadius="4" Padding="7,2.5" Margin="0,0,10,0" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" HorizontalAlignment="Left" VerticalAlignment="Center">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Ellipse Name="DotTaskStatus" Width="5.5" Height="5.5" Fill="#10B981" Margin="0,0,5,0" VerticalAlignment="Center"/>
                                     <TextBlock Name="TxtTaskStatus" Text="IDLE" FontSize="7.5" FontWeight="Bold" Foreground="#34D399" VerticalAlignment="Center"/>
@@ -406,7 +414,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             </StackPanel>
 
                             <!-- Right: Tombol 3-Stack Diperbesar (Lihat Task Running) -->
-                            <Button Name="BtnToggleTaskDropdown" Grid.Column="2" Visibility="Collapsed" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="10,5" Background="#1E293B" BorderBrush="#475569" BorderThickness="1">
+                            <Button Name="BtnToggleTaskDropdown" Grid.Column="2" Visibility="Collapsed" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="10,5" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <!-- 3-Stack Bars Icon (Vector) -->
                                     <Path Name="IconTaskStack" Data="M 0 1.5 L 11 1.5 M 0 5.5 L 11 5.5 M 0 9.5 L 11 9.5" Stroke="#10B981" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -419,7 +427,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
                         <!-- Expandable Dropdown List Panel untuk Menampilkan Task Berjalan -->
                         <StackPanel Name="PanelTaskDropdown" ClipToBounds="True" Margin="0,9,0,0" Visibility="Collapsed">
-                            <Border Height="1" Background="#1E293B" Margin="0,0,0,8"/>
+                            <Border Height="1" Background="#263E56" Margin="0,0,0,8"/>
                             <TextBlock Text="DAFTAR TASK YANG SEDANG BERJALAN:" FontSize="7.5" FontWeight="Bold" Foreground="#64748B" Margin="0,0,0,6"/>
                             <StackPanel Name="TaskItemsListPanel"/>
                         </StackPanel>
@@ -434,6 +442,8 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
 $reader = (New-Object System.Xml.XmlNodeReader $xaml)
 $window = [System.Windows.Markup.XamlReader]::Load($reader)
+
+
 
 # Terapkan Ikon Transparan ke Window
 try {
@@ -730,10 +740,93 @@ function Format-EstimatedCost([int64]$inTok, [int64]$outTok, [int64]$cacheTok = 
     }
 }
 
+function Set-PinState([bool]$pinned) {
+    $script:isPinned = $pinned
+    $window.Topmost = $script:isPinned
+    try {
+        $hwnd = (New-Object System.Windows.Interop.WindowInteropHelper($window)).Handle
+        if ($hwnd -ne [IntPtr]::Zero) {
+            if ($script:isPinned) {
+                # Pinned: Selalu tampil di depan aplikasi lain
+                [Win32.WinAPI]::SetWindowPos($hwnd, [IntPtr](-1), 0, 0, 0, 0, 0x0002 -bor 0x0001)
+                [Win32.WinAPI]::SetForegroundWindow($hwnd) | Out-Null
+            } else {
+                # Unpinned: Hanya berada di desktop layer di belakang aplikasi lain
+                [Win32.WinAPI]::SetWindowPos($hwnd, [IntPtr](-2), 0, 0, 0, 0, 0x0002 -bor 0x0001 -bor 0x0010)
+                [Win32.WinAPI]::SetWindowPos($hwnd, [IntPtr](1), 0, 0, 0, 0, 0x0002 -bor 0x0001 -bor 0x0010)
+            }
+        }
+    } catch {}
+
+    if ($script:isPinned) {
+        if ($txtBtnPin) { 
+            $txtBtnPin.Foreground = Get-Brush "#34D399"
+            $txtBtnPin.Text = "PIN"
+        }
+        if ($btnPin) {
+            $btnPin.Background = Get-Brush "#4D0D211B"
+            $btnPin.BorderBrush = Get-Brush "#14533C"
+            $btnPin.ToolTip = "Widget aktif di atas aplikasi lain (PINNED). Klik untuk kembalikan ke desktop"
+        }
+        if ($script:trayItemPin) {
+            $script:trayItemPin.Text = "[PIN] Lepas Pin (Kembali ke Mode Desktop)"
+            $script:trayItemPin.Checked = $true
+        }
+    } else {
+        if ($txtBtnPin) { 
+            $txtBtnPin.Foreground = Get-Brush "#94A3B8"
+            $txtBtnPin.Text = "PIN"
+        }
+        if ($btnPin) {
+            $btnPin.Background = Get-Brush "#5916243A"
+            $btnPin.BorderBrush = Get-Brush "#2B3C54"
+            $btnPin.ToolTip = "Klik untuk menampilkan widget selalu di atas aplikasi lain (PIN)"
+        }
+        if ($script:trayItemPin) {
+            $script:trayItemPin.Text = "[PIN] Pin Selalu di Atas (Always on Top)"
+            $script:trayItemPin.Checked = $false
+        }
+    }
+}
+
+function Toggle-PinState {
+    Set-PinState (-not $script:isPinned)
+}
+
 function Hide-ToTray { $window.Hide() }
-function Show-FromTray { $window.Show(); $window.Activate() | Out-Null }
+function Show-FromTray {
+    $window.Show()
+    $window.WindowState = [System.Windows.WindowState]::Normal
+    $window.Activate() | Out-Null
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($window)
+        if ($helper.Handle -ne [IntPtr]::Zero) {
+            if ($script:isPinned) {
+                [Win32.WinAPI]::SetWindowPos($helper.Handle, [IntPtr](-1), 0, 0, 0, 0, 0x0002 -bor 0x0001)
+            } else {
+                # Panggil ke layer paling depan agar langsung terlihat meskipun sedang berada di dalam aplikasi
+                [Win32.WinAPI]::SetWindowPos($helper.Handle, [IntPtr](0), 0, 0, 0, 0, 0x0002 -bor 0x0001)
+            }
+            [Win32.WinAPI]::SetForegroundWindow($helper.Handle) | Out-Null
+        }
+    } catch {}
+}
 function Toggle-WidgetVisibility {
-    if ($window.IsVisible) { Hide-ToTray } else { Show-FromTray }
+    if ($window.IsVisible) {
+        try {
+            $helper = New-Object System.Windows.Interop.WindowInteropHelper($window)
+            $fg = [Win32.WinAPI]::GetForegroundWindow()
+            if ($fg -eq $helper.Handle) {
+                Hide-ToTray
+            } else {
+                Show-FromTray
+            }
+        } catch {
+            Hide-ToTray
+        }
+    } else {
+        Show-FromTray
+    }
 }
 
 function Exit-WidgetApp {
@@ -758,8 +851,17 @@ if (Test-Path $script:appIconPath) {
 $script:notifyIcon.Visible = $true
 
 $trayMenu = [System.Windows.Forms.ContextMenuStrip]::new()
-$trayItemToggle = $trayMenu.Items.Add("Tampilkan / Sembunyikan Widget")
-$trayItemToggle.Add_Click({ Toggle-WidgetVisibility })
+$trayItemSummon = $trayMenu.Items.Add("Panggil Widget ke Depan")
+$trayItemSummon.Font = [System.Drawing.Font]::new($trayMenu.Font, [System.Drawing.FontStyle]::Bold)
+$trayItemSummon.Add_Click({ Show-FromTray })
+
+$script:trayItemPin = $trayMenu.Items.Add("[PIN] Pin Selalu di Atas (Always on Top)")
+$script:trayItemPin.Add_Click({ Toggle-PinState })
+
+$trayItemToggle = $trayMenu.Items.Add("Sembunyikan ke Tray")
+$trayItemToggle.Add_Click({ Hide-ToTray })
+
+$trayMenu.Items.Add("-") | Out-Null
 $trayItemRefresh = $trayMenu.Items.Add("Perbarui Sekarang")
 $trayItemRefresh.Add_Click({
     $script:transcriptCache.Clear()
@@ -769,7 +871,7 @@ $trayItemRefresh.Add_Click({
     $script:lastTokenScan = [DateTime]::MinValue
     Sync-LiveAccountData
 })
-$trayItemSwitch = $trayMenu.Items.Add("⚡ Beralih Akun & Salin Resume Prompt")
+$trayItemSwitch = $trayMenu.Items.Add("Beralih Akun & Salin Resume Prompt")
 $trayItemSwitch.Add_Click({
     if ($btnSwitchAccount) {
         $btnSwitchAccount.RaiseEvent((New-Object System.Windows.RoutedEventArgs([System.Windows.Controls.Button]::ClickEvent)))
@@ -795,13 +897,17 @@ $headerBar.Add_MouseLeftButtonDown({ $window.DragMove() })
 $btnMinimize.Add_Click({ Hide-ToTray })
 $btnClose.Add_Click({ Exit-WidgetApp })
 
-$btnPin.Add_Click({
-    $script:isPinned = -not $script:isPinned
-    $window.Topmost = $script:isPinned
-    if ($script:isPinned) {
-        if ($txtBtnPin) { $txtBtnPin.Foreground = Get-Brush "#10B981"; $txtBtnPin.Text = "PIN" }
-    } else {
-        if ($txtBtnPin) { $txtBtnPin.Foreground = Get-Brush "#64748B"; $txtBtnPin.Text = "FREE" }
+$btnPin.Add_Click({ Toggle-PinState })
+
+# Saat fokus berpindah ke aplikasi lain dan widget tidak di-PIN, pastikan widget tetap di layer desktop (belakang aplikasi)
+$window.Add_Deactivated({
+    if (-not $script:isPinned) {
+        try {
+            $hwnd = (New-Object System.Windows.Interop.WindowInteropHelper($window)).Handle
+            if ($hwnd -ne [IntPtr]::Zero) {
+                [Win32.WinAPI]::SetWindowPos($hwnd, [IntPtr]1, 0, 0, 0, 0, 0x0002 -bor 0x0001 -bor 0x0010)
+            }
+        } catch {}
     }
 })
 
@@ -1046,12 +1152,37 @@ function Get-LanguageServerConnection {
     return $null
 }
 
+function Get-TranscriptStatsById([string]$id) {
+    if (-not $id) { return $null }
+    $transcript = [System.IO.Path]::Combine($script:brainPath, "$id\.system_generated\logs\transcript.jsonl")
+    if (-not [System.IO.File]::Exists($transcript)) { return $null }
+    try {
+        $fi = New-Object System.IO.FileInfo($transcript)
+        $cached = $script:transcriptCache[$id]
+        if ($cached -and $cached.LastWriteTime -eq $fi.LastWriteTimeUtc -and $cached.Length -eq $fi.Length) {
+            return $cached
+        }
+        $in = [int64]0; $out = [int64]0; $c = [int64]0
+        $lines = [System.IO.File]::ReadLines($transcript)
+        foreach ($line in $lines) {
+            if ($line -match '"input_tokens":(\d+)')      { $in  += [int64]$matches[1] }
+            if ($line -match '"output_tokens":(\d+)')     { $out += [int64]$matches[1] }
+            if ($line -match '"cache_read_tokens":(\d+)') { $c   += [int64]$matches[1] }
+        }
+        $stats = [PSCustomObject]@{ LastWriteTime = $fi.LastWriteTimeUtc; Length = $fi.Length; In = $in; Out = $out; Cache = $c }
+        $script:transcriptCache[$id] = $stats
+        return $stats
+    } catch {
+        return $null
+    }
+}
+
 function Get-ActiveAccountTokens([string]$user = "", [switch]$Force) {
-    if (-not $Force -and $script:cachedActiveTokens -and $script:lastTokenScan -and ((Get-Date) - $script:lastTokenScan).TotalMinutes -lt 2) {
+    if (-not $Force -and $script:cachedActiveTokens -and ($script:cachedActiveTokensUser -eq $user) -and $script:lastTokenScan -and ((Get-Date) - $script:lastTokenScan).TotalMinutes -lt 2) {
         return $script:cachedActiveTokens
     }
 
-    $inTokens = [int64]0; $outTokens = [int64]0; $cacheTokens = [int64]0; $convCount = 0
+    $inTokens = [int64]0; $outTokens = [int64]0; $cacheTokens = [int64]0; $activeConvCount = 0
     $allConvIds = New-Object System.Collections.Generic.HashSet[string]
 
     # 1. Kumpulkan conversation IDs dari app_storage.json utama
@@ -1088,7 +1219,9 @@ function Get-ActiveAccountTokens([string]$user = "", [switch]$Force) {
         } catch {}
     }
 
-    # 3. Kumpulkan conversation IDs yang tersimpan di registry untuk akun ini
+    # 3. Kumpulkan conversation IDs yang tersimpan di registry untuk akun ini & ambil convBaseline
+    $baselineMap = $null
+    if (-not $script:currentRegistry) { $script:currentRegistry = Get-AccountsRegistry }
     if ($user -and $script:currentRegistry -and $script:currentRegistry.Contains($user)) {
         $savedIds = $script:currentRegistry[$user].knownConvIds
         if ($savedIds) {
@@ -1096,41 +1229,94 @@ function Get-ActiveAccountTokens([string]$user = "", [switch]$Force) {
                 if ($sid) { [void]$allConvIds.Add($sid) }
             }
         }
+        if ($script:currentRegistry[$user].PSObject.Properties["convBaseline"]) {
+            $baselineMap = $script:currentRegistry[$user].convBaseline
+        }
     }
 
-    $convCount = $allConvIds.Count
+    $participatingConvIds = New-Object System.Collections.Generic.List[string]
+
     foreach ($id in $allConvIds) {
-        $transcript = [System.IO.Path]::Combine($script:brainPath, "$id\.system_generated\logs\transcript.jsonl")
-        if ([System.IO.File]::Exists($transcript)) {
-            $fi = New-Object System.IO.FileInfo($transcript)
-            $cached = $script:transcriptCache[$id]
-            if ($cached -and $cached.LastWriteTime -eq $fi.LastWriteTimeUtc -and $cached.Length -eq $fi.Length) {
-                $inTokens += $cached.In; $outTokens += $cached.Out; $cacheTokens += $cached.Cache
-            } else {
-                $in = [int64]0; $out = [int64]0; $c = [int64]0
-                $lines = [System.IO.File]::ReadLines($transcript)
-                foreach ($line in $lines) {
-                    if ($line -match '"input_tokens":(\d+)')      { $in  += [int64]$matches[1] }
-                    if ($line -match '"output_tokens":(\d+)')     { $out += [int64]$matches[1] }
-                    if ($line -match '"cache_read_tokens":(\d+)') { $c   += [int64]$matches[1] }
+        $stats = Get-TranscriptStatsById $id
+        if ($stats) {
+            $in = [int64]$stats.In
+            $out = [int64]$stats.Out
+            $cache = [int64]$stats.Cache
+
+            # Baseline offset untuk percakapan yang diwarisi dari akun sebelumnya
+            $baseIn = [int64]0; $baseOut = [int64]0; $baseCache = [int64]0
+            if ($baselineMap -and $baselineMap.PSObject.Properties[$id]) {
+                $baseEntry = $baselineMap.$id
+                if ($baseEntry) {
+                    if ($baseEntry.In)    { $baseIn    = [int64]$baseEntry.In }
+                    if ($baseEntry.Out)   { $baseOut   = [int64]$baseEntry.Out }
+                    if ($baseEntry.Cache) { $baseCache = [int64]$baseEntry.Cache }
                 }
-                $script:transcriptCache[$id] = @{ LastWriteTime = $fi.LastWriteTimeUtc; Length = $fi.Length; In = $in; Out = $out; Cache = $c }
-                $inTokens += $in; $outTokens += $out; $cacheTokens += $c
+            }
+
+            $netIn    = [Math]::Max([int64]0, [int64]($in - $baseIn))
+            $netOut   = [Math]::Max([int64]0, [int64]($out - $baseOut))
+            $netCache = [Math]::Max([int64]0, [int64]($cache - $baseCache))
+
+            # Hitung jika ada pertambahan token delta atau jika percakapan baru untuk akun ini
+            if (($netIn + $netOut) -gt 0) {
+                $inTokens += $netIn
+                $outTokens += $netOut
+                $cacheTokens += $netCache
+                $activeConvCount++
+                $participatingConvIds.Add($id)
             }
         }
     }
 
     $res = [PSCustomObject]@{
-        Conversations = $convCount
+        Conversations = $activeConvCount
         Input         = $inTokens
         Output        = $outTokens
         Cache         = $cacheTokens
         Total         = ($inTokens + $outTokens)
-        ConvIds       = @($allConvIds)
+        ConvIds       = @($participatingConvIds)
     }
     if ($res.Total -gt 0) {
         $script:cachedActiveTokens = $res
+        $script:cachedActiveTokensUser = $user
         $script:lastTokenScan = Get-Date
+    }
+    return $res
+}
+
+function Get-GlobalTranscriptTotals([switch]$Force) {
+    if (-not $Force -and $script:cachedGlobalTotals -and $script:lastGlobalScan -and ((Get-Date) - $script:lastGlobalScan).TotalMinutes -lt 1) {
+        return $script:cachedGlobalTotals
+    }
+
+    $in = [int64]0; $out = [int64]0; $c = [int64]0
+    if (Test-Path $script:brainPath) {
+        try {
+            $dirs = [System.IO.Directory]::GetDirectories($script:brainPath)
+            foreach ($d in $dirs) {
+                $cid = [System.IO.Path]::GetFileName($d)
+                if ($cid -and -not $cid.StartsWith(".")) {
+                    $stats = Get-TranscriptStatsById $cid
+                    if ($stats) {
+                        $in  += [int64]$stats.In
+                        $out += [int64]$stats.Out
+                        $c   += [int64]$stats.Cache
+                    }
+                }
+            }
+        } catch {}
+    }
+
+    $res = [PSCustomObject]@{
+        Input  = $in
+        Output = $out
+        Cache  = $c
+        Total  = ($in + $out)
+    }
+    if ($res.Total -gt 0) {
+        $script:cachedGlobalTotals = $res
+        $script:lastGlobalScan = Get-Date
     }
     return $res
 }
@@ -1568,8 +1754,8 @@ function Update-TaskMonitorDisplay {
                     $chatTitle = $chats[$i]
 
                     $itemBorder = New-Object System.Windows.Controls.Border
-                    $itemBorder.Background = Get-Brush "#090D14"
-                    $itemBorder.BorderBrush = Get-Brush "#1E293B"
+                    $itemBorder.Background = Get-Brush "#59132036"
+                    $itemBorder.BorderBrush = Get-Brush "#293B52"
                     $itemBorder.BorderThickness = [System.Windows.Thickness]::new(1)
                     $itemBorder.CornerRadius = [System.Windows.CornerRadius]::new(6)
                     $itemBorder.Padding = [System.Windows.Thickness]::new(10, 6.5, 10, 6.5)
@@ -1673,17 +1859,12 @@ function Update-WidgetView {
         $idleCount = [Math]::Max(0, $allAccountKeys.Count - 1)
         $txtTotalAccountsCount.Text = "$activeCount Aktif | $idleCount Idle"
 
-        # Hitung Akumulasi Global (Total, Input, Output, Cache)
-        $grandTotal = [int64]0; $grandInput = [int64]0; $grandOutput = [int64]0; $grandCache = [int64]0
-        foreach ($k in $registry.Keys) {
-            $t = $registry[$k].tokens
-            if ($t) {
-                if ($t.Total)  { $grandTotal  += [int64]$t.Total }
-                if ($t.Input)  { $grandInput  += [int64]$t.Input }
-                if ($t.Output) { $grandOutput += [int64]$t.Output }
-                if ($t.Cache)  { $grandCache  += [int64]$t.Cache }
-            }
-        }
+        # Hitung Akumulasi Global Riil (Opsi A: Deduplikasi Bersih Langsung dari Transkrip Disk)
+        $globalStats = Get-GlobalTranscriptTotals
+        $grandInput  = [int64]$globalStats.Input
+        $grandOutput = [int64]$globalStats.Output
+        $grandCache  = [int64]$globalStats.Cache
+        $grandTotal  = [int64]$globalStats.Total
 
         $grandTotalStr = Format-CompactNumber $grandTotal "0 M"
         $txtGrandTotalTokens.Text   = $grandTotalStr
@@ -1702,19 +1883,19 @@ function Update-WidgetView {
 
         if ($isSelectedActive) {
             $dotSelectedAccountBtn.Fill = Get-Brush "#10B981"
-            $badgeSelectedAccountBtn.Background = Get-Brush "#0D211B"
+            $badgeSelectedAccountBtn.Background = Get-Brush "#4D0D211B"
             $badgeSelectedAccountBtn.BorderBrush = Get-Brush "#14533C"
             $txtBadgeSelectedAccountBtn.Foreground = Get-Brush "#34D399"
             $txtBadgeSelectedAccountBtn.Text = "AKTIF"
-            $btnAccountSelectorDropdown.Background = Get-Brush "#111827"
+            $btnAccountSelectorDropdown.Background = Get-Brush "#5916243A"
             $btnAccountSelectorDropdown.BorderBrush = Get-Brush "#14533C"
         } else {
             $dotSelectedAccountBtn.Fill = Get-Brush "#38BDF8"
-            $badgeSelectedAccountBtn.Background = Get-Brush "#111827"
-            $badgeSelectedAccountBtn.BorderBrush = Get-Brush "#1E293B"
+            $badgeSelectedAccountBtn.Background = Get-Brush "#5916243A"
+            $badgeSelectedAccountBtn.BorderBrush = Get-Brush "#2B3C54"
             $txtBadgeSelectedAccountBtn.Foreground = Get-Brush "#64748B"
             $txtBadgeSelectedAccountBtn.Text = "IDLE"
-            $btnAccountSelectorDropdown.Background = Get-Brush "#0C1B2E"
+            $btnAccountSelectorDropdown.Background = Get-Brush "#5916243A"
             $btnAccountSelectorDropdown.BorderBrush = Get-Brush "#0284C7"
         }
 
@@ -1745,11 +1926,11 @@ function Update-WidgetView {
                 $itemBorder.BorderThickness = [System.Windows.Thickness]::new(1)
 
                 if ($isThisSelected) {
-                    $itemBorder.Background = Get-Brush "#132337"
+                    $itemBorder.Background = Get-Brush "#80132337"
                     $itemBorder.BorderBrush = Get-Brush "#0284C7"
                 } else {
-                    $itemBorder.Background = Get-Brush "#0D1524"
-                    $itemBorder.BorderBrush = Get-Brush "#1E293B"
+                    $itemBorder.Background = Get-Brush "#590D1524"
+                    $itemBorder.BorderBrush = Get-Brush "#293B52"
                 }
 
                 $cardStack = New-Object System.Windows.Controls.StackPanel
@@ -1909,7 +2090,7 @@ function Update-WidgetView {
             $accOut = if ($tData -and $tData.Output) { [int64]$tData.Output } else { [int64]0 }
             $accCch = if ($tData -and $tData.Cache)  { [int64]$tData.Cache }  else { [int64]0 }
             $accCost = Format-EstimatedCost $accIn $accOut $accCch $selTok
-            $txtFeaturedAccountCost.Text = " • $($accCost.Short)"
+            $txtFeaturedAccountCost.Text = " | $($accCost.Short)"
         }
 
         $q = if ($selectedData) { $selectedData.quota } else { $null }
@@ -2131,22 +2312,60 @@ function Update-RealtimeCountdownTick {
                 Update-TrayVisual $pct5h $activeUser $actQuota $grandStr $false 0 0
             }
 
-            # Auto-Switch Guard: Jika quota akun aktif habis (0%) dan task IDLE, otomatis beralih ke cadangan
+            # Auto-Switch Guard: Jika quota akun aktif habis (0%), otomatis beralih ke cadangan berkuota
             if ($pct5h -le 0 -or $pctWeekly -le 0) {
                 $now = Get-Date
-                if (-not $script:lastAutoSwitchAttempt -or ($now - $script:lastAutoSwitchAttempt).TotalMinutes -ge 5) {
-                    if (-not $isRunning) {
+                if (-not $script:firstExhaustedTime) { $script:firstExhaustedTime = $now }
+                $exhaustedSecs = ($now - $script:firstExhaustedTime).TotalSeconds
+
+                if (-not $script:lastAutoSwitchAttempt -or ($now - $script:lastAutoSwitchAttempt).TotalMinutes -ge 1) {
+                    # Beralih jika task IDLE, atau jika task stuck di RUNNING karena kuota 0% selama > 10 detik
+                    if (-not $isRunning -or $exhaustedSecs -ge 10) {
                         $script:lastAutoSwitchAttempt = $now
-                        $backupAcc = $null
+
+                        # Cari kandidat akun yang benar-benar memiliki folder profil di Antigravity\Profiles dan kuota > 0
+                        $profilesDir = "$env:APPDATA\Antigravity\Profiles"
+                        $existingProfiles = if (Test-Path $profilesDir) { Get-ChildItem -Path $profilesDir -Directory -ErrorAction SilentlyContinue } else { @() }
+
+                        $candidates = @()
                         foreach ($k in $registry.Keys) {
                             if ($k -ne $activeUser) {
                                 $bq = $registry[$k].quota
-                                if ($bq -and $bq.gemini5h -gt 0 -and $bq.geminiWeekly -gt 0) {
-                                    $backupAcc = $k
-                                    break
+                                if ($bq -and $bq.gemini5h -gt 5 -and $bq.geminiWeekly -gt 5) {
+                                    $hasProfile = $false
+                                    foreach ($pd in $existingProfiles) {
+                                        if ($pd.Name -like "*$k*") { $hasProfile = $true; break }
+                                        $st = Join-Path $pd.FullName "app_storage.json"
+                                        if (Test-Path $st) {
+                                            try {
+                                                $u = (Get-Content $st -Raw | ConvertFrom-Json).'jetski.onboarding.lastLoginUsername'
+                                                if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
+                                            } catch {}
+                                        }
+                                        $cr = Join-Path $pd.FullName "credential.json"
+                                        if (Test-Path $cr) {
+                                            try {
+                                                $u = (Get-Content $cr -Raw | ConvertFrom-Json).email
+                                                if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
+                                            } catch {}
+                                        }
+                                    }
+                                    if ($hasProfile) {
+                                        $minQuota = [math]::Min([int]$bq.gemini5h, [int]$bq.geminiWeekly)
+                                        $candidates += [PSCustomObject]@{
+                                            Account = $k
+                                            MinQuota = $minQuota
+                                        }
+                                    }
                                 }
                             }
                         }
+
+                        $backupAcc = $null
+                        if ($candidates.Count -gt 0) {
+                            $backupAcc = ($candidates | Sort-Object -Property MinQuota -Descending)[0].Account
+                        }
+
                         if ($backupAcc) {
                             $switchScript = "D:\ProjekAntigravity\Switch-AntigravityAccount.ps1"
                             $wmiArg = "powershell.exe -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$switchScript`" -TargetAccount `"$backupAcc`" -AutoMode"
@@ -2166,6 +2385,8 @@ function Update-RealtimeCountdownTick {
                         }
                     }
                 }
+            } else {
+                $script:firstExhaustedTime = $null
             }
 
             if ($quotaResetTriggered) {
@@ -2198,16 +2419,45 @@ function Sync-LiveAccountData {
         }
 
         $activeUser = Format-CleanUsername $liveEmail
+        if ($script:currentActiveUser -and $script:currentActiveUser -ne $activeUser) {
+            $script:lastAutoSwitchAttempt = $null
+            $script:firstExhaustedTime = $null
+        }
         $script:currentActiveUser = $activeUser
 
         $registry = Get-AccountsRegistry
         if (-not $registry.Contains($activeUser)) {
+            $baselineMap = [ordered]@{}
+            $storage = "C:\Users\edvan\AppData\Roaming\Antigravity\app_storage.json"
+            if (Test-Path $storage) {
+                try {
+                    $sJson = [System.IO.File]::ReadAllText($storage) | ConvertFrom-Json
+                    $sJson.PSObject.Properties | 
+                        Where-Object { $_.Name -like "antigravity-multi-conversation-layout-v3-*" -and $_.Name -notlike "*index*" } | 
+                        ForEach-Object { 
+                            $cid = $_.Name.Replace("antigravity-multi-conversation-layout-v3-", "").Trim()
+                            if ($cid) {
+                                $cStats = Get-TranscriptStatsById $cid
+                                if ($cStats) {
+                                    $baselineMap[$cid] = [PSCustomObject]@{
+                                        In    = [int64]$cStats.In
+                                        Out   = [int64]$cStats.Out
+                                        Cache = [int64]$cStats.Cache
+                                    }
+                                }
+                            }
+                        }
+                } catch {}
+            }
+
             $registry[$activeUser] = [PSCustomObject]@{
-                accountName = $activeUser
-                email       = if ($liveEmail -match '@') { $liveEmail } else { "$activeUser@gmail.com" }
-                lastSeen    = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
-                tokens      = [PSCustomObject]@{ Total = 0; Input = 0; Output = 0; Cache = 0; Conversations = 0 }
-                quota       = [PSCustomObject]@{
+                accountName  = $activeUser
+                email        = if ($liveEmail -match '@') { $liveEmail } else { "$activeUser@gmail.com" }
+                lastSeen     = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+                tokens       = [PSCustomObject]@{ Total = 0; Input = 0; Output = 0; Cache = 0; Conversations = 0 }
+                convBaseline = $baselineMap
+                knownConvIds = @()
+                quota        = [PSCustomObject]@{
                     geminiWeekly         = 100
                     geminiWeeklyReset    = "Fresh Quota"
                     geminiWeeklyResetIso = $null
@@ -2427,4 +2677,12 @@ if (-not $script:app) {
 }
 $script:app.ShutdownMode = [System.Windows.ShutdownMode]::OnExplicitShutdown
 $window.Show()
+if (-not $script:isPinned) {
+    try {
+        $helper = New-Object System.Windows.Interop.WindowInteropHelper($window)
+        if ($helper.Handle -ne [IntPtr]::Zero) {
+            [Win32.WinAPI]::SetWindowPos($helper.Handle, [IntPtr]1, 0, 0, 0, 0, 0x0002 -bor 0x0001 -bor 0x0010)
+        }
+    } catch {}
+}
 $script:app.Run($window) | Out-Null

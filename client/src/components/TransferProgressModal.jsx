@@ -75,8 +75,8 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
   }, [transfer.completed, transfer.direction]);
 
   return (
-    <div className="fixed bottom-4 left-3 right-3 sm:left-auto sm:right-6 sm:bottom-6 z-50 w-auto sm:w-full sm:max-w-sm animate-ios-sheet smooth-gpu">
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all">
+    <div className="fixed bottom-6 inset-x-0 z-50 pointer-events-none flex items-center justify-center px-4 animate-ios-sheet smooth-gpu">
+      <div className="pointer-events-auto apple-card border border-black/10 dark:border-white/10 rounded-2xl p-4 shadow-2xl relative transition-all w-full max-w-sm sm:max-w-md">
         {/* Close button if finished */}
         {isDone && (
           <button

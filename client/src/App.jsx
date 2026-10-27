@@ -1641,13 +1641,14 @@ export function App() {
         onToggleTheme={toggleTheme}
       />
 
-      {/* Floating Incoming Notification Pop-up (Positioned below navbar, auto-dismissing) */}
+      {/* Floating Incoming Notification Pop-up (Always centered across all screen sizes) */}
       {incomingToast && (
         <div
-          style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 12px) + 3.5rem)' }}
-          className="fixed left-1/2 -translate-x-1/2 z-50 apple-glass border border-black/10 dark:border-white/15 text-zinc-900 dark:text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-xl backdrop-blur-2xl flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown"
+          style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 12px) + 3.75rem)' }}
+          className="fixed inset-x-0 z-50 pointer-events-none flex justify-center px-4"
         >
-          {incomingToast.senderId ? (
+          <div className="pointer-events-auto apple-glass border border-black/10 dark:border-white/15 text-zinc-900 dark:text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-2xl flex items-center gap-2.5 sm:gap-3 w-full max-w-sm sm:max-w-md animate-slideDown">
+            {incomingToast.senderId ? (
             /* Peer Chat / Note Message */
             <>
               <div
@@ -1725,7 +1726,8 @@ export function App() {
             </>
           )}
         </div>
-      )}
+      </div>
+    )}
 
       {/* Tab Superseded Notice Banner */}
       {isSuperseded && (
@@ -1745,10 +1747,10 @@ export function App() {
 
       {/* Interactive Remote Request Confirmation Modal (Privacy & User Gesture Fix) */}
       {pendingRemoteRequest && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-          <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative text-left">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md animate-in fade-in duration-200">
+          <div className="apple-card border border-black/10 dark:border-white/10 text-zinc-900 dark:text-white rounded-3xl w-full max-w-md p-5 sm:p-6 shadow-2xl relative text-left">
             <div className="flex items-center gap-3 mb-4">
-              <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/20">
+              <div className="p-2.5 rounded-2xl bg-amber-500/10 text-amber-500 border border-amber-500/20">
                 {pendingRemoteRequest.mode === 'mic' ? (
                   <Mic className="w-6 h-6 text-teal-400" />
                 ) : pendingRemoteRequest.mode === 'camera' ? (
@@ -1758,16 +1760,16 @@ export function App() {
                 )}
               </div>
               <div>
-                <h3 className="text-base font-bold text-white">
+                <h3 className="text-base font-bold text-zinc-900 dark:text-white">
                   Permintaan Akses {pendingRemoteRequest.mode === 'mic' ? 'Mikrofon HP' : pendingRemoteRequest.mode === 'camera' ? 'Kamera HP' : 'Layar'}
                 </h3>
-                <p className="text-xs text-zinc-400">Konfirmasi Izin Privasi</p>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400">Konfirmasi Izin Privasi</p>
               </div>
             </div>
 
-            <p className="text-xs text-zinc-300 leading-relaxed mb-5">
-              <strong className="text-white">{pendingRemoteRequest.requesterName}</strong> meminta izin untuk mengakses{' '}
-              <strong className="text-emerald-400">
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed mb-5">
+              <strong className="text-zinc-900 dark:text-white">{pendingRemoteRequest.requesterName}</strong> meminta izin untuk mengakses{' '}
+              <strong className="text-emerald-500 font-semibold">
                 {pendingRemoteRequest.mode === 'mic'
                   ? 'Mikrofon HP Anda sebagai Mic Eksternal Laptop'
                   : pendingRemoteRequest.mode === 'camera'
@@ -1780,7 +1782,7 @@ export function App() {
             <div className="flex flex-col sm:flex-row gap-2">
               <button
                 onClick={() => handleAllowRemoteRequest(false)}
-                className="flex-1 py-2.5 px-3 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm"
+                className="flex-1 py-2.5 px-3 bg-[#0071e3] hover:bg-[#0077ed] text-white font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5 shadow-sm"
               >
                 <Check className="w-4 h-4" />
                 <span>Izinkan</span>
@@ -1788,16 +1790,16 @@ export function App() {
 
               <button
                 onClick={() => handleAllowRemoteRequest(true)}
-                className="flex-1 py-2.5 px-3 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
+                className="flex-1 py-2.5 px-3 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 font-semibold rounded-xl text-xs transition cursor-pointer active:scale-[0.98] flex items-center justify-center gap-1.5"
                 title="Jangan tanya lagi untuk perangkat ini"
               >
-                <Shield className="w-4 h-4 text-emerald-400" />
+                <Shield className="w-4 h-4 text-emerald-500" />
                 <span>Selalu Percayai</span>
               </button>
 
               <button
                 onClick={handleDenyRemoteRequest}
-                className="py-2.5 px-4 bg-zinc-900 hover:bg-zinc-800 text-zinc-400 hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-zinc-800 active:scale-[0.98]"
+                className="py-2.5 px-4 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-xl text-xs font-semibold transition cursor-pointer border border-black/8 dark:border-white/10 active:scale-[0.98]"
               >
                 Tolak
               </button>
@@ -1971,95 +1973,99 @@ export function App() {
 
       {/* Floating Camera Broadcaster Bar when Camera Streaming is Active */}
       {activeSharingPeerId && activeSharingMode === 'camera' && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700/80 rounded-2xl shadow-2xl p-2 sm:p-2.5 flex items-center gap-3 backdrop-blur-md max-w-[94vw] animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-zinc-700 shrink-0 relative">
-            <video
-              ref={(el) => {
-                if (el && localBroadcastStream && el.srcObject !== localBroadcastStream) {
-                  el.srcObject = localBroadcastStream;
-                }
-              }}
-              autoPlay
-              playsInline
-              muted
-              className="w-full h-full object-cover"
-            />
-            <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
-          </div>
-
-          <div className="min-w-0 pr-1 text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-white">Siaran Kamera HP</span>
-              <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1 rounded">
-                {cameraFacingMode === 'user' ? 'Depan' : 'Belakang'}
-              </span>
+        <div className="fixed bottom-4 inset-x-0 z-50 pointer-events-none flex justify-center px-4">
+          <div className="pointer-events-auto bg-zinc-900/95 border border-zinc-700/80 rounded-2xl shadow-2xl p-2 sm:p-2.5 flex items-center gap-3 backdrop-blur-md w-full max-w-sm sm:max-w-md animate-in fade-in slide-in-from-bottom-3 duration-200">
+            <div className="w-10 h-10 rounded-xl overflow-hidden bg-black border border-zinc-700 shrink-0 relative">
+              <video
+                ref={(el) => {
+                  if (el && localBroadcastStream && el.srcObject !== localBroadcastStream) {
+                    el.srcObject = localBroadcastStream;
+                  }
+                }}
+                autoPlay
+                playsInline
+                muted
+                className="w-full h-full object-cover"
+              />
+              <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-emerald-400 animate-ping" />
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">
-              Ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Perangkat Lawan'}
-            </p>
+
+            <div className="min-w-0 pr-1 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-white">Siaran Kamera HP</span>
+                <span className="text-[10px] font-mono text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-1 rounded">
+                  {cameraFacingMode === 'user' ? 'Depan' : 'Belakang'}
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-400 truncate">
+                Ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Perangkat Lawan'}
+              </p>
+            </div>
+
+            <button
+              onClick={handleSwitchCamera}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-emerald-400 hover:text-emerald-300 border border-zinc-700/70 text-xs font-semibold transition cursor-pointer shrink-0"
+              title="Ganti Kamera Depan / Belakang"
+            >
+              <SwitchCamera className="w-3.5 h-3.5" />
+              <span className="text-[11px]">Ganti Kamera</span>
+            </button>
+
+            <button
+              onClick={() => handleStartScreenShare(activeSharingPeerId)}
+              className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
+              title="Hentikan Siaran"
+            >
+              <X className="w-4 h-4" />
+            </button>
           </div>
-
-          <button
-            onClick={handleSwitchCamera}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 active:scale-95 text-emerald-400 hover:text-emerald-300 border border-zinc-700/70 text-xs font-semibold transition cursor-pointer shrink-0"
-            title="Ganti Kamera Depan / Belakang"
-          >
-            <SwitchCamera className="w-3.5 h-3.5" />
-            <span className="text-[11px]">Ganti Kamera</span>
-          </button>
-
-          <button
-            onClick={() => handleStartScreenShare(activeSharingPeerId)}
-            className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
-            title="Hentikan Siaran"
-          >
-            <X className="w-4 h-4" />
-          </button>
         </div>
       )}
 
       {/* Floating Wireless Mic Broadcaster Bar when Mic Streaming is Active on Phone */}
       {activeSharingPeerId && activeSharingMode === 'mic' && (
-        <div className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-teal-500/40 rounded-2xl shadow-2xl p-2.5 sm:p-3 flex items-center gap-3 backdrop-blur-md max-w-[94vw] animate-in fade-in slide-in-from-bottom-3 duration-200">
-          <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0">
-            <Mic className="w-5 h-5 animate-pulse" />
-          </div>
-
-          <div className="min-w-0 pr-1 text-left">
-            <div className="flex items-center gap-1.5">
-              <span className="text-xs font-semibold text-white">Mic HP Aktif (PC Mic)</span>
-              <span className="text-[10px] font-mono text-teal-300 bg-teal-500/15 border border-teal-500/30 px-1 rounded">
-                BROADCAST
-              </span>
+        <div className="fixed bottom-4 inset-x-0 z-50 pointer-events-none flex justify-center px-4">
+          <div className="pointer-events-auto bg-zinc-900/95 border border-teal-500/40 rounded-2xl shadow-2xl p-2.5 sm:p-3 flex items-center gap-3 backdrop-blur-md w-full max-w-sm sm:max-w-md animate-in fade-in slide-in-from-bottom-3 duration-200">
+            <div className="w-10 h-10 rounded-xl bg-teal-500/20 text-teal-400 border border-teal-500/30 flex items-center justify-center shrink-0">
+              <Mic className="w-5 h-5 animate-pulse" />
             </div>
-            <p className="text-[10px] text-zinc-400 truncate">
-              Siaran ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Laptop'}
-            </p>
-          </div>
 
-          <button
-            onClick={() => {
-              if (localBroadcastStream) {
-                const audioTrack = localBroadcastStream.getAudioTracks()[0];
-                if (audioTrack) {
-                  audioTrack.enabled = !audioTrack.enabled;
-                  triggerHaptic([20]);
+            <div className="min-w-0 pr-1 text-left">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-semibold text-white">Mic HP Aktif (PC Mic)</span>
+                <span className="text-[10px] font-mono text-teal-300 bg-teal-500/15 border border-teal-500/30 px-1 rounded">
+                  BROADCAST
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-400 truncate">
+                Siaran ke: {peers.find((p) => p.id === activeSharingPeerId)?.name || 'Laptop'}
+              </p>
+            </div>
+
+            <button
+              onClick={() => {
+                if (localBroadcastStream) {
+                  const audioTrack = localBroadcastStream.getAudioTracks()[0];
+                  if (audioTrack) {
+                    audioTrack.enabled = !audioTrack.enabled;
+                    triggerHaptic([20]);
+                  }
                 }
-              }
-            }}
-            className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold transition cursor-pointer shrink-0"
-            title="Mute / Unmute Mic"
-          >
-            <MicOff className="w-4 h-4" />
-          </button>
+              }}
+              className="p-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 border border-zinc-700 text-xs font-semibold transition cursor-pointer shrink-0"
+              title="Mute / Unmute Mic"
+            >
+              <MicOff className="w-4 h-4" />
+            </button>
 
-          <button
-            onClick={() => handleStartScreenShare(activeSharingPeerId)}
-            className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
-            title="Hentikan Mic"
-          >
-            <X className="w-4 h-4" />
-          </button>
+            <button
+              onClick={() => handleStartScreenShare(activeSharingPeerId)}
+              className="p-2 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-400 border border-red-500/40 active:scale-95 transition cursor-pointer shrink-0"
+              title="Hentikan Mic"
+            >
+              <X className="w-4 h-4" />
+            </button>
+          </div>
         </div>
       )}
 
