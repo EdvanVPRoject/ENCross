@@ -630,9 +630,11 @@ export function App() {
         const name = found?.name || 'Perangkat Lawan';
         const devId = found?.deviceId;
 
-        // Check if requester is in trusted peers list
+        // Check if requester is in trusted peers list or paired
         const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
-        if (devId && trusted.includes(devId)) {
+        const savedPaired = JSON.parse(localStorage.getItem('encross_paired_devices') || '[]');
+        const isPaired = savedPaired.some((p) => (devId && p.deviceId === devId) || p.id === requesterId);
+        if ((devId && trusted.includes(devId)) || isPaired) {
           executeStream(requesterId, 'screen');
         } else {
           setPendingRemoteRequest({
@@ -671,9 +673,11 @@ export function App() {
         const name = found?.name || 'Perangkat Lawan';
         const devId = found?.deviceId;
 
-        // Check if requester is in trusted peers list
+        // Check if requester is in trusted peers list or paired
         const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
-        if (devId && trusted.includes(devId)) {
+        const savedPaired = JSON.parse(localStorage.getItem('encross_paired_devices') || '[]');
+        const isPaired = savedPaired.some((p) => (devId && p.deviceId === devId) || p.id === requesterId);
+        if ((devId && trusted.includes(devId)) || isPaired) {
           executeStream(requesterId, 'camera');
         } else {
           setPendingRemoteRequest({
@@ -698,9 +702,11 @@ export function App() {
         const name = requesterName || found?.name || 'Laptop';
         const devId = requesterDeviceId || found?.deviceId;
 
-        // Check if requester is in trusted peers list
+        // Check if requester is in trusted peers list or paired
         const trusted = JSON.parse(localStorage.getItem('encross_trusted_peers') || '[]');
-        if (devId && trusted.includes(devId)) {
+        const savedPaired = JSON.parse(localStorage.getItem('encross_paired_devices') || '[]');
+        const isPaired = savedPaired.some((p) => (devId && p.deviceId === devId) || p.id === requesterId);
+        if ((devId && trusted.includes(devId)) || isPaired) {
           executeStream(requesterId, 'mic');
         } else {
           setPendingRemoteRequest({
@@ -2491,7 +2497,7 @@ export function App() {
       )}
 
       {/* Live Remote Screen / Camera Monitoring Modal or Wireless Mic Modal */}
-      {incomingStream && (!selectedPeer || incomingStreamMode === 'mic' || incomingStreamMode === 'second-display') && (
+      {incomingStream && (
         incomingStreamMode === 'mic' ? (
           <WirelessMicModal
             stream={incomingStream}
@@ -2501,10 +2507,11 @@ export function App() {
               setIncomingStreamPeerId(null);
             }}
           />
-        ) : incomingStreamMode === 'second-display' ? (
+        ) : (incomingStreamMode === 'second-display' || (incomingStreamMode === 'screen' && isMobileDevice) || (!selectedPeer && incomingStreamMode === 'screen')) ? (
           <SecondDisplayViewerModal
             stream={incomingStream}
             senderName={screenSenderName || 'Laptop'}
+            pingMs={pingMs}
             onClose={() => {
               setIncomingStream(null);
               setIncomingStreamPeerId(null);
