@@ -92,36 +92,33 @@ export function Navbar({
             </button>
           )}
 
-          {/* Connection / IP Config Button */}
+          {/* Connection / IP Config Button (Desktop & Tablet) */}
           {onOpenConnect && (
             <button
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenConnect();
               }}
-              className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full h-7 px-2.5 sm:px-3 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer shrink-0"
+              className="ios-pressable hidden sm:flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full h-7 px-3 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer shrink-0"
               title={isMobile ? 'Sambungkan ke IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
             >
               <Wifi className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span className="text-[11px] font-medium hidden sm:inline">
-                Sambung IP
-              </span>
-              <span className="text-[11px] font-medium sm:hidden">IP</span>
+              <span className="text-[11px] font-medium">Sambung IP</span>
             </button>
           )}
 
-          {/* Self Device Badge (Click to Rename) */}
+          {/* Self Device Badge (Desktop only; on mobile it is prominently shown in Perangkat Ini card) */}
           <button
             onClick={handleRenameClick}
-            className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-2.5 sm:px-3 py-1 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[85px] sm:max-w-[180px] shrink-0"
+            className="ios-pressable hidden sm:flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-3 py-1 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[180px] shrink-0"
             title="Klik untuk mengubah nama perangkat Anda"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
             {getDeviceIcon()}
-            <span className="font-medium truncate text-[11px] sm:text-xs text-zinc-800 dark:text-zinc-200">
+            <span className="font-medium truncate text-xs text-zinc-800 dark:text-zinc-200">
               {selfInfo?.name || 'Perangkat Ini'}
             </span>
-            <Edit2 className="w-2.5 h-2.5 text-zinc-400 dark:text-zinc-500 shrink-0 hidden sm:inline" />
+            <Edit2 className="w-2.5 h-2.5 text-zinc-400 dark:text-zinc-500 shrink-0" />
           </button>
 
           {/* Connect / Hubungkan Button */}
@@ -131,11 +128,11 @@ export function Navbar({
                 triggerHaptic([30]);
                 onOpenQR();
               }}
-              className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-7 px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs"
+              className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-7 px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs active:scale-95"
               title="Hubungkan Perangkat (Scan QR / Link LAN)"
             >
               <QrCode className="w-3.5 h-3.5 shrink-0" />
-              <span>Hubungkan</span>
+              <span className="hidden sm:inline">Hubungkan</span>
             </button>
           )}
         </div>

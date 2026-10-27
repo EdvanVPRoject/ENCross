@@ -407,8 +407,7 @@ export function DeviceWorkspace({
       <input
         type="file"
         ref={folderInputRef}
-        webkitdirectory="true"
-        directory="true"
+        {...{ webkitdirectory: '', directory: '' }}
         multiple
         className="hidden"
         onChange={(e) => {
@@ -844,31 +843,37 @@ export function DeviceWorkspace({
       ) : (
         /* CASE B: Running on Mobile Phone controlling Laptop/PC (or Mobile to Mobile) */
         <div className="flex flex-col gap-4">
-          <div className="apple-card p-5 shadow-sm flex flex-col gap-4">
-            <div>
-              <h3 className="text-base font-bold text-zinc-900 dark:text-white mb-1">Pusat Kontrol PC</h3>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Pilih aksi untuk mengontrol, mentransfer berkas, atau memanfaatkan sensor ke {peer.name}.
-              </p>
+          {/* Section 1: Navigasi & Kontrol PC */}
+          <div className="apple-card p-4 sm:p-5 shadow-sm flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+                <MousePointer className="w-4 h-4 text-emerald-500" />
+                <span>Navigasi & Kontrol Input PC</span>
+              </h3>
+              <span className="text-[10px] font-mono text-emerald-500 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full font-medium">
+                Aktif
+              </span>
             </div>
 
-            {/* Grid of full features */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {/* 1. Remote Touchpad & Numpad */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onOpenTouchpad?.(peer);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 border border-emerald-500/20 group-hover:scale-105 transition-transform">
                   <MousePointer className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Remote Mouse & Touchpad</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Gunakan layar sentuh HP sebagai touchpad, gesture scrolling, dan numpad PC
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <span>Remote Mouse & Touchpad</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Layar sentuh HP sebagai trackpad presisi, scrolling dua jari, klik kanan, dan numpad PC.
                   </p>
                 </div>
               </button>
@@ -879,127 +884,158 @@ export function DeviceWorkspace({
                   triggerHaptic([30]);
                   onOpenMacroPad?.(peer);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0 border border-purple-500/20 group-hover:scale-105 transition-transform">
                   <Layers className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Macro Pad & Shortcut PC</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Tombol pintasan cepat Stream Deck untuk OBS, Windows, dan multimedia
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <span>Macro Pad & Shortcut PC</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Tombol pintasan cepat Stream Deck untuk OBS, Windows, volume multimedia, dan custom macro.
                   </p>
                 </div>
               </button>
+            </div>
+          </div>
 
-              {/* 3. Send Files & Folder */}
+          {/* Section 2: Transfer & Penyimpanan Berkas */}
+          <div className="apple-card p-4 sm:p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <Upload className="w-4 h-4 text-blue-500" />
+              <span>Transfer & Manajemen Berkas</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {/* Kirim File */}
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
+                <div className="p-3 rounded-2xl bg-blue-500/10 text-[#0071e3] shrink-0 border border-blue-500/20 group-hover:scale-105 transition-transform">
                   <Upload className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim File & Folder</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Transfer foto, video, atau dokumen berkecepatan tinggi tanpa kuota internet
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim Berkas</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Transfer foto, video, dokumen tanpa kompresi dan tanpa kuota.
                   </p>
                 </div>
               </button>
 
-              {/* 4. Remote File Explorer */}
+              {/* Kirim Folder */}
+              <button
+                onClick={() => folderInputRef.current?.click()}
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-500 shrink-0 border border-amber-500/20 group-hover:scale-105 transition-transform">
+                  <FolderUp className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim Folder</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Kirim satu folder lengkap dengan struktur direktori terjaga.
+                  </p>
+                </div>
+              </button>
+
+              {/* Jelajah File Laptop */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onOpenFileExplorer?.(peer);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400 shrink-0">
+                <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0 border border-teal-500/20 group-hover:scale-105 transition-transform">
                   <Folder className="w-6 h-6" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jelajah File Laptop</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Akses folder laptop dan unduh berkas langsung ke penyimpanan ponsel
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jelajah File PC</h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Akses folder laptop dan unduh file langsung ke penyimpanan HP.
                   </p>
                 </div>
               </button>
+            </div>
+          </div>
 
-              {/* 5. Wireless Webcam ke PC */}
+          {/* Section 3: Sensor, Multimedia & Layar */}
+          <div className="apple-card p-4 sm:p-5 shadow-sm flex flex-col gap-3">
+            <h3 className="text-xs font-bold text-zinc-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+              <Camera className="w-4 h-4 text-purple-400" />
+              <span>Sensor HP & Multimedia Realtime</span>
+            </h3>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {/* Wireless Webcam */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'camera');
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0">
-                  <Camera className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0 border border-emerald-500/20 group-hover:scale-105 transition-transform">
+                  <Camera className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jadikan Webcam Laptop</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Gunakan kamera ponsel berkualitas tinggi sebagai webcam PC/OBS
-                  </p>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Webcam HP (60 FPS)</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Kamera HP jadi webcam PC/OBS</p>
                 </div>
               </button>
 
-              {/* 6. Wireless Mic ke PC */}
+              {/* Wireless Mic */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onStartScreenShare?.(peer.id, 'mic');
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-400 shrink-0">
-                  <Mic className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-teal-500/10 text-teal-500 shrink-0 border border-teal-500/20 group-hover:scale-105 transition-transform">
+                  <Mic className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Jadikan Mic Laptop</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Streaming audio mic HP dengan hardware AI Noise Cancellation ke PC
-                  </p>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Mikrofon HP</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">AI noise-cancelled mic untuk PC</p>
                 </div>
               </button>
 
-              {/* 7. Kirim Teks & Sinkronisasi Clipboard */}
+              {/* Kirim Teks & Clipboard */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onOpenTextSync?.(peer);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-[#0071e3]/10 text-[#0071e3] shrink-0">
-                  <MessageSquare className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-blue-500/10 text-[#0071e3] shrink-0 border border-blue-500/20 group-hover:scale-105 transition-transform">
+                  <MessageSquare className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Kirim Teks & Clipboard</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Kirim link, pesan instan, dan sinkronisasi papan klip otomatis
-                  </p>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Kirim Teks & Klip</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Pesan instan & sync clipboard</p>
                 </div>
               </button>
 
-              {/* 8. Monitor Layar Laptop */}
+              {/* Monitor Layar PC */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onRequestRemoteScreen?.(peer.id);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm"
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
               >
-                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0">
-                  <MonitorPlay className="w-6 h-6" />
+                <div className="p-2.5 rounded-xl bg-indigo-500/10 text-indigo-500 shrink-0 border border-indigo-500/20 group-hover:scale-105 transition-transform">
+                  <MonitorPlay className="w-5 h-5" />
                 </div>
                 <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white">Lihat Layar Laptop</h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">
-                    Pantau layar laptop dari layar ponsel secara realtime (WebRTC)
-                  </p>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Pantau Layar PC</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Lihat layar laptop realtime</p>
                 </div>
               </button>
             </div>

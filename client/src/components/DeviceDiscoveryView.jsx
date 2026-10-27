@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Laptop,
   Smartphone,
@@ -15,7 +15,13 @@ import {
   Trash2,
   FolderOpen,
   ArrowDownLeft,
-  ArrowUpRight
+  ArrowUpRight,
+  MousePointer,
+  Layers,
+  Upload,
+  MessageSquare,
+  Folder,
+  MonitorPlay
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { formatBytes } from '../utils/deviceInfo';
@@ -44,8 +50,16 @@ export function DeviceDiscoveryView({
   transferHistory = [],
   onClearTransferHistory,
   onOpenFolder,
-  onRefreshScan
+  onRefreshScan,
+  onOpenTouchpad,
+  onOpenMacroPad,
+  onSendFile,
+  onOpenTextSync,
+  onOpenFileExplorer,
+  onStartMirroring
 }) {
+  const fileInputRef = useRef(null);
+  const activeTargetPeerIdRef = useRef(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
 
@@ -70,7 +84,14 @@ export function DeviceDiscoveryView({
     setTimeout(() => setIsScanning(false), 800);
   };
 
-  const resolvedLocalIp = localIp || selfIp || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1');
+  const isSelfMobile =
+    selfInfo?.deviceType === 'mobile' ||
+    selfInfo?.deviceType === 'smartphone' ||
+    (typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent));
+
+  const resolvedLocalIp = isSelfMobile
+    ? (selfIp && selfIp !== '127.0.0.1' ? selfIp : (localIp || '127.0.0.1'))
+    : (localIp || selfIp || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'));
 
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 flex flex-col gap-5 animate-view-enter smooth-gpu">
@@ -158,6 +179,20 @@ export function DeviceDiscoveryView({
           </span>
         </div>
 
+        {/* Hidden file input for quick direct transfer from discovery cards */}
+        <input
+          type="file"
+          ref={fileInputRef}
+          multiple
+          className="hidden"
+          onChange={(e) => {
+            if (e.target.files?.length > 0 && activeTargetPeerIdRef.current && onSendFile) {
+              onSendFile(activeTargetPeerIdRef.current, Array.from(e.target.files));
+            }
+            e.target.value = '';
+          }}
+        />
+
         {/* Device List or Quiet Minimal Empty State */}
         {peers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
@@ -193,7 +228,7 @@ export function DeviceDiscoveryView({
                       {peer.name}
                     </h4>
 
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-sans mb-4 flex-wrap">
+                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-sans mb-3 flex-wrap">
                       <span className="bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full text-zinc-700 dark:text-zinc-300 font-mono text-[11px]">
                         {peer.os || 'OS'}
                       </span>
@@ -215,15 +250,126 @@ export function DeviceDiscoveryView({
                         </>
                       )}
                     </div>
+
+                    {/* Quick 1-Tap Action Feature Bar */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-3" onClick={(e) => e.stopPropagation()}>
+                      {isPeerMobile ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onStartMirroring?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-[#0071e3] dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
+                            title="Buka mirror layar ponsel"
+                          >
+                            <MonitorPlay className="w-3.5 h-3.5 shrink-0" />
+                            <span>Mirror</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              if (fileInputRef.current) {
+                                activeTargetPeerIdRef.current = peer.id;
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            title="Kirim file langsung ke ponsel"
+                          >
+                            <Upload className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
+                            <span>Kirim File</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenFileExplorer?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            title="Jelajah berkas ponsel"
+                          >
+                            <Folder className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                            <span>Jelajah</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenTextSync?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            title="Kirim teks / clipboard"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-purple-400" />
+                            <span>Teks</span>
+                          </button>
+                        </>
+                      ) : (
+                        <>
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenTouchpad?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition active:scale-95 border border-emerald-500/20"
+                            title="Buka Touchpad & Mouse PC"
+                          >
+                            <MousePointer className="w-3.5 h-3.5 shrink-0" />
+                            <span>Touchpad</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenMacroPad?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold transition active:scale-95 border border-purple-500/20"
+                            title="Buka Macro Pad & Shortcut"
+                          >
+                            <Layers className="w-3.5 h-3.5 shrink-0" />
+                            <span>Macro</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              if (fileInputRef.current) {
+                                activeTargetPeerIdRef.current = peer.id;
+                                fileInputRef.current.click();
+                              }
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            title="Kirim file langsung ke PC"
+                          >
+                            <Upload className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+                            <span>Kirim File</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenTextSync?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            title="Kirim pesan / clipboard"
+                          >
+                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-sky-400" />
+                            <span>Teks</span>
+                          </button>
+                        </>
+                      )}
+                    </div>
                   </div>
 
                   {/* Bottom Connect Button (Apple Capsule Button) */}
-                  <div className="pt-3 border-t border-black/8 dark:border-white/10 flex items-center justify-between text-xs">
+                  <div className="pt-2.5 border-t border-black/8 dark:border-white/10 flex items-center justify-between text-xs">
                     <span className="text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
-                      {isPeerMobile ? 'Mirroring & Transfer Berkas' : 'Touchpad & Kontrol PC'}
+                      {isPeerMobile ? 'Mirror Layar & Kontrol Lengkap' : 'Pusat Kontrol & Layar PC'}
                     </span>
                     <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-3.5 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
-                      <span>Buka Kontrol</span>
+                      <span>Buka Workspace</span>
                       <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
                     </div>
                   </div>

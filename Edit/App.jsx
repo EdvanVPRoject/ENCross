@@ -92,6 +92,16 @@ export function App() {
     updateStatusBar();
   }, [theme]);
 
+  // Auto-dismiss incoming notification toasts cleanly
+  useEffect(() => {
+    if (!incomingToast) return;
+    const duration = incomingToast.senderId ? 5000 : 3500;
+    const timer = setTimeout(() => {
+      setIncomingToast(null);
+    }, duration);
+    return () => clearTimeout(timer);
+  }, [incomingToast]);
+
   const toggleTheme = () => {
     triggerHaptic([20]);
     setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
@@ -1631,59 +1641,89 @@ export function App() {
         onToggleTheme={toggleTheme}
       />
 
-      {/* Floating Incoming Text Pop-up Notification (top-16 to avoid blocking Navbar) */}
+      {/* Floating Incoming Notification Pop-up (Positioned below navbar, auto-dismissing) */}
       {incomingToast && (
-        <div className="fixed top-16 left-1/2 -translate-x-1/2 z-50 bg-zinc-900/95 border border-zinc-700 text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-2xl backdrop-blur-md flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown">
-          <div
-            onClick={handleOpenChatFromToast}
-            className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 cursor-pointer group select-none"
-            title="Klik untuk membuka chat"
-          >
-            <div className="p-2 rounded-xl bg-zinc-800 border border-zinc-700/70 text-zinc-200 shrink-0 relative">
-              <MessageSquare className="w-4 h-4 text-emerald-400" />
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping absolute -top-0.5 -right-0.5" />
-            </div>
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-1.5">
-                <p className="text-[11px] font-semibold text-zinc-300 truncate group-hover:text-white transition">
-                  Pesan dari {incomingToast.senderName}
-                </p>
-                <span className="text-[9px] bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 px-1.5 py-0.5 rounded font-mono">
-                  Baru
-                </span>
+        <div
+          style={{ top: 'calc(max(env(safe-area-inset-top, 0px), 12px) + 3.5rem)' }}
+          className="fixed left-1/2 -translate-x-1/2 z-50 apple-glass border border-black/10 dark:border-white/15 text-zinc-900 dark:text-white px-3.5 py-2.5 sm:px-4 sm:py-3 rounded-2xl shadow-xl backdrop-blur-2xl flex items-center gap-2.5 sm:gap-3 max-w-[94vw] sm:max-w-md animate-slideDown"
+        >
+          {incomingToast.senderId ? (
+            /* Peer Chat / Note Message */
+            <>
+              <div
+                onClick={handleOpenChatFromToast}
+                className="flex items-center gap-2.5 sm:gap-3 flex-1 min-w-0 cursor-pointer group select-none"
+                title="Klik untuk membuka chat"
+              >
+                <div className="p-2 rounded-xl bg-purple-500/10 text-purple-400 shrink-0 relative border border-purple-500/20">
+                  <MessageSquare className="w-4 h-4" />
+                  <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping absolute -top-0.5 -right-0.5" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-300 truncate group-hover:text-zinc-900 dark:group-hover:text-white transition">
+                      Pesan dari {incomingToast.senderName}
+                    </p>
+                    <span className="text-[9px] bg-purple-500/15 text-purple-400 border border-purple-500/30 px-1.5 py-0.2 rounded font-mono">
+                      Baru
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-900 dark:text-zinc-100 truncate font-mono mt-0.5">
+                    {incomingToast.text}
+                  </p>
+                </div>
               </div>
-              <p className="text-xs text-zinc-100 truncate font-mono mt-0.5 group-hover:text-emerald-300 transition">
-                {incomingToast.text}
-              </p>
-            </div>
-          </div>
 
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              onClick={handleOpenChatFromToast}
-              className="px-2.5 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
-            >
-              <span>Buka</span>
-            </button>
-            <button
-              onClick={() => {
-                navigator.clipboard.writeText(incomingToast.text);
-                triggerHaptic([30]);
-                setIncomingToast(null);
-              }}
-              title="Salin teks ke clipboard"
-              className="px-2 py-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer border border-zinc-700/60 active:scale-95"
-            >
-              Salin
-            </button>
-            <button
-              onClick={() => setIncomingToast(null)}
-              title="Tutup notifikasi"
-              className="p-1 text-zinc-400 hover:text-white hover:bg-zinc-800 rounded-lg transition cursor-pointer"
-            >
-              <X className="w-3.5 h-3.5" />
-            </button>
-          </div>
+              <div className="flex items-center gap-1.5 shrink-0">
+                <button
+                  onClick={handleOpenChatFromToast}
+                  className="px-2.5 py-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-semibold rounded-lg text-xs transition cursor-pointer shadow-sm active:scale-95 flex items-center gap-1"
+                >
+                  <span>Buka</span>
+                </button>
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(incomingToast.text);
+                    triggerHaptic([30]);
+                    setIncomingToast(null);
+                  }}
+                  title="Salin teks ke clipboard"
+                  className="px-2 py-1.5 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-700 dark:text-zinc-200 font-medium rounded-lg text-xs transition cursor-pointer border border-black/8 dark:border-white/10 active:scale-95"
+                >
+                  Salin
+                </button>
+                <button
+                  onClick={() => setIncomingToast(null)}
+                  title="Tutup notifikasi"
+                  className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : (
+            /* System / Status / Connection Notice */
+            <>
+              <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0 border border-emerald-500/20">
+                <Check className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[11px] font-semibold text-zinc-500 dark:text-zinc-400">
+                  {incomingToast.senderName || 'ENCross Hub'}
+                </p>
+                <p className="text-xs font-medium text-zinc-900 dark:text-white truncate">
+                  {incomingToast.text}
+                </p>
+              </div>
+              <button
+                onClick={() => setIncomingToast(null)}
+                title="Tutup notifikasi"
+                className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition cursor-pointer shrink-0"
+              >
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </>
+          )}
         </div>
       )}
 
@@ -1821,6 +1861,23 @@ export function App() {
               transferHistory={transferHistory}
               onClearTransferHistory={handleClearTransferHistory}
               onOpenFolder={handleOpenFolder}
+              onOpenTouchpad={(peer) => {
+                setSelectedPeerForTouchpad(peer);
+                setIsTouchpadModalOpen(true);
+              }}
+              onOpenMacroPad={(peer) => {
+                setSelectedPeerForMacroPad(peer);
+                setIsMacroPadModalOpen(true);
+              }}
+              onSendFile={handleSendFile}
+              onOpenTextSync={(peer) => {
+                setTextTargetPeer(peer);
+                setIsTextSyncOpen(true);
+              }}
+              onOpenFileExplorer={handleOpenFileExplorer}
+              onStartMirroring={(peer) => {
+                setSelectedPeer(peer);
+              }}
             />
           </div>
         )}
