@@ -471,6 +471,10 @@ export function DeviceWorkspace({
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
                   TERHUBUNG
                 </span>
+                <span className="inline-flex items-center gap-1 text-[10px] text-blue-600 dark:text-blue-400 bg-blue-500/10 border border-blue-500/20 px-2 py-0.2 rounded-full font-mono font-medium shrink-0">
+                  <ShieldCheck className="w-3 h-3 text-blue-500" />
+                  SINKRON
+                </span>
               </div>
               <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate">
                 {peer.os || 'OS'} • {peer.ip || 'Wi-Fi LAN'}

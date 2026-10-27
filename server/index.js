@@ -52,6 +52,22 @@ function getLocalIpAddresses() {
 // rooms: { [roomId: string]: { [socketId: string]: PeerInfo } }
 const rooms = new Map();
 
+// Authoritative real-time room peer broadcast: ensures all devices in the room receive the exact synchronized peer list
+function broadcastRoomPeers(roomName) {
+  if (!roomName || !rooms.has(roomName)) return;
+  const rPeers = rooms.get(roomName);
+  for (const [dKey, pData] of rPeers.entries()) {
+    const peersForThisDevice = Array.from(rPeers.values()).filter(
+      (p) => p.deviceId !== dKey && p.id !== pData.id
+    );
+    io.to(pData.id).emit('room-peers', {
+      self: pData,
+      peers: peersForThisDevice,
+      roomId: roomName
+    });
+  }
+}
+
 // API: Endpoint for frontend to fetch server network information
 app.get('/api/network-info', (req, res) => {
   const localIps = getLocalIpAddresses();
@@ -359,25 +375,107 @@ io.on('connection', (socket) => {
     // Notify other physical devices in the room (skip self deviceKey)
     socket.to(currentRoom).emit('peer-joined', peerData);
 
-    // Send unique peers list (excluding self deviceKey)
-    const peersList = Array.from(roomPeers.values()).filter(p => p.deviceId !== deviceKey && p.id !== socket.id);
-    socket.emit('room-peers', {
-      self: peerData,
-      peers: peersList,
-      roomId: currentRoom
-    });
+    // Immediately synchronize authoritative peer list across all devices in the room
+    broadcastRoomPeers(currentRoom);
   });
 
   socket.on('get-peers', () => {
     const roomToQuery = currentRoom || 'encross-lan';
     if (!rooms.has(roomToQuery)) return;
-    const roomPeers = rooms.get(roomToQuery);
-    const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey && p.id !== socket.id);
-    socket.emit('room-peers', {
-      self: peerData,
-      peers: peersList,
-      roomId: roomToQuery
-    });
+    broadcastRoomPeers(roomToQuery);
+  });
+
+  const isSocketActive = (id) =>
+    Boolean(id && (io.sockets?.sockets?.has ? io.sockets.sockets.has(id) : Boolean(io.sockets?.sockets?.[id])));
+
+  const resolveTargetSocket = (targetId, targetDeviceId) => {
+    if (!currentRoom || !rooms.has(currentRoom)) return targetId;
+    const roomPeers = rooms.get(currentRoom);
+
+    // 1. Direct deviceKey / targetDeviceId match
+    const searchKey = targetDeviceId || targetId;
+    if (searchKey && roomPeers.has(searchKey)) {
+      const p = roomPeers.get(searchKey);
+      if (p && isSocketActive(p.id)) return p.id;
+    }
+
+    // 2. Search peers by socket.id or deviceId
+    for (const peer of roomPeers.values()) {
+      if (
+        (targetId && peer.id === targetId) ||
+        (targetDeviceId && peer.deviceId === targetDeviceId) ||
+        (targetId && peer.deviceId === targetId)
+      ) {
+        if (isSocketActive(peer.id)) return peer.id;
+      }
+    }
+
+    // 3. If targetId is directly active
+    if (targetId && isSocketActive(targetId)) {
+      return targetId;
+    }
+
+    // 4. Fallback: If 2 devices in room, route to the other peer!
+    if (roomPeers.size === 2) {
+      for (const [key, peer] of roomPeers.entries()) {
+        if (key !== deviceKey && isSocketActive(peer.id)) {
+          return peer.id;
+        }
+      }
+    }
+
+    return targetId;
+  };
+
+  // Device Pairing Handshake & Mutual Connection Synchronization
+  socket.on('pairing-request', ({ targetId, targetDeviceId, requester, pin }) => {
+    const resolved = resolveTargetSocket(targetId, targetDeviceId);
+    console.log(`[Pairing Request] From ${peerData?.name} (${deviceKey}) -> Target: ${resolved} (PIN: ${pin})`);
+    if (resolved) {
+      io.to(resolved).emit('pairing-request', {
+        senderId: socket.id,
+        senderDeviceId: peerData?.deviceId || requester?.deviceId,
+        requester: requester || peerData,
+        pin
+      });
+    }
+  });
+
+  socket.on('pairing-response', ({ targetId, targetDeviceId, accepted, pin, responder }) => {
+    const resolved = resolveTargetSocket(targetId, targetDeviceId);
+    console.log(`[Pairing Response] From ${peerData?.name} -> Target: ${resolved} (Accepted: ${accepted})`);
+    if (resolved) {
+      io.to(resolved).emit('pairing-response', {
+        senderId: socket.id,
+        senderDeviceId: peerData?.deviceId || responder?.deviceId,
+        accepted,
+        pin,
+        responder: responder || peerData
+      });
+    }
+  });
+
+  socket.on('connection-sync', ({ targetId, targetDeviceId, status, requester }) => {
+    const resolved = resolveTargetSocket(targetId, targetDeviceId);
+    console.log(`[Connection Sync] From ${peerData?.name} -> Target: ${resolved} (Status: ${status})`);
+    if (resolved) {
+      io.to(resolved).emit('connection-sync', {
+        senderId: socket.id,
+        senderDeviceId: peerData?.deviceId || requester?.deviceId,
+        status,
+        requester: requester || peerData
+      });
+    }
+  });
+
+  socket.on('unpair-device', ({ targetId, targetDeviceId }) => {
+    const resolved = resolveTargetSocket(targetId, targetDeviceId);
+    if (resolved) {
+      io.to(resolved).emit('unpair-device', {
+        senderId: socket.id,
+        senderDeviceId: peerData?.deviceId
+      });
+    }
   });
 
   // WebRTC Signaling: Offer
@@ -723,6 +821,7 @@ io.on('connection', (socket) => {
           rooms.delete(currentRoom);
         } else {
           socket.to(currentRoom).emit('peer-left', { id: socket.id, deviceId: peerData.deviceId });
+          broadcastRoomPeers(currentRoom);
         }
       }
     }

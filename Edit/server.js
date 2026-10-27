@@ -42,6 +42,22 @@ function startServer(port = 3001, customDistPath = null, serverOptions = {}) {
 
   const rooms = new Map();
 
+  // Authoritative real-time room peer broadcast: ensures all devices in the room receive the exact synchronized peer list
+  function broadcastRoomPeers(roomName) {
+    if (!roomName || !rooms.has(roomName)) return;
+    const rPeers = rooms.get(roomName);
+    for (const [dKey, pData] of rPeers.entries()) {
+      const peersForThisDevice = Array.from(rPeers.values()).filter(
+        (p) => p.deviceId !== dKey && p.id !== pData.id
+      );
+      io.to(pData.id).emit('room-peers', {
+        self: pData,
+        peers: peersForThisDevice,
+        roomId: roomName
+      });
+    }
+  }
+
   app.get('/api/network-info', (req, res) => {
     const localIps = getLocalIpAddresses();
     res.json({
@@ -336,24 +352,14 @@ app.get('/api/media-stream-proxy', (req, res) => {
       roomPeers.set(deviceKey, peerData);
       socket.to(currentRoom).emit('peer-joined', peerData);
 
-      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey && p.id !== socket.id);
-      socket.emit('room-peers', {
-        self: peerData,
-        peers: peersList,
-        roomId: currentRoom
-      });
+      // Immediately synchronize authoritative peer list across all devices in the room
+      broadcastRoomPeers(currentRoom);
     });
 
     socket.on('get-peers', () => {
       const roomToQuery = currentRoom || 'encross-lan';
       if (!rooms.has(roomToQuery)) return;
-      const roomPeers = rooms.get(roomToQuery);
-      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey && p.id !== socket.id);
-      socket.emit('room-peers', {
-        self: peerData,
-        peers: peersList,
-        roomId: roomToQuery
-      });
+      broadcastRoomPeers(roomToQuery);
     });
 
     const isSocketActive = (id) =>
@@ -397,6 +403,57 @@ app.get('/api/media-stream-proxy', (req, res) => {
 
       return targetId;
     };
+
+    // Device Pairing Handshake & Mutual Connection Synchronization
+    socket.on('pairing-request', ({ targetId, targetDeviceId, requester, pin }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      console.log(`[Pairing Request] From ${peerData?.name} (${deviceKey}) -> Target: ${resolved} (PIN: ${pin})`);
+      if (resolved) {
+        io.to(resolved).emit('pairing-request', {
+          senderId: socket.id,
+          senderDeviceId: peerData?.deviceId || requester?.deviceId,
+          requester: requester || peerData,
+          pin
+        });
+      }
+    });
+
+    socket.on('pairing-response', ({ targetId, targetDeviceId, accepted, pin, responder }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      console.log(`[Pairing Response] From ${peerData?.name} -> Target: ${resolved} (Accepted: ${accepted})`);
+      if (resolved) {
+        io.to(resolved).emit('pairing-response', {
+          senderId: socket.id,
+          senderDeviceId: peerData?.deviceId || responder?.deviceId,
+          accepted,
+          pin,
+          responder: responder || peerData
+        });
+      }
+    });
+
+    socket.on('connection-sync', ({ targetId, targetDeviceId, status, requester }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      console.log(`[Connection Sync] From ${peerData?.name} -> Target: ${resolved} (Status: ${status})`);
+      if (resolved) {
+        io.to(resolved).emit('connection-sync', {
+          senderId: socket.id,
+          senderDeviceId: peerData?.deviceId || requester?.deviceId,
+          status,
+          requester: requester || peerData
+        });
+      }
+    });
+
+    socket.on('unpair-device', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('unpair-device', {
+          senderId: socket.id,
+          senderDeviceId: peerData?.deviceId
+        });
+      }
+    });
 
     socket.on('signal-offer', ({ targetId, targetDeviceId, offer, metadata }) => {
       const resolved = resolveTargetSocket(targetId, targetDeviceId);
@@ -671,6 +728,7 @@ app.get('/api/media-stream-proxy', (req, res) => {
                 rooms.delete(targetRoom);
               } else {
                 io.to(targetRoom).emit('peer-left', { id: targetSocketId, deviceId: targetDeviceId });
+                broadcastRoomPeers(targetRoom);
               }
             }
           }

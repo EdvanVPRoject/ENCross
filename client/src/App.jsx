@@ -23,6 +23,7 @@ import { PresentationClickerModal } from './components/PresentationClickerModal'
 import { WakeOnLanModal } from './components/WakeOnLanModal';
 import { SecondDisplaySourceModal } from './components/SecondDisplaySourceModal';
 import { SecondDisplayViewerModal } from './components/SecondDisplayViewerModal';
+import { PairingModal } from './components/PairingModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -76,6 +77,30 @@ export function App() {
   const [selectedPeer, setSelectedPeer] = useState(null);
   const [socket, setSocket] = useState(null);
   const [pingMs, setPingMs] = useState(null);
+
+  // Paired devices list (persisted in localStorage)
+  const [pairedDevices, setPairedDevices] = useState(() => {
+    try {
+      const saved = localStorage.getItem('encross_paired_devices') || localStorage.getItem('vancross_paired_devices');
+      return saved ? JSON.parse(saved) : [];
+    } catch {
+      return [];
+    }
+  });
+
+  // Pairing Modal state
+  const [pairingModalState, setPairingModalState] = useState({
+    isOpen: false,
+    mode: 'requesting',
+    pin: '0000',
+    targetPeer: null,
+    requester: null,
+    senderId: null,
+    senderDeviceId: null
+  });
+
+  // Real-time Synchronized Connection State
+  const [activePeerConnection, setActivePeerConnection] = useState(null);
 
   // Modals & Drawers
   const [isQrOpen, setIsQrOpen] = useState(!isMobileDevice);
@@ -307,12 +332,15 @@ export function App() {
     }
 
     // 3. Connect to backend signaling server with Permanent Memory & Auto-LAN Discovery
+    const isElectronApp = typeof window !== 'undefined' && Boolean(window.electronAPI);
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     let savedServerIp = localStorage.getItem('encross_server_ip') || localStorage.getItem('vancross_server_ip');
 
     let backendHost = window.location.hostname || 'localhost';
-    if (isLocalhost && savedServerIp) {
+    if (!isElectronApp && isLocalhost && savedServerIp) {
       backendHost = savedServerIp;
+    } else if (isElectronApp) {
+      backendHost = 'localhost';
     }
 
     let serverUrl = `http://${backendHost}:3001`;
@@ -927,6 +955,107 @@ export function App() {
       setIsSuperseded(true);
     });
 
+    // Socket Event: Incoming Pairing Request
+    newSocket.on('pairing-request', ({ senderId, senderDeviceId, requester, pin }) => {
+      playSound('message');
+      triggerHaptic([30, 60]);
+      setPairingModalState({
+        isOpen: true,
+        mode: 'incoming',
+        pin: pin || '0000',
+        requester: requester || { name: 'Perangkat Lain' },
+        senderId,
+        senderDeviceId
+      });
+    });
+
+    // Socket Event: Pairing Response from Target
+    newSocket.on('pairing-response', ({ senderId, senderDeviceId, accepted, pin, responder }) => {
+      if (accepted) {
+        playSound('connect');
+        triggerHaptic([40, 80]);
+        const newPaired = {
+          deviceId: senderDeviceId || responder?.deviceId,
+          id: senderId,
+          name: responder?.name || 'Perangkat Terpasang',
+          os: responder?.os || 'System',
+          ip: responder?.ip || responder?.clientIp,
+          pairedAt: Date.now()
+        };
+        setPairedDevices((prev) => {
+          const filtered = prev.filter((p) => p.deviceId !== newPaired.deviceId);
+          const updated = [...filtered, newPaired];
+          try {
+            localStorage.setItem('encross_paired_devices', JSON.stringify(updated));
+            localStorage.setItem('vancross_paired_devices', JSON.stringify(updated));
+          } catch (_) {}
+          return updated;
+        });
+        setPairingModalState((prev) => ({ ...prev, isOpen: false }));
+        setIncomingToast({
+          senderName: responder?.name || 'Pairing Berhasil',
+          text: `✓ Berhasil dipasangkan dengan ${responder?.name || 'perangkat'}!`
+        });
+        newSocket.emit('connection-sync', {
+          targetId: senderId,
+          targetDeviceId: senderDeviceId,
+          status: 'connected',
+          requester: device
+        });
+      } else {
+        playSound('disconnect');
+        triggerHaptic([50]);
+        setPairingModalState((prev) => ({ ...prev, isOpen: false }));
+        setIncomingToast({
+          senderName: 'Pairing Ditolak',
+          text: `Permintaan pairing ditolak oleh target.`
+        });
+      }
+    });
+
+    // Socket Event: Mutual Real-time Connection & Workspace Synchronization
+    newSocket.on('connection-sync', ({ senderId, senderDeviceId, status, requester }) => {
+      console.log(`[Connection Sync Event] From ${requester?.name} (${senderId}), status: ${status}`);
+      if (status === 'workspace-open' || status === 'connected') {
+        playSound('connect');
+        triggerHaptic([30]);
+        const peerObj = {
+          id: senderId,
+          deviceId: senderDeviceId,
+          name: requester?.name || 'Perangkat',
+          deviceType: requester?.deviceType || 'mobile',
+          os: requester?.os || 'OS',
+          ip: requester?.ip || requester?.clientIp
+        };
+        setActivePeerConnection({ peer: peerObj, status: 'connected' });
+        setIncomingToast({
+          senderName: peerObj.name,
+          text: `✓ ${peerObj.name} terhubung secara real-time.`
+        });
+        if (window.electronAPI) {
+          setSelectedPeer((curr) => curr || peerObj);
+        }
+      } else if (status === 'workspace-close') {
+        setActivePeerConnection(null);
+        if (window.electronAPI) {
+          setSelectedPeer(null);
+        }
+      }
+    });
+
+    // Socket Event: Device Unpaired
+    newSocket.on('unpair-device', ({ senderDeviceId }) => {
+      setPairedDevices((prev) => {
+        const updated = prev.filter((p) => p.deviceId !== senderDeviceId);
+        try {
+          localStorage.setItem('encross_paired_devices', JSON.stringify(updated));
+          localStorage.setItem('vancross_paired_devices', JSON.stringify(updated));
+        } catch (_) {}
+        return updated;
+      });
+      setActivePeerConnection(null);
+    });
+
     // Socket Event: Instant Text Message received
     newSocket.on('receive-text-message', (msg) => {
       playSound('message');
@@ -1183,6 +1312,119 @@ export function App() {
       window.onAndroidNotificationReceived = null;
     };
   }, [socket]);
+
+  // Device Pairing & Synchronized Connection Handlers
+  const handlePairDevice = (peer) => {
+    if (!socket || !socket.connected) return;
+    const randomPin = Math.floor(1000 + Math.random() * 9000).toString();
+    setPairingModalState({
+      isOpen: true,
+      mode: 'requesting',
+      pin: randomPin,
+      targetPeer: peer,
+      requester: selfInfo
+    });
+    socket.emit('pairing-request', {
+      targetId: peer.id,
+      targetDeviceId: peer.deviceId,
+      requester: selfInfo,
+      pin: randomPin
+    });
+  };
+
+  const handleAcceptPairing = () => {
+    if (!socket || !pairingModalState.senderId) return;
+    const responder = selfInfo;
+    const newPaired = {
+      deviceId: pairingModalState.senderDeviceId,
+      id: pairingModalState.senderId,
+      name: pairingModalState.requester?.name || 'Perangkat Terpasang',
+      os: pairingModalState.requester?.os || 'System',
+      ip: pairingModalState.requester?.ip || pairingModalState.requester?.clientIp,
+      pairedAt: Date.now()
+    };
+    setPairedDevices((prev) => {
+      const filtered = prev.filter((p) => p.deviceId !== newPaired.deviceId);
+      const updated = [...filtered, newPaired];
+      try {
+        localStorage.setItem('encross_paired_devices', JSON.stringify(updated));
+        localStorage.setItem('vancross_paired_devices', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+    socket.emit('pairing-response', {
+      targetId: pairingModalState.senderId,
+      targetDeviceId: pairingModalState.senderDeviceId,
+      accepted: true,
+      pin: pairingModalState.pin,
+      responder
+    });
+    setPairingModalState((prev) => ({ ...prev, isOpen: false }));
+    setIncomingToast({
+      senderName: 'Pairing Selesai',
+      text: '✓ Perangkat berhasil dipasangkan!'
+    });
+  };
+
+  const handleRejectPairing = () => {
+    if (socket && pairingModalState.senderId) {
+      socket.emit('pairing-response', {
+        targetId: pairingModalState.senderId,
+        targetDeviceId: pairingModalState.senderDeviceId,
+        accepted: false,
+        pin: pairingModalState.pin
+      });
+    }
+    setPairingModalState((prev) => ({ ...prev, isOpen: false }));
+  };
+
+  const handleUnpairDevice = (peer) => {
+    setPairedDevices((prev) => {
+      const updated = prev.filter((p) => p.deviceId !== peer.deviceId && p.id !== peer.id);
+      try {
+        localStorage.setItem('encross_paired_devices', JSON.stringify(updated));
+        localStorage.setItem('vancross_paired_devices', JSON.stringify(updated));
+      } catch (_) {}
+      return updated;
+    });
+    if (socket && peer.id) {
+      socket.emit('unpair-device', {
+        targetId: peer.id,
+        targetDeviceId: peer.deviceId
+      });
+    }
+    if (activePeerConnection?.peer?.deviceId === peer.deviceId) {
+      setActivePeerConnection(null);
+    }
+    setIncomingToast({
+      senderName: 'Pairing Dilepas',
+      text: `Pairing dengan ${peer.name} telah dihapus.`
+    });
+  };
+
+  const handleSelectDevice = (peer) => {
+    setSelectedPeer(peer);
+    if (socket && peer.id) {
+      socket.emit('connection-sync', {
+        targetId: peer.id,
+        targetDeviceId: peer.deviceId,
+        status: 'workspace-open',
+        requester: selfInfo
+      });
+    }
+  };
+
+  const handleBackFromWorkspace = () => {
+    if (socket && selectedPeer?.id) {
+      socket.emit('connection-sync', {
+        targetId: selectedPeer.id,
+        targetDeviceId: selectedPeer.deviceId,
+        status: 'workspace-close',
+        requester: selfInfo
+      });
+    }
+    setSelectedPeer(null);
+  };
 
   // Ring My Phone Handlers
   const handleRingDevice = (targetId, targetDeviceId) => {
@@ -1966,7 +2208,7 @@ export function App() {
                 selfInfo={selfInfo}
                 isMobile={isMobileDevice}
                 pingMs={pingMs}
-                onBack={() => setSelectedPeer(null)}
+                onBack={handleBackFromWorkspace}
                 onSendFile={handleSendFile}
                 onOpenTextSync={(peer) => {
                   setTextTargetPeer(peer);
@@ -2011,9 +2253,11 @@ export function App() {
               localIp={resolvedIp}
               selfIp={selfIp}
               pingMs={pingMs}
-              onSelectDevice={(peer) => {
-                setSelectedPeer(peer);
-              }}
+              pairedDevices={pairedDevices}
+              activePeerConnection={activePeerConnection}
+              onPairDevice={handlePairDevice}
+              onUnpairDevice={handleUnpairDevice}
+              onSelectDevice={handleSelectDevice}
               onOpenQR={() => setIsQrOpen(true)}
               onOpenConnect={() => setIsServerIpModalOpen(true)}
               onOpenRename={() => setIsRenameOpen(true)}
@@ -2392,6 +2636,18 @@ export function App() {
           </div>
         </div>
       )}
+
+      {/* Device Pairing Handshake Modal (Apple AirDrop / Bluetooth Pairing Style) */}
+      <PairingModal
+        isOpen={pairingModalState.isOpen}
+        mode={pairingModalState.mode}
+        pin={pairingModalState.pin}
+        targetPeer={pairingModalState.targetPeer}
+        requester={pairingModalState.requester}
+        onAccept={handleAcceptPairing}
+        onReject={handleRejectPairing}
+        onClose={() => setPairingModalState((prev) => ({ ...prev, isOpen: false }))}
+      />
 
       {/* Footer Info */}
       <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">

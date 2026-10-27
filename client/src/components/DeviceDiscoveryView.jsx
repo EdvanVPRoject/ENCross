@@ -25,7 +25,10 @@ import {
   Keyboard,
   Presentation,
   Power,
-  Tv
+  Tv,
+  ShieldCheck,
+  Shield,
+  Unlink
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { formatBytes } from '../utils/deviceInfo';
@@ -64,7 +67,11 @@ export function DeviceDiscoveryView({
   onSendFile,
   onOpenTextSync,
   onOpenFileExplorer,
-  onStartMirroring
+  onStartMirroring,
+  pairedDevices = [],
+  activePeerConnection,
+  onPairDevice,
+  onUnpairDevice
 }) {
   const fileInputRef = useRef(null);
   const activeTargetPeerIdRef = useRef(null);
@@ -201,20 +208,72 @@ export function DeviceDiscoveryView({
           }}
         />
 
+        {/* Active Real-Time Synchronized Connection Banner */}
+        {activePeerConnection?.peer && (
+          <div className="apple-card p-3.5 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3 animate-ios-pop shadow-sm">
+            <div className="flex items-center gap-3 min-w-0">
+              <div className="p-2.5 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
+                {getDeviceIcon(activePeerConnection.peer.deviceType, 'w-5 h-5')}
+              </div>
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
+                  <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white truncate">
+                    {activePeerConnection.peer.name} Sedang Terhubung
+                  </h4>
+                  <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.2 rounded-full font-mono font-semibold">
+                    SINKRON
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                  Koneksi disinkronkan secara real-time. Buka workspace untuk mulai kontrol & transfer berkas.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={() => {
+                triggerHaptic([35]);
+                onSelectDevice(activePeerConnection.peer);
+              }}
+              className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-4 py-1.5 rounded-full text-xs font-semibold shrink-0 shadow-sm transition cursor-pointer"
+            >
+              Buka Workspace
+            </button>
+          </div>
+        )}
+
         {/* Device List or Quiet Minimal Empty State */}
         {peers.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
             {peers.map((peer, idx) => {
               const isPeerMobile = peer.deviceType?.toLowerCase() === 'mobile' || peer.deviceType?.toLowerCase() === 'smartphone';
+              const isPaired = pairedDevices.some(
+                (p) => (p.deviceId && p.deviceId === peer.deviceId) || (p.id && p.id === peer.id)
+              );
+              const isConnectedActive =
+                activePeerConnection?.peer &&
+                ((activePeerConnection.peer.deviceId && activePeerConnection.peer.deviceId === peer.deviceId) ||
+                  activePeerConnection.peer.id === peer.id);
+
               return (
                 <div
                   key={peer.id}
                   onClick={() => {
                     triggerHaptic([35]);
-                    onSelectDevice(peer);
+                    if (isPaired) {
+                      onSelectDevice(peer);
+                    } else if (onPairDevice) {
+                      onPairDevice(peer);
+                    }
                   }}
                   style={{ animationDelay: `${idx * 70}ms` }}
-                  className="apple-card ios-card-enter ios-pressable p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group hover:border-black/20 dark:hover:border-white/20 shadow-sm"
+                  className={`apple-card ios-card-enter ios-pressable p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group shadow-sm transition-all duration-200 ${
+                    isConnectedActive
+                      ? 'border-2 border-emerald-500/50 shadow-emerald-500/10'
+                      : isPaired
+                      ? 'hover:border-blue-500/40'
+                      : 'hover:border-amber-500/40'
+                  }`}
                 >
                   <div>
                     {/* Top row: Icon, Type & Online Status */}
@@ -223,11 +282,29 @@ export function DeviceDiscoveryView({
                         {getDeviceIcon(peer.deviceType, 'w-6 h-6')}
                       </div>
 
-                      <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10">
-                        <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                        <span className="font-mono text-[10px] text-zinc-600 dark:text-zinc-400 font-medium">
-                          {pingMs ? `${pingMs} ms` : 'LAN Siap'}
-                        </span>
+                      <div className="flex items-center gap-1.5">
+                        {isConnectedActive ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                            <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
+                              TERHUBUNG AKTIF
+                            </span>
+                          </div>
+                        ) : isPaired ? (
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
+                            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
+                            <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-medium">
+                              TERPASANG
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
+                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                            <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                              BELUM DIPASANGKAN
+                            </span>
+                          </div>
+                        )}
                       </div>
                     </div>
 
@@ -407,15 +484,42 @@ export function DeviceDiscoveryView({
                     </div>
                   </div>
 
-                  {/* Bottom Connect Button (Apple Capsule Button) */}
+                  {/* Bottom Connect / Pair Button (Apple Capsule Button) */}
                   <div className="pt-2.5 border-t border-black/8 dark:border-white/10 flex items-center justify-between text-xs">
-                    <span className="text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
-                      {isPeerMobile ? 'Mirror Layar & Kontrol Lengkap' : 'Pusat Kontrol & Layar PC'}
-                    </span>
-                    <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-3.5 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
-                      <span>Buka Workspace</span>
-                      <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
-                    </div>
+                    {isPaired ? (
+                      <>
+                        <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
+                          <span>Terpasang & Siap Sinkron</span>
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              triggerHaptic([20]);
+                              if (onUnpairDevice) onUnpairDevice(peer);
+                            }}
+                            className="text-zinc-400 hover:text-red-500 underline text-[10px] cursor-pointer ml-1"
+                            title="Hapus status pairing perangkat ini"
+                          >
+                            Lepas
+                          </button>
+                        </div>
+                        <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-3.5 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
+                          <span>Buka Workspace</span>
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <span className="text-amber-600 dark:text-amber-400 font-medium text-[11px] flex items-center gap-1">
+                          <Shield className="w-3 h-3 text-amber-500" />
+                          <span>Perlu pairing diawal</span>
+                        </span>
+                        <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
+                          <ShieldCheck className="w-3.5 h-3.5 stroke-[2.2]" />
+                          <span>Pasangkan (Pair)</span>
+                        </div>
+                      </>
+                    )}
                   </div>
                 </div>
               );

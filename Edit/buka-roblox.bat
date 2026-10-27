@@ -27,16 +27,20 @@ for %%P in (com.roblox.client com.roblox.clienu) do (
 )
 
 echo [*] Membuka ROBLOX DELTA LITE 01 (com.roblox.client) ke Floating Window...
-%ADB% -s %DEVICE% shell am start --windowingMode 5 -n com.roblox.client/.startup.LauncherAliasMain
+%ADB% -s %DEVICE% shell am start -f 0x10000000 --windowingMode 5 -n com.roblox.client/.startup.LauncherAliasMain
 
 echo [*] Menunggu inisialisasi clone 1 selesai (7 detik)...
 ping -n 8 127.0.0.1 >nul
 
 echo [*] Membuka ROBLOX DELTA LITE 02 (com.roblox.clienu) ke Floating Window...
-%ADB% -s %DEVICE% shell am start --windowingMode 5 -n com.roblox.clienu/com.roblox.client.startup.LauncherAliasMain
+%ADB% -s %DEVICE% shell am start -f 0x10000000 --windowingMode 5 -n com.roblox.clienu/com.roblox.client.startup.LauncherAliasMain
+
+echo [*] Menyesuaikan tata letak Split Screen (Atas / Bawah)...
+ping -n 4 127.0.0.1 >nul
+%ADB% -s %DEVICE% shell /system/bin/split_roblox.sh
 
 echo.
 echo ========================================================
-echo   [V] KEDUA ROBLOX FLOATING WINDOW BERHASIL DIBUKA!
+echo   [V] KEDUA ROBLOX SPLIT SCREEN BERHASIL DITATA!
 echo ========================================================
 ping -n 3 127.0.0.1 >nul
