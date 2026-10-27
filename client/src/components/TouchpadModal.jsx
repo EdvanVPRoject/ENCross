@@ -52,9 +52,21 @@ export function TouchpadModal({
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
-  // Text & Voice Input State
+  // Realtime Keyboard & Touchpad State
   const [inputText, setInputText] = useState('');
-  const [lastSentText, setLastSentText] = useState(null);
+  const [isKeyboardFocused, setIsKeyboardFocused] = useState(false);
+  const inputRef = useRef(null);
+  const lastValRef = useRef('');
+
+  // Auto-focus keyboard on mount so virtual keyboard opens immediately
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (inputRef.current) {
+        inputRef.current.focus();
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, []);
 
   // Custom Macros State
   const [customMacros, setCustomMacros] = useState(() => {
@@ -203,15 +215,65 @@ export function TouchpadModal({
     sendCommand(`media ${mediaCmd}`);
   };
 
-  // Send Text Input
-  const handleSendText = (withEnter = false) => {
-    if (!inputText) return;
-    triggerHaptic([25]);
-    const cmd = withEnter ? `type_enter:${inputText}` : `type:${inputText}`;
-    sendCommand(cmd);
-    setLastSentText(inputText);
-    setInputText('');
-    setTimeout(() => setLastSentText(null), 2500);
+  // Realtime Input Handlers: sends keystrokes instantly to PC without requiring 'Kirim'
+  const handleInputChange = (e) => {
+    const newVal = e.target.value;
+    const oldVal = lastValRef.current;
+
+    let commonPrefix = 0;
+    while (
+      commonPrefix < oldVal.length &&
+      commonPrefix < newVal.length &&
+      oldVal[commonPrefix] === newVal[commonPrefix]
+    ) {
+      commonPrefix++;
+    }
+
+    const backspacesNeeded = oldVal.length - commonPrefix;
+    const addedChars = newVal.slice(commonPrefix);
+
+    if (backspacesNeeded > 0) {
+      for (let i = 0; i < backspacesNeeded; i++) {
+        sendCommand('k backspace');
+      }
+    }
+
+    if (addedChars.length > 0) {
+      sendCommand('text ' + addedChars);
+    }
+
+    lastValRef.current = newVal;
+    setInputText(newVal);
+
+    // Keep buffer manageable without breaking active composition
+    if (newVal.length > 80) {
+      setTimeout(() => {
+        setInputText('');
+        lastValRef.current = '';
+      }, 60);
+    }
+  };
+
+  const handleKeyDown = (e) => {
+    if (e.key === 'Backspace' && (!inputText || inputText.length === 0)) {
+      e.preventDefault();
+      triggerHaptic([15]);
+      sendCommand('k backspace');
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      triggerHaptic([20]);
+      sendCommand('k enter');
+      setInputText('');
+      lastValRef.current = '';
+    } else if (e.key === 'Tab') {
+      e.preventDefault();
+      triggerHaptic([15]);
+      sendCommand('k tab');
+    } else if (e.key === 'Escape') {
+      e.preventDefault();
+      triggerHaptic([15]);
+      sendCommand('k esc');
+    }
   };
 
   // Add Custom Macro
@@ -395,27 +457,129 @@ export function TouchpadModal({
           </div>
 
           {/* ============================================================== */}
-          {/* SECTION B: KEYBOARD MOUSE ADA ENTER PC, DLL                   */}
+          {/* SECTION B: REALTIME KEYBOARD & PC CONTROLS                    */}
           {/* ============================================================== */}
-          <div className="flex flex-col gap-2 bg-black/3 dark:bg-white/3 p-3 rounded-2xl border border-black/8 dark:border-white/10 shrink-0">
-            {/* Primary Windows Shortcut & Navigation Ribbon with ENTER PC */}
-            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar pb-1">
+          <div className="flex flex-col gap-2.5 bg-black/[0.03] dark:bg-white/[0.04] p-3 sm:p-3.5 rounded-2xl border border-black/8 dark:border-white/10 shrink-0">
+            {/* Realtime Status Bar & Mobile Keyboard Trigger */}
+            <div className="flex items-center justify-between gap-2 px-0.5">
+              <div className="flex items-center gap-1.5">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                </span>
+                <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                  Keyboard Realtime PC
+                </span>
+                <span className="text-[10px] text-zinc-500 dark:text-zinc-400 hidden sm:inline">
+                  • Input langsung masuk ke PC
+                </span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([15]);
+                  inputRef.current?.focus();
+                }}
+                className="px-2.5 py-1 rounded-lg bg-[#0071e3]/10 hover:bg-[#0071e3]/15 text-[#0071e3] text-[11px] font-medium flex items-center gap-1 transition active:scale-95 cursor-pointer"
+                title="Buka atau fokuskan Keyboard"
+              >
+                <Keyboard className="w-3.5 h-3.5" />
+                <span>Buka Keyboard</span>
+              </button>
+            </div>
+
+            {/* Direct Realtime Input Field */}
+            <div
+              onClick={() => inputRef.current?.focus()}
+              className={`relative flex items-center bg-white dark:bg-zinc-800/90 border rounded-xl px-3 py-2 transition-all cursor-text shadow-xs ${
+                isKeyboardFocused
+                  ? 'border-[#0071e3] ring-2 ring-[#0071e3]/20'
+                  : 'border-black/10 dark:border-white/12 hover:border-black/20 dark:hover:border-white/20'
+              }`}
+            >
+              <Keyboard className="w-4 h-4 text-zinc-400 mr-2 shrink-0" />
+              <input
+                ref={inputRef}
+                autoFocus
+                type="text"
+                value={inputText}
+                onChange={handleInputChange}
+                onKeyDown={handleKeyDown}
+                onFocus={() => setIsKeyboardFocused(true)}
+                onBlur={() => setIsKeyboardFocused(false)}
+                placeholder="Ketik langsung (teks, simbol, dikte suara)..."
+                className="w-full bg-transparent border-none text-xs sm:text-sm text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none"
+                autoCapitalize="none"
+                autoComplete="off"
+                autoCorrect="off"
+                spellCheck="false"
+              />
+              {inputText && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setInputText('');
+                    lastValRef.current = '';
+                    inputRef.current?.focus();
+                  }}
+                  className="p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 rounded-md shrink-0 cursor-pointer"
+                  title="Hapus Buffer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              )}
+            </div>
+
+            {/* Quick Actions & Navigation Ribbon (ENTER PC Prominent) */}
+            <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar py-0.5">
               {/* 1. ENTER PC (HIGHLIGHTED & PROMINENT) */}
               <button
-                onClick={() => handleKeyClick('enter')}
-                className="px-3.5 py-2 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] active:bg-blue-600 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
+                onClick={() => {
+                  triggerHaptic([25]);
+                  sendCommand('k enter');
+                  setInputText('');
+                  lastValRef.current = '';
+                }}
+                className="px-3.5 py-2 rounded-xl bg-gradient-to-r from-blue-600 to-[#0071e3] hover:from-blue-500 hover:to-[#0077ed] active:from-blue-700 active:to-blue-600 text-white font-bold text-xs shadow-md flex items-center gap-1.5 transition cursor-pointer shrink-0 active:scale-95"
                 title="Tekan ENTER di PC"
               >
                 <CornerDownLeft className="w-3.5 h-3.5" />
                 <span>ENTER PC</span>
               </button>
 
-              {/* Esc */}
+              {/* Spasi */}
               <button
-                onClick={() => handleKeyClick('esc')}
-                className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 font-mono font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition"
+                onClick={() => {
+                  triggerHaptic([15]);
+                  sendCommand('k space');
+                  setInputText((prev) => prev + ' ');
+                  lastValRef.current += ' ';
+                }}
+                className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition flex items-center gap-1"
+                title="Tekan Spasi di PC"
               >
-                Esc
+                <Space className="w-3.5 h-3.5" />
+                <span>Spasi</span>
+              </button>
+
+              {/* Backspace */}
+              <button
+                onClick={() => {
+                  triggerHaptic([15]);
+                  sendCommand('k backspace');
+                  setInputText((prev) => {
+                    const updated = prev.slice(0, -1);
+                    lastValRef.current = updated;
+                    return updated;
+                  });
+                }}
+                className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-amber-600 dark:text-amber-400 font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition flex items-center gap-1"
+                title="Hapus Karakter"
+              >
+                <Delete className="w-3.5 h-3.5" />
+                <span>Back</span>
               </button>
 
               {/* Tab */}
@@ -426,6 +590,14 @@ export function TouchpadModal({
                 Tab
               </button>
 
+              {/* Esc */}
+              <button
+                onClick={() => handleKeyClick('esc')}
+                className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 font-mono font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition"
+              >
+                Esc
+              </button>
+
               {/* Win */}
               <button
                 onClick={() => handleKeyClick('win')}
@@ -434,30 +606,12 @@ export function TouchpadModal({
                 Win
               </button>
 
-              {/* Backspace */}
-              <button
-                onClick={() => handleKeyClick('back')}
-                className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-amber-600 dark:text-amber-400 font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition flex items-center gap-1"
-                title="Hapus Karakter"
-              >
-                <Delete className="w-3.5 h-3.5" />
-                <span>Back</span>
-              </button>
-
               {/* Del */}
               <button
                 onClick={() => handleKeyClick('del')}
                 className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-red-600 dark:text-red-400 font-mono font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition"
               >
                 Del
-              </button>
-
-              {/* Spasi */}
-              <button
-                onClick={() => handleKeyClick('space')}
-                className="px-3 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition"
-              >
-                Spasi
               </button>
 
               {/* Arrow Keys */}
@@ -488,7 +642,7 @@ export function TouchpadModal({
                 </button>
               </div>
 
-              {/* Common Combos */}
+              {/* Combos */}
               <button
                 onClick={() => handleComboClick('ctrl', 'c')}
                 className="px-2.5 py-2 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-700 dark:text-zinc-300 font-mono font-medium text-xs border border-black/8 dark:border-white/10 cursor-pointer shrink-0 active:scale-95 transition"
@@ -514,52 +668,6 @@ export function TouchpadModal({
                 Alt+Tab
               </button>
             </div>
-
-            {/* Direct Typing & Voice Dictation Input */}
-            <div className="flex items-center gap-1.5 mt-1">
-              <div className="relative flex-1">
-                <input
-                  type="text"
-                  value={inputText}
-                  onChange={(e) => setInputText(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleSendText(true);
-                    }
-                  }}
-                  placeholder="Ketik teks atau gunakan Dikte Suara (Gboard)..."
-                  className="w-full bg-white dark:bg-zinc-800/80 border border-black/10 dark:border-white/12 rounded-xl px-3 py-2 text-xs text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:border-[#0071e3]"
-                />
-              </div>
-
-              {/* Kirim */}
-              <button
-                onClick={() => handleSendText(false)}
-                disabled={!inputText.trim()}
-                className="px-3 py-2 bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 disabled:opacity-40 text-zinc-700 dark:text-zinc-300 rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-95 border border-black/8 dark:border-white/10"
-                title="Kirim Teks"
-              >
-                <Send className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Kirim</span>
-              </button>
-
-              {/* Kirim + Enter */}
-              <button
-                onClick={() => handleSendText(true)}
-                disabled={!inputText.trim()}
-                className="px-3 py-2 bg-[#0071e3] hover:bg-[#0077ed] disabled:opacity-40 text-white rounded-xl text-xs font-semibold flex items-center gap-1 transition cursor-pointer shrink-0 active:scale-95 shadow-sm"
-                title="Kirim Teks dan langsung tekan ENTER di PC"
-              >
-                <CornerDownLeft className="w-3.5 h-3.5" />
-                <span>+Enter</span>
-              </button>
-            </div>
-            {lastSentText && (
-              <p className="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium px-1">
-                ✓ Terkirim ke PC: "{lastSentText}"
-              </p>
-            )}
           </div>
 
           {/* ============================================================== */}

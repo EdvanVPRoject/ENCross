@@ -84,6 +84,85 @@ namespace ENCrossInput {
         [StructLayout(LayoutKind.Sequential)]
         struct POINT { public int X; public int Y; }
 
+        [StructLayout(LayoutKind.Sequential)]
+        struct INPUT {
+            public uint type;
+            public MOUSEKEYBDHARDWAREINPUT mkhi;
+        }
+
+        [StructLayout(LayoutKind.Explicit)]
+        struct MOUSEKEYBDHARDWAREINPUT {
+            [FieldOffset(0)] public MOUSEINPUT mi;
+            [FieldOffset(0)] public KEYBDINPUT ki;
+            [FieldOffset(0)] public HARDWAREINPUT hi;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct MOUSEINPUT {
+            public int dx;
+            public int dy;
+            public uint mouseData;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct KEYBDINPUT {
+            public ushort wVk;
+            public ushort wScan;
+            public uint dwFlags;
+            public uint time;
+            public IntPtr dwExtraInfo;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        struct HARDWAREINPUT {
+            public uint uMsg;
+            public ushort wParamL;
+            public ushort wParamH;
+        }
+
+        [DllImport("user32.dll", SetLastError = true)]
+        static extern uint SendInput(uint nInputs, INPUT[] pInputs, int cbSize);
+
+        const uint INPUT_KEYBOARD = 1;
+        const uint KEYEVENTF_UNICODE = 0x0004;
+
+        static void TypeUnicodeText(string s) {
+            if (string.IsNullOrEmpty(s)) return;
+            INPUT[] inputs = new INPUT[s.Length * 2];
+            int size = Marshal.SizeOf(typeof(INPUT));
+            for (int i = 0; i < s.Length; i++) {
+                char c = s[i];
+                inputs[i * 2] = new INPUT {
+                    type = INPUT_KEYBOARD,
+                    mkhi = new MOUSEKEYBDHARDWAREINPUT {
+                        ki = new KEYBDINPUT {
+                            wVk = 0,
+                            wScan = (ushort)c,
+                            dwFlags = KEYEVENTF_UNICODE,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
+                    }
+                };
+                inputs[i * 2 + 1] = new INPUT {
+                    type = INPUT_KEYBOARD,
+                    mkhi = new MOUSEKEYBDHARDWAREINPUT {
+                        ki = new KEYBDINPUT {
+                            wVk = 0,
+                            wScan = (ushort)c,
+                            dwFlags = KEYEVENTF_UNICODE | KEYEVENTF_KEYUP,
+                            time = 0,
+                            dwExtraInfo = IntPtr.Zero
+                        }
+                    }
+                };
+            }
+            SendInput((uint)inputs.Length, inputs, size);
+        }
+
         const uint MOUSEEVENTF_LEFTDOWN = 0x0002;
         const uint MOUSEEVENTF_LEFTUP = 0x0004;
         const uint MOUSEEVENTF_RIGHTDOWN = 0x0008;
@@ -110,13 +189,19 @@ namespace ENCrossInput {
 
         static void Main(string[] args) {
             Console.WriteLine("ENCROSS_INPUT_READY");
-            string line;
-            while ((line = Console.ReadLine()) != null) {
-                line = line.Trim();
-                if (string.IsNullOrEmpty(line)) continue;
+            string rawLine;
+            while ((rawLine = Console.ReadLine()) != null) {
+                if (string.IsNullOrEmpty(rawLine)) continue;
+                string line = rawLine.Trim();
                 if (line == "exit" || line == "quit") break;
 
                 try {
+                    if (rawLine.StartsWith("text ")) {
+                        string content = rawLine.Substring(5);
+                        TypeUnicodeText(content);
+                        continue;
+                    }
+
                     string[] parts = line.Split(' ');
                     string cmd = parts[0].ToLowerInvariant();
 

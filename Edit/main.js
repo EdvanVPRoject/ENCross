@@ -49,20 +49,21 @@ function getDistPath() {
 // 2. Start integrated in-process Express & Socket.io server
 async function ensureServerRunning() {
   const distPath = getDistPath();
-  console.log('[Electron] Initializing embedded server with distPath:', distPath);
+  logDebug(`[Electron] Initializing embedded server with distPath: ${distPath}`);
 
   try {
     const result = await startServer(3001, distPath, {
       onRemoteInput: (cmd) => sendInputCommand(cmd)
     });
-    console.log(`[Electron] Server is running on port 3001 (isExisting: ${result.isExisting})`);
+    logDebug(`[Electron] Server is running on port 3001 (isExisting: ${result.isExisting})`);
   } catch (err) {
-    console.error('[Electron] Server initialization warning:', err);
+    logDebug(`[Electron] Server initialization warning: ${err && (err.stack || err.message || err)}`);
   }
 
   const localIps = getLocalIpAddresses();
   if (localIps.length > 0) {
     serverLocalIp = localIps[0].address;
+    logDebug(`[Electron] Detected serverLocalIp: ${serverLocalIp}`);
   }
 }
 
@@ -885,6 +886,17 @@ function ensureInputHelperRunning() {
 
 function sendInputCommand(cmdStr) {
   if (!cmdStr || typeof cmdStr !== 'string') return;
+
+  // Direct zero-latency Unicode typing via SendInput (no clipboard pollution)
+  if (cmdStr.startsWith('text ')) {
+    ensureInputHelperRunning();
+    if (inputProcess && inputProcess.stdin && !inputProcess.stdin.destroyed) {
+      try {
+        inputProcess.stdin.write(cmdStr.replace(/[\r\n]/g, '') + '\n');
+      } catch (_) {}
+    }
+    return;
+  }
 
   // Handle instant text snippet typing via clipboard paste
   if (cmdStr.startsWith('type:')) {
