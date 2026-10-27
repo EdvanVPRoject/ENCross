@@ -44,7 +44,8 @@ import {
   ArrowUpRight,
   FolderOpen,
   Trash2,
-  Tv
+  Tv,
+  Loader2
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES } from '../config/features';
@@ -89,7 +90,8 @@ export function DeviceWorkspace({
   onOpenWakeOnLan,
   onToggleDropzone,
   isDropzoneActive,
-  onOpenSecondDisplay
+  onOpenSecondDisplay,
+  autoStartMirror = false
 }) {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -216,6 +218,13 @@ export function DeviceWorkspace({
     };
   }, [incomingStream]);
 
+  // Auto-start mirroring when entering workspace with mirror intent
+  useEffect(() => {
+    if (autoStartMirror && !isMirrorActive && !isScrcpyStarting) {
+      handleStartMirroring();
+    }
+  }, [autoStartMirror]);
+
   // Start Screen Mirroring (Scrcpy or WebRTC)
   const handleStartMirroring = async (forceEngine) => {
     const engine = forceEngine || mirrorEngine;
@@ -262,10 +271,16 @@ export function DeviceWorkspace({
           setTimeout(updateScrcpyPosition, 500);
         }
       } else {
-        setScrcpyError(res.error || 'Gagal memulai Scrcpy.');
+        console.warn('[Scrcpy] Not available, falling back to WebRTC mirror:', res.error);
+        setMirrorEngine('webrtc');
+        setIsMirrorActive(true);
+        onRequestRemoteScreen?.(peer.id, peer.deviceId);
       }
     } catch (err) {
-      setScrcpyError(err.message || 'Kesalahan saat menjalankan Scrcpy.');
+      console.warn('[Scrcpy] Exception, falling back to WebRTC mirror:', err);
+      setMirrorEngine('webrtc');
+      setIsMirrorActive(true);
+      onRequestRemoteScreen?.(peer.id, peer.deviceId);
     } finally {
       setIsScrcpyStarting(false);
     }
@@ -638,6 +653,13 @@ export function DeviceWorkspace({
                     playsInline
                     className="w-full h-full object-contain"
                   />
+                ) : isScrcpyStarting ? (
+                  /* Loading Spinner */
+                  <div className="text-center p-6 flex flex-col items-center justify-center animate-in fade-in">
+                    <Loader2 className="w-12 h-12 text-[#0071e3] animate-spin mb-3" />
+                    <h4 className="text-sm font-semibold text-white mb-1">Menghubungkan Mirroring...</h4>
+                    <p className="text-[11px] text-zinc-400">Menyiapkan tampilan layar ponsel ke PC...</p>
+                  </div>
                 ) : (
                   /* Idle / Connect Placeholder */
                   <div className="text-center p-6 flex flex-col items-center justify-center">

@@ -23,6 +23,7 @@ import { PresentationClickerModal } from './components/PresentationClickerModal'
 import { WakeOnLanModal } from './components/WakeOnLanModal';
 import { SecondDisplaySourceModal } from './components/SecondDisplaySourceModal';
 import { SecondDisplayViewerModal } from './components/SecondDisplayViewerModal';
+import { ScreenMirroringOverlay } from './components/ScreenMirroringOverlay';
 import { PairingModal } from './components/PairingModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
@@ -111,6 +112,7 @@ export function App() {
   const [scrcpyTargetPeer, setScrcpyTargetPeer] = useState(null);
   const [scrcpyInitialMode, setScrcpyInitialMode] = useState('display');
   const [pendingTargetPeerId, setPendingTargetPeerId] = useState(null);
+  const [autoStartMirror, setAutoStartMirror] = useState(false);
   const [activeTransfer, setActiveTransfer] = useState(null);
   const [isTextSyncOpen, setIsTextSyncOpen] = useState(false);
   const [textTargetPeer, setTextTargetPeer] = useState(null);
@@ -1481,6 +1483,7 @@ export function App() {
       });
     }
     setSelectedPeer(null);
+    setAutoStartMirror(false);
   };
 
   // Ring My Phone Handlers
@@ -2301,6 +2304,7 @@ export function App() {
                 transferHistory={transferHistory}
                 onClearTransferHistory={handleClearTransferHistory}
                 onOpenFolder={handleOpenFolder}
+                autoStartMirror={autoStartMirror}
               />
             </ErrorBoundary>
           </div>
@@ -2359,6 +2363,7 @@ export function App() {
               onOpenFileExplorer={handleOpenFileExplorer}
               onStartMirroring={(peer) => {
                 setSelectedPeer(peer);
+                setAutoStartMirror(true);
               }}
             />
           </div>
@@ -2549,6 +2554,20 @@ export function App() {
         </div>
       )}
 
+      {/* Floating Live Screen Mirroring Broadcaster Monitor on PC (and Mobile) */}
+      {activeSharingPeerId && (activeSharingMode === 'screen' || activeSharingMode === 'second-display') && localBroadcastStream && (
+        <ScreenMirroringOverlay
+          stream={localBroadcastStream}
+          targetPeer={peers.find((p) => p.id === activeSharingPeerId) || { id: activeSharingPeerId, name: 'HP / Tablet' }}
+          mode={activeSharingMode}
+          onStop={() => handleStartScreenShare(activeSharingPeerId)}
+          onSwitchSource={() => {
+            const target = peers.find((p) => p.id === activeSharingPeerId) || { id: activeSharingPeerId, name: 'HP / Tablet' };
+            handleRequestSecondDisplay(target);
+          }}
+        />
+      )}
+
       {/* Live Remote Screen / Camera Monitoring Modal or Wireless Mic Modal */}
       {incomingStream && (
         incomingStreamMode === 'mic' ? (
@@ -2560,7 +2579,7 @@ export function App() {
               setIncomingStreamPeerId(null);
             }}
           />
-        ) : (incomingStreamMode === 'second-display' || (incomingStreamMode === 'screen' && isMobileDevice) || (!selectedPeer && incomingStreamMode === 'screen')) ? (
+        ) : (incomingStreamMode === 'second-display' || incomingStreamMode === 'screen') ? (
           <SecondDisplayViewerModal
             stream={incomingStream}
             senderName={screenSenderName || 'Laptop'}
