@@ -21,6 +21,8 @@ import { MacroPadModal } from './components/MacroPadModal';
 import { RemoteKeyboardModal } from './components/RemoteKeyboardModal';
 import { PresentationClickerModal } from './components/PresentationClickerModal';
 import { WakeOnLanModal } from './components/WakeOnLanModal';
+import { SecondDisplaySourceModal } from './components/SecondDisplaySourceModal';
+import { SecondDisplayViewerModal } from './components/SecondDisplayViewerModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -220,6 +222,10 @@ export function App() {
 
   // Floating Dropzone State
   const [isDropzoneActive, setIsDropzoneActive] = useState(false);
+
+  // Virtual Second Display States
+  const [isSecondDisplaySourceOpen, setIsSecondDisplaySourceOpen] = useState(false);
+  const [secondDisplayTargetPeer, setSecondDisplayTargetPeer] = useState(null);
 
   // Remote File Explorer States
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
@@ -608,6 +614,20 @@ export function App() {
             mode: 'screen'
           });
         }
+        return currPeers;
+      });
+    });
+
+    // Socket Event: Remote peer requested this PC to stream as Second Display
+    newSocket.on('remote-second-display-requested', ({ requesterId }) => {
+      if (!requesterId) return;
+      playSound('connect');
+      triggerHaptic([40]);
+
+      setPeers((currPeers) => {
+        const found = currPeers.find((p) => p.id === requesterId);
+        setSecondDisplayTargetPeer(found || { id: requesterId, name: 'HP / Tablet' });
+        setIsSecondDisplaySourceOpen(true);
         return currPeers;
       });
     });
@@ -1587,6 +1607,27 @@ export function App() {
     socket.emit('request-remote-screen', { targetId, targetDeviceId });
   };
 
+  const handleRequestSecondDisplay = (peer) => {
+    if (!peer) return;
+    triggerHaptic([30]);
+    if (isMobileDevice) {
+      if (socket) {
+        socket.emit('request-second-display', {
+          targetId: peer.id,
+          targetDeviceId: peer.deviceId
+        });
+        setIncomingToast({
+          senderName: peer.name || 'Laptop',
+          text: 'Meminta PC mengalirkan Monitor Tambahan...',
+          senderId: null
+        });
+      }
+    } else {
+      setSecondDisplayTargetPeer(peer);
+      setIsSecondDisplaySourceOpen(true);
+    }
+  };
+
   const handleRequestRemoteCamera = (targetId, targetDeviceId) => {
     if (!socket) return;
     triggerHaptic([30]);
@@ -1940,6 +1981,7 @@ export function App() {
                 onOpenRemoteKeyboard={(peer) => { setSelectedPeerForKeyboard(peer); setIsRemoteKeyboardOpen(true); }}
                 onOpenPresentationClicker={(peer) => { setSelectedPeerForPresentation(peer); setIsPresentationClickerOpen(true); }}
                 onOpenWakeOnLan={(peer) => { setSelectedPeerForWol(peer); setIsWakeOnLanOpen(true); }}
+                onOpenSecondDisplay={handleRequestSecondDisplay}
                 onToggleDropzone={() => {
                   if (window.electronAPI?.toggleFloatingDropzone) {
                     window.electronAPI.toggleFloatingDropzone();
@@ -1999,6 +2041,7 @@ export function App() {
                 setSelectedPeerForWol(peer);
                 setIsWakeOnLanOpen(true);
               }}
+              onOpenSecondDisplay={handleRequestSecondDisplay}
               onToggleDropzone={() => {
                 if (window.electronAPI?.toggleFloatingDropzone) {
                   window.electronAPI.toggleFloatingDropzone();
@@ -2204,7 +2247,7 @@ export function App() {
       )}
 
       {/* Live Remote Screen / Camera Monitoring Modal or Wireless Mic Modal */}
-      {incomingStream && (!selectedPeer || incomingStreamMode === 'mic') && (
+      {incomingStream && (!selectedPeer || incomingStreamMode === 'mic' || incomingStreamMode === 'second-display') && (
         incomingStreamMode === 'mic' ? (
           <WirelessMicModal
             stream={incomingStream}
@@ -2213,6 +2256,16 @@ export function App() {
               setIncomingStream(null);
               setIncomingStreamPeerId(null);
             }}
+          />
+        ) : incomingStreamMode === 'second-display' ? (
+          <SecondDisplayViewerModal
+            stream={incomingStream}
+            senderName={screenSenderName || 'Laptop'}
+            onClose={() => {
+              setIncomingStream(null);
+              setIncomingStreamPeerId(null);
+            }}
+            onSendInput={(cmd) => handleSendInput(cmd, incomingStreamPeerId ? { id: incomingStreamPeerId } : selectedPeer)}
           />
         ) : (
           <ScreenViewModal
@@ -2226,6 +2279,24 @@ export function App() {
             }}
           />
         )
+      )}
+
+      {/* Second Display Source Selector Modal (Desktop side) */}
+      {isSecondDisplaySourceOpen && (
+        <SecondDisplaySourceModal
+          isOpen={isSecondDisplaySourceOpen}
+          onClose={() => {
+            setIsSecondDisplaySourceOpen(false);
+            setSecondDisplayTargetPeer(null);
+          }}
+          targetPeer={secondDisplayTargetPeer || selectedPeer}
+          onStartStreaming={(source, preset) => {
+            const target = secondDisplayTargetPeer || selectedPeer;
+            if (target) {
+              executeStream(target.id, 'second-display');
+            }
+          }}
+        />
       )}
 
             {/* Virtual Touchpad & Numpad Modal */}

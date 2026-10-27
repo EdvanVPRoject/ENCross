@@ -120,7 +120,17 @@ namespace ENCrossInput {
                     string[] parts = line.Split(' ');
                     string cmd = parts[0].ToLowerInvariant();
 
-                    if (cmd == "m" && parts.Length >= 3) {
+                    if (cmd == "moveto" && parts.Length >= 3) {
+                        int x = int.Parse(parts[1]);
+                        int y = int.Parse(parts[2]);
+                        SetCursorPos(x, y);
+                    } else if (cmd == "tapto" && parts.Length >= 3) {
+                        int x = int.Parse(parts[1]);
+                        int y = int.Parse(parts[2]);
+                        SetCursorPos(x, y);
+                        mouse_event(MOUSEEVENTF_LEFTDOWN, 0, 0, 0, 0);
+                        mouse_event(MOUSEEVENTF_LEFTUP, 0, 0, 0, 0);
+                    } else if (cmd == "m" && parts.Length >= 3) {
                         // Relative mouse move: m <dx> <dy>
                         int dx = int.Parse(parts[1]);
                         int dy = int.Parse(parts[2]);

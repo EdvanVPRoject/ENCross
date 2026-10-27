@@ -24,7 +24,8 @@ import {
   MonitorPlay,
   Keyboard,
   Presentation,
-  Power
+  Power,
+  Tv
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { formatBytes } from '../utils/deviceInfo';
@@ -59,6 +60,7 @@ export function DeviceDiscoveryView({
   onOpenRemoteKeyboard,
   onOpenPresentationClicker,
   onOpenWakeOnLan,
+  onOpenSecondDisplay,
   onSendFile,
   onOpenTextSync,
   onOpenFileExplorer,
@@ -348,6 +350,18 @@ export function DeviceDiscoveryView({
                           >
                             <Presentation className="w-3.5 h-3.5 shrink-0" />
                             <span>Clicker</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenSecondDisplay?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-semibold transition active:scale-95 border border-sky-500/20"
+                            title="Monitor Tambahan Nirkabel"
+                          >
+                            <Tv className="w-3.5 h-3.5 shrink-0" />
+                            <span>Monitor</span>
                           </button>
 
                           <button

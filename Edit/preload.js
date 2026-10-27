@@ -59,5 +59,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
     return () => ipcRenderer.removeListener('dropzone-files-received', handler);
   },
   notifyDropzoneFilesDropped: (filePaths) => ipcRenderer.send('dropzone-files-dropped', filePaths),
-  readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath)
+  readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath),
+  getDesktopSources: (types) => ipcRenderer.invoke('get-desktop-sources', types),
+  setTargetDisplaySource: (sourceId) => ipcRenderer.invoke('set-target-display-source', sourceId)
 });

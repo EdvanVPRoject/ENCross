@@ -43,7 +43,8 @@ import {
   ArrowDownLeft,
   ArrowUpRight,
   FolderOpen,
-  Trash2
+  Trash2,
+  Tv
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES } from '../config/features';
@@ -87,7 +88,8 @@ export function DeviceWorkspace({
   onOpenPresentationClicker,
   onOpenWakeOnLan,
   onToggleDropzone,
-  isDropzoneActive
+  isDropzoneActive,
+  onOpenSecondDisplay
 }) {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -876,6 +878,20 @@ export function DeviceWorkspace({
                   <Zap className="w-4 h-4 text-amber-500 shrink-0" />
                   <span className="truncate">Wake-on-LAN</span>
                 </button>
+
+                {/* Monitor Tambahan ke HP */}
+                {FEATURE_TOGGLES.enableSecondDisplay !== false && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([30]);
+                      onOpenSecondDisplay?.(peer);
+                    }}
+                    className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-sky-500/5 dark:bg-sky-500/10 hover:bg-sky-500/15 text-sky-600 dark:text-sky-400 border border-sky-500/20 text-xs font-medium transition cursor-pointer text-left"
+                  >
+                    <Tv className="w-4 h-4 text-sky-500 shrink-0" />
+                    <span className="truncate">Monitor Tambahan</span>
+                  </button>
+                )}
               </div>
             </div>
           </div>
@@ -983,6 +999,30 @@ export function DeviceWorkspace({
                   </p>
                 </div>
               </button>
+
+              {/* 5. Monitor Tambahan Nirkabel */}
+              {FEATURE_TOGGLES.enableSecondDisplay !== false && (
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    onOpenSecondDisplay?.(peer);
+                  }}
+                  className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+                >
+                  <div className="p-3 rounded-2xl bg-sky-500/10 text-sky-600 dark:text-sky-400 shrink-0 border border-sky-500/20 group-hover:scale-105 transition-transform">
+                    <Tv className="w-6 h-6" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                      <span>Monitor Tambahan Nirkabel</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                    </h4>
+                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                      Jadikan HP/Tablet sebagai layar kedua PC atau alirkan jendela aplikasi khusus dengan kontrol sentuh 60 FPS.
+                    </p>
+                  </div>
+                </button>
+              )}
             </div>
           </div>
 

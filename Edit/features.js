@@ -95,6 +95,9 @@ export const FEATURE_TOGGLES = {
 
   // 27. Floating Dropzone Widget di Windows (Drag & Drop Langsung ke HP)
   enableFloatingDropzone: true,
+
+  // 28. Monitor Tambahan Nirkabel (Virtual Extended Second Display & App Streamer)
+  enableSecondDisplay: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

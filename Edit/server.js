@@ -469,6 +469,14 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
+    socket.on('request-second-display', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing request-second-display -> ${resolved}`);
+        io.to(resolved).emit('remote-second-display-requested', { requesterId: socket.id });
+      }
+    });
+
     socket.on('request-remote-camera', ({ targetId, targetDeviceId }) => {
       const resolved = resolveTargetSocket(targetId, targetDeviceId);
       if (resolved) {

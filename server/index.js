@@ -567,6 +567,15 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Request remote peer to start second display stream
+  socket.on('request-second-display', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-second-display-requested', {
+        requesterId: socket.id
+      });
+    }
+  });
+
   // Request remote peer to start camera stream (e.g. Laptop requesting HP webcam)
   socket.on('request-remote-camera', ({ targetId }) => {
     if (targetId) {

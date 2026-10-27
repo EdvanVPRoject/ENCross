@@ -892,6 +892,24 @@ function sendInputCommand(cmdStr) {
     return;
   }
 
+  if (cmdStr.startsWith('tap_rel ') || cmdStr.startsWith('move_rel ')) {
+    try {
+      const parts = cmdStr.split(' ');
+      const isTap = parts[0] === 'tap_rel';
+      const relX = parseFloat(parts[1]);
+      const relY = parseFloat(parts[2]);
+      if (!isNaN(relX) && !isNaN(relY)) {
+        const primary = screen.getPrimaryDisplay();
+        const screenW = primary.bounds.width;
+        const screenH = primary.bounds.height;
+        const absX = Math.round(primary.bounds.x + relX * screenW);
+        const absY = Math.round(primary.bounds.y + relY * screenH);
+        sendInputCommand(`${isTap ? 'tapto' : 'moveto'} ${absX} ${absY}`);
+      }
+    } catch (_) {}
+    return;
+  }
+
   ensureInputHelperRunning();
   if (inputProcess && inputProcess.stdin && !inputProcess.stdin.destroyed) {
     try {
@@ -1152,6 +1170,34 @@ ipcMain.handle('read-file-buffer', async (_, filePath) => {
   }
 });
 
+let targetDisplaySourceId = null;
+
+ipcMain.handle('set-target-display-source', (_, sourceId) => {
+  targetDisplaySourceId = sourceId;
+  return true;
+});
+
+ipcMain.handle('get-desktop-sources', async (_, types = ['screen', 'window']) => {
+  try {
+    const queryTypes = Array.isArray(types) && types.length > 0 ? types : ['screen', 'window'];
+    const sources = await desktopCapturer.getSources({
+      types: queryTypes,
+      thumbnailSize: { width: 400, height: 240 },
+      fetchWindowIcons: true
+    });
+    return sources.map((s) => ({
+      id: s.id,
+      name: s.name,
+      displayId: s.display_id || '',
+      thumbnail: s.thumbnail ? s.thumbnail.toDataURL() : '',
+      appIcon: s.appIcon ? s.appIcon.toDataURL() : ''
+    }));
+  } catch (err) {
+    console.error('[Electron] getDesktopSources error:', err);
+    return [];
+  }
+});
+
 ipcMain.on('dropzone-files-dropped', (_, filePaths) => {
   if (mainWindow && !mainWindow.isDestroyed() && filePaths && filePaths.length > 0) {
     mainWindow.webContents.send('dropzone-files-received', filePaths);
@@ -1188,14 +1234,21 @@ if (!gotTheLock) {
     // 2. Handle screen sharing (getDisplayMedia) in Electron
     session.defaultSession.setDisplayMediaRequestHandler((request, callback) => {
       desktopCapturer.getSources({ types: ['screen', 'window'] }).then((sources) => {
-        const primaryScreen =
-          sources.find((s) => s.id.startsWith('screen:0')) ||
-          sources.find((s) => s.id.startsWith('screen')) ||
-          sources[0];
+        let chosen = null;
+        if (targetDisplaySourceId) {
+          chosen = sources.find((s) => s.id === targetDisplaySourceId);
+        }
+        if (!chosen) {
+          chosen =
+            sources.find((s) => s.id.startsWith('screen:1')) ||
+            sources.find((s) => s.id.startsWith('screen:0')) ||
+            sources.find((s) => s.id.startsWith('screen')) ||
+            sources[0];
+        }
 
-        if (primaryScreen) {
-          console.log('[Electron] Display capture source:', primaryScreen.name);
-          callback({ video: primaryScreen });
+        if (chosen) {
+          console.log('[Electron] Display capture source:', chosen.name, chosen.id);
+          callback({ video: chosen });
         } else {
           console.warn('[Electron] No screen source available');
           callback({});
@@ -1231,7 +1284,7 @@ if (!gotTheLock) {
     createMainWindow();
     createSystemTray();
 
-        startClipboardWatcher();
+    startClipboardWatcher();
     ensureInputHelperRunning();
 
     // 5. Automatically ensure Desktop Shortcut exists on launch
