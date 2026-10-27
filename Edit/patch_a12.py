@@ -184,6 +184,30 @@ fo_gsmid = 0x1a62a3 - 0x1000
 for i, b in enumerate(patch_gsmid):
     data[fo_gsmid + i] = b
 
+# =============================================================
+# 9. Patch Call<Type>Method dispatcher at 0x1a7fa0
+# Unwraps env->functions before any CallMethod / CallStaticMethod
+# Helper at 0x1a848b (17 bytes)
+# =============================================================
+helper_cm_vaddr = 0x1a848b
+helper_cm = bytes([
+    0x48, 0x89, 0xcb,                           # movq %rcx, %rbx
+    0x49, 0x89, 0xfe,                           # movq %rdi, %r14
+    0x48, 0x8b, 0x86, 0xe8, 0x00, 0x00, 0x00,   # movq 0xe8(%rsi), %rax
+    0x48, 0x89, 0x06,                           # movq %rax, (%rsi)
+    0xc3                                        # retq
+])
+fo_helper_cm = helper_cm_vaddr - 0x1000
+for i, b in enumerate(helper_cm):
+    data[fo_helper_cm + i] = b
+
+call_cm_vaddr = 0x1a7fa8
+disp_cm = helper_cm_vaddr - (call_cm_vaddr + 5)
+patch_cm = bytes([0xe8]) + struct.pack('<i', disp_cm) + bytes([0x90])
+fo_call_cm = call_cm_vaddr - 0x1000
+for i, b in enumerate(patch_cm):
+    data[fo_call_cm + i] = b
+
 with open(DST_SO, "wb") as f:
     f.write(data)
 

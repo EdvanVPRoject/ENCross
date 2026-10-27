@@ -10,7 +10,7 @@
     "build:android": "cd client && npm run build:android",
     "desktop": "electron .",
     "desktop:dev": "cross-env NODE_ENV=development electron .",
-    "desktop:pack": "npm run build && electron-builder --win dir && powershell -Command \"Copy-Item -Path dist-desktop/win-unpacked/* -Destination release/win-unpacked/ -Recurse -Force\"",
+    "desktop:pack": "npm run build && electron-builder --win dir && powershell -Command \"Get-Process ENCross, input-helper -ErrorAction SilentlyContinue | Stop-Process -Force; Start-Sleep -Milliseconds 500; Copy-Item -Path dist-desktop/win-unpacked/* -Destination release/win-unpacked/ -Recurse -Force\"",
     "desktop:dist": "npm run build && electron-builder --win"
   },
   "build": {

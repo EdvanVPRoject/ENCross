@@ -134,10 +134,10 @@ export function App() {
     updateStatusBar();
   }, [theme]);
 
-  // Auto-dismiss incoming notification toasts cleanly
+  // Auto-dismiss incoming notification toasts cleanly after 5 seconds
   useEffect(() => {
     if (!incomingToast) return;
-    const duration = incomingToast.senderId ? 5000 : 3500;
+    const duration = 5000;
     const timer = setTimeout(() => {
       setIncomingToast(null);
     }, duration);
@@ -947,7 +947,7 @@ export function App() {
         setIncomingToast(msg);
         setTimeout(() => {
           setIncomingToast((curr) => (curr?.timestamp === msg.timestamp ? null : curr));
-        }, 8500);
+        }, 5000);
       }
 
       if (window.electronAPI) {

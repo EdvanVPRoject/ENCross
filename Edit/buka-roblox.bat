@@ -29,7 +29,8 @@ for %%P in (com.roblox.client com.roblox.clienu) do (
 echo [*] Membuka ROBLOX DELTA LITE 01 (com.roblox.client) ke Floating Window...
 %ADB% -s %DEVICE% shell am start --windowingMode 5 -n com.roblox.client/.startup.LauncherAliasMain
 
-timeout /t 3 /nobreak >nul
+echo [*] Menunggu inisialisasi clone 1 selesai (7 detik)...
+ping -n 8 127.0.0.1 >nul
 
 echo [*] Membuka ROBLOX DELTA LITE 02 (com.roblox.clienu) ke Floating Window...
 %ADB% -s %DEVICE% shell am start --windowingMode 5 -n com.roblox.clienu/com.roblox.client.startup.LauncherAliasMain
@@ -38,4 +39,4 @@ echo.
 echo ========================================================
 echo   [V] KEDUA ROBLOX FLOATING WINDOW BERHASIL DIBUKA!
 echo ========================================================
-timeout /t 3
+ping -n 3 127.0.0.1 >nul

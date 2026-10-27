@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Upload, Download, CheckCircle2, X, ArrowDownToLine, Play, Pause } from 'lucide-react';
 import { formatBytes } from '../utils/deviceInfo';
 import { getEncrossSubfolder } from '../utils/fileCategorizer';
@@ -11,6 +11,24 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
   const isPaused = Boolean(transfer.isPaused);
   const subfolder = getEncrossSubfolder(transfer.fileName, transfer.mimeType || transfer.blob?.type);
   const targetFolderDisplay = `Downloads/ENCross${subfolder ? '/' + subfolder : ''}`;
+  const [secondsLeft, setSecondsLeft] = useState(5);
+
+  // Auto-dismiss popup modal 5 seconds after transfer completion (sent/received)
+  useEffect(() => {
+    if (!transfer.completed) return;
+    setSecondsLeft(5);
+    const interval = setInterval(() => {
+      setSecondsLeft((prev) => {
+        if (prev <= 1) {
+          clearInterval(interval);
+          if (onClose) onClose();
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [transfer.completed, onClose]);
 
   const handleDownloadBlob = () => {
     const fileName = transfer.fileName || 'file';
@@ -133,8 +151,8 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
             <span className="text-zinc-500 dark:text-zinc-400 text-[11px] block truncate">
               {isDone
                 ? isUpload
-                  ? 'File Berhasil Terkirim'
-                  : `Tersimpan di ${targetFolderDisplay}`
+                  ? `File Berhasil Terkirim • Menutup otomatis (${secondsLeft}s)`
+                  : `Tersimpan di ${targetFolderDisplay} • Menutup otomatis (${secondsLeft}s)`
                 : isPaused
                 ? 'Transfer Dijeda'
                 : isUpload
@@ -193,7 +211,7 @@ export function TransferProgressModal({ transfer, onClose, onTogglePause, onCanc
               onClick={onClose}
               className="ios-pressable text-xs text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1 rounded-full hover:bg-black/5 dark:hover:bg-white/8 cursor-pointer"
             >
-              Tutup
+              Tutup ({secondsLeft}s)
             </button>
           )}
         </div>
