@@ -163,28 +163,25 @@ function createMainWindow() {
       }
     }
   });
+
+  mainWindow.on('closed', () => {
+    mainWindow = null;
+  });
 }
 
 // 4. Create System Tray
 function createSystemTray() {
   try {
-    let trayIcon = null;
     const icoPath = path.join(__dirname, 'assets/icon.ico').replace('app.asar', 'app.asar.unpacked');
+    const pngPath = path.join(__dirname, 'assets/icon.png').replace('app.asar', 'app.asar.unpacked');
+
+    let trayIcon = null;
     if (process.platform === 'win32' && fs.existsSync(icoPath)) {
       trayIcon = nativeImage.createFromPath(icoPath);
-    }
-    if (!trayIcon || trayIcon.isEmpty()) {
-      const pngPath = path.join(__dirname, 'assets/icon.png').replace('app.asar', 'app.asar.unpacked');
-      if (fs.existsSync(pngPath)) {
-        trayIcon = nativeImage.createFromPath(pngPath);
-      }
-    }
-    if (!trayIcon || trayIcon.isEmpty()) {
+    } else if (fs.existsSync(pngPath)) {
+      trayIcon = nativeImage.createFromPath(pngPath).resize({ width: 16, height: 16 });
+    } else {
       trayIcon = getAppIcon();
-    }
-
-    if (trayIcon && !trayIcon.isEmpty() && process.platform === 'win32') {
-      trayIcon = trayIcon.resize({ width: 16, height: 16 });
     }
 
     tray = new Tray(trayIcon);
@@ -195,11 +192,13 @@ function createSystemTray() {
         {
           label: 'Buka ENCross Hub',
           click: () => {
-            if (mainWindow) {
+            if (mainWindow && !mainWindow.isDestroyed()) {
               if (mainWindow.isMinimized()) mainWindow.restore();
               mainWindow.show();
               mainWindow.setSkipTaskbar(false);
               mainWindow.focus();
+            } else {
+              createMainWindow();
             }
           }
         },
@@ -236,24 +235,24 @@ function createSystemTray() {
     updateContextMenu();
 
     tray.on('click', () => {
-      if (mainWindow) {
-        if (mainWindow.isVisible()) {
-          mainWindow.hide();
-        } else {
-          if (mainWindow.isMinimized()) mainWindow.restore();
-          mainWindow.show();
-          mainWindow.setSkipTaskbar(false);
-          mainWindow.focus();
-        }
-      }
-    });
-
-    tray.on('double-click', () => {
-      if (mainWindow) {
+      if (mainWindow && !mainWindow.isDestroyed()) {
         if (mainWindow.isMinimized()) mainWindow.restore();
         mainWindow.show();
         mainWindow.setSkipTaskbar(false);
         mainWindow.focus();
+      } else {
+        createMainWindow();
+      }
+    });
+
+    tray.on('double-click', () => {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        if (mainWindow.isMinimized()) mainWindow.restore();
+        mainWindow.show();
+        mainWindow.setSkipTaskbar(false);
+        mainWindow.focus();
+      } else {
+        createMainWindow();
       }
     });
   } catch (err) {
@@ -1165,7 +1164,7 @@ if (!gotTheLock) {
   app.quit();
 } else {
   app.on('second-instance', () => {
-    if (mainWindow) {
+    if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       if (!mainWindow.isVisible()) mainWindow.show();
       mainWindow.setSkipTaskbar(false);
@@ -1174,6 +1173,8 @@ if (!gotTheLock) {
         mainWindow.setAlwaysOnTop(true);
         mainWindow.setAlwaysOnTop(false);
       } catch (_) {}
+    } else {
+      createMainWindow();
     }
   });
 
