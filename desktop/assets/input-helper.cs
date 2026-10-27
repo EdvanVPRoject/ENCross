@@ -212,10 +212,6 @@ namespace ENCrossInput {
                             }
 
                             if (childHwnd != IntPtr.Zero) {
-                                IntPtr parentHwnd = new IntPtr(parentHwndVal);
-                                if (parentHwnd != IntPtr.Zero) {
-                                    SetWindowLongPtr(childHwnd, GWL_HWNDPARENT, parentHwnd);
-                                }
                                 SetWindowPos(childHwnd, IntPtr.Zero, x, y, w, h, SWP_NOZORDER | SWP_FRAMECHANGED | SWP_SHOWWINDOW);
                                 Console.WriteLine("DOCK_OK " + childHwnd);
                             } else {

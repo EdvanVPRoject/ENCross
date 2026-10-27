@@ -545,7 +545,7 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   const args = [`--window-title=${title}`];
   if (isDocked) args.push('--window-borderless');
   if (stayAwake) args.push('--stay-awake');
-  if (alwaysOnTop && !isDocked) args.push('--always-on-top');
+  if (alwaysOnTop || isDocked) args.push('--always-on-top');
   if (maxSize && Number(maxSize) > 0) args.push(`--max-size=${Number(maxSize)}`);
   if (bitRate && typeof bitRate === 'string') args.push(`--video-bit-rate=${bitRate}`);
   if (turnScreenOff && !isCamera) args.push('--turn-screen-off');
@@ -555,6 +555,20 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
     args.push(`--camera-facing=${cameraFacing === 'front' ? 'front' : 'back'}`);
     if (includeAudio) {
       args.push('--audio-source=mic');
+    }
+  }
+
+  // Position docked window directly at launch using native Scrcpy flags
+  if (isDocked && options.bounds && mainWindow) {
+    try {
+      const contentBounds = mainWindow.getContentBounds();
+      const screenX = Math.round(contentBounds.x + (options.bounds.x || 0));
+      const screenY = Math.round(contentBounds.y + (options.bounds.y || 0));
+      const w = Math.round(options.bounds.width || 340);
+      const h = Math.round(options.bounds.height || 540);
+      args.push(`--window-x=${screenX}`, `--window-y=${screenY}`, `--window-width=${w}`, `--window-height=${h}`);
+    } catch (bErr) {
+      console.warn('[Scrcpy] Bounds calc error:', bErr);
     }
   }
 
@@ -593,7 +607,7 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
   return new Promise((resolve) => {
     try {
       const child = spawn('scrcpy', args, {
-        windowsHide: true,
+        windowsHide: false,
         detached: false
       });
       activeScrcpyProcess = child;
@@ -609,8 +623,13 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
 
       child.stderr.on('data', (data) => {
         const text = data.toString();
-        errorOutput += text;
         console.log('[Scrcpy stderr]', text);
+        const isInfoOnly = text.includes('1 file pushed') ||
+                           text.includes('[server] INFO:') ||
+                           text.includes('INFO:');
+        if (!isInfoOnly && /error|failed|fault|exception/i.test(text)) {
+          errorOutput += text;
+        }
       });
 
       child.stdout.on('data', (data) => {
@@ -634,12 +653,13 @@ ipcMain.handle('start-scrcpy', async (_, options = {}) => {
         console.log('[Scrcpy process exited]', code);
         activeScrcpyProcess = null;
         activeScrcpyDocked = false;
+        const finalError = (code !== 0 && errorOutput.trim()) ? errorOutput.trim() : null;
         if (mainWindow && !mainWindow.isDestroyed()) {
-          mainWindow.webContents.send('scrcpy-stopped', { code, error: errorOutput });
+          mainWindow.webContents.send('scrcpy-stopped', { code, error: finalError });
         }
         if (!hasReported) {
           hasReported = true;
-          resolve({ success: false, error: errorOutput || `Scrcpy keluar dengan kode ${code}` });
+          resolve({ success: code === 0, error: finalError || (code !== 0 ? `Scrcpy keluar dengan kode ${code}` : null) });
         }
       });
 

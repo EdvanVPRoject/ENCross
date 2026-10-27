@@ -809,12 +809,13 @@ export function App() {
     // Socket Event: Another peer joined
     newSocket.on('peer-joined', (newPeer) => {
       if (!newPeer || newPeer.deviceId === device.deviceId || newPeer.id === newSocket.id) return;
-      playSound('connect');
-      triggerHaptic([30]);
 
       setPeers((prev) => {
         const existing = prev.find((p) => p.deviceId === newPeer.deviceId || p.id === newPeer.id);
-        if (existing && existing.id !== newPeer.id) {
+        if (!existing) {
+          playSound('connect');
+          triggerHaptic([30]);
+        } else if (existing.id !== newPeer.id) {
           rtcManager.closePeer(existing.id);
         }
         const filtered = prev.filter((p) => p.deviceId !== newPeer.deviceId && p.id !== newPeer.id);
