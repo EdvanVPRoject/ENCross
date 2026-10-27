@@ -24,6 +24,43 @@ import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
 import { FEATURE_TOGGLES, SCRCPY_CONFIG, CUSTOM_ACTIONS } from './config/features';
 
+class ErrorBoundary extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error, errorInfo) {
+    console.error('[ErrorBoundary caught error]', error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+          <div className="apple-card border border-red-500/20 p-6 rounded-3xl max-w-sm w-full space-y-3">
+            <h3 className="text-sm font-semibold text-red-500">Terjadi Kesalahan Tampilan</h3>
+            <p className="text-xs text-zinc-500 dark:text-zinc-400">
+              {this.state.error?.message || 'Gagal memuat komponen.'}
+            </p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                this.props.onReset?.();
+              }}
+              className="w-full py-2.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-xl text-xs font-semibold cursor-pointer transition active:scale-95"
+            >
+              Kembali ke Menu Utama
+            </button>
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export function App() {
   const isMobileDevice = typeof navigator !== 'undefined' && /Android|iPhone|iPad/i.test(navigator.userAgent);
   const [selfInfo, setSelfInfo] = useState(null);
@@ -1814,36 +1851,38 @@ export function App() {
 
         {selectedPeer ? (
           <div key="workspace" className="animate-ios-push flex-1 flex flex-col">
-            <DeviceWorkspace
-              peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
-              selfInfo={selfInfo}
-              isMobile={isMobileDevice}
-              pingMs={pingMs}
-              onBack={() => setSelectedPeer(null)}
-              onSendFile={handleSendFile}
-              onOpenTextSync={(peer) => {
-                setTextTargetPeer(peer);
-                setIsTextSyncOpen(true);
-                if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
-                  setIncomingToast(null);
-                }
-              }}
-              onOpenFileExplorer={handleOpenFileExplorer}
-              onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
-              onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
-              onRingDevice={handleRingDevice}
-              onMountPhoneStorage={handleMountPhoneStorage}
-              onStartScreenShare={handleStartScreenShare}
-              onRequestRemoteScreen={handleRequestRemoteScreen}
-              onRequestRemoteCamera={handleRequestRemoteCamera}
-              onRequestRemoteMic={handleRequestRemoteMic}
-              incomingStream={incomingStream}
-              incomingStreamMode={incomingStreamMode}
-              onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
-              transferHistory={transferHistory}
-              onClearTransferHistory={handleClearTransferHistory}
-              onOpenFolder={handleOpenFolder}
-            />
+            <ErrorBoundary onReset={() => setSelectedPeer(null)}>
+              <DeviceWorkspace
+                peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
+                selfInfo={selfInfo}
+                isMobile={isMobileDevice}
+                pingMs={pingMs}
+                onBack={() => setSelectedPeer(null)}
+                onSendFile={handleSendFile}
+                onOpenTextSync={(peer) => {
+                  setTextTargetPeer(peer);
+                  setIsTextSyncOpen(true);
+                  if (incomingToast && (incomingToast.senderId === peer.id || incomingToast.senderDeviceId === peer.deviceId)) {
+                    setIncomingToast(null);
+                  }
+                }}
+                onOpenFileExplorer={handleOpenFileExplorer}
+                onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
+                onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
+                onRingDevice={handleRingDevice}
+                onMountPhoneStorage={handleMountPhoneStorage}
+                onStartScreenShare={handleStartScreenShare}
+                onRequestRemoteScreen={handleRequestRemoteScreen}
+                onRequestRemoteCamera={handleRequestRemoteCamera}
+                onRequestRemoteMic={handleRequestRemoteMic}
+                incomingStream={incomingStream}
+                incomingStreamMode={incomingStreamMode}
+                onSwitchCamera={incomingStreamMode === 'camera' ? () => handleRequestRemoteCameraSwitch(incomingStreamPeerId) : null}
+                transferHistory={transferHistory}
+                onClearTransferHistory={handleClearTransferHistory}
+                onOpenFolder={handleOpenFolder}
+              />
+            </ErrorBoundary>
           </div>
         ) : (
           <div key="discovery" className="animate-ios-pop flex-1 flex flex-col">

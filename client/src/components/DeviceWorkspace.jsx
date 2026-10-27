@@ -1,6 +1,7 @@
 import React, { useRef, useState, useEffect } from 'react';
 import {
   ArrowLeft,
+  ArrowRight,
   Smartphone,
   Laptop,
   Tablet,
