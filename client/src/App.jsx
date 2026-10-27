@@ -797,22 +797,27 @@ export function App() {
       }
       setIsSuperseded(false);
       const myDeviceId = assignedSelf?.deviceId || device.deviceId;
-      const unique = (initialPeers || []).filter((p) => p.deviceId !== myDeviceId);
-      setPeers(unique);
+      const peerMap = new Map();
+      for (const p of (initialPeers || [])) {
+        if (p.deviceId !== myDeviceId && p.id !== newSocket.id) {
+          peerMap.set(p.deviceId || p.id, p);
+        }
+      }
+      setPeers(Array.from(peerMap.values()));
     });
 
     // Socket Event: Another peer joined
     newSocket.on('peer-joined', (newPeer) => {
-      if (newPeer.deviceId === device.deviceId) return;
+      if (!newPeer || newPeer.deviceId === device.deviceId || newPeer.id === newSocket.id) return;
       playSound('connect');
       triggerHaptic([30]);
 
       setPeers((prev) => {
-        const existing = prev.find((p) => p.deviceId === newPeer.deviceId);
+        const existing = prev.find((p) => p.deviceId === newPeer.deviceId || p.id === newPeer.id);
         if (existing && existing.id !== newPeer.id) {
           rtcManager.closePeer(existing.id);
         }
-        const filtered = prev.filter((p) => p.deviceId !== newPeer.deviceId);
+        const filtered = prev.filter((p) => p.deviceId !== newPeer.deviceId && p.id !== newPeer.id);
         return [...filtered, newPeer];
       });
     });
@@ -872,9 +877,10 @@ export function App() {
         } else if (newSocket && newSocket.connected) {
           // Re-announce presence just in case server lost peer state while asleep
           newSocket.emit('join-room', {
-            roomId: 'encross-default-room',
+            roomId: roomParam,
             device
           });
+          newSocket.emit('get-peers');
         }
       }
     };
@@ -884,11 +890,19 @@ export function App() {
       }
     };
 
+    // Periodic peer sync heartbeat to guarantee peers stay synchronized across all devices
+    const peerHeartbeat = setInterval(() => {
+      if (newSocket && newSocket.connected) {
+        newSocket.emit('get-peers');
+      }
+    }, 3500);
+
     document.addEventListener('visibilitychange', handleVisibilityChange);
     window.addEventListener('online', handleOnline);
     window.addEventListener('focus', handleVisibilityChange);
 
     return () => {
+      clearInterval(peerHeartbeat);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('focus', handleVisibilityChange);
@@ -1279,7 +1293,19 @@ export function App() {
         roomId,
         device: selfInfo || getDeviceInfo()
       });
+      socket.emit('get-peers');
       setIsSuperseded(false);
+    }
+  };
+
+  // Manual refresh scan for nearby LAN peers
+  const handleRefreshScan = () => {
+    if (socket && socket.connected) {
+      socket.emit('join-room', {
+        roomId,
+        device: selfInfo || getDeviceInfo()
+      });
+      socket.emit('get-peers');
     }
   };
 
@@ -1790,6 +1816,7 @@ export function App() {
               onOpenQR={() => setIsQrOpen(true)}
               onOpenConnect={() => setIsServerIpModalOpen(true)}
               onOpenRename={() => setIsRenameOpen(true)}
+              onRefreshScan={handleRefreshScan}
               transferHistory={transferHistory}
               onClearTransferHistory={handleClearTransferHistory}
               onOpenFolder={handleOpenFolder}

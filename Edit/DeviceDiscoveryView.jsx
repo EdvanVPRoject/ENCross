@@ -43,7 +43,8 @@ export function DeviceDiscoveryView({
   onOpenRename,
   transferHistory = [],
   onClearTransferHistory,
-  onOpenFolder
+  onOpenFolder,
+  onRefreshScan
 }) {
   const [isScanning, setIsScanning] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
@@ -65,7 +66,8 @@ export function DeviceDiscoveryView({
   const handleRefreshScan = () => {
     triggerHaptic([30]);
     setIsScanning(true);
-    setTimeout(() => setIsScanning(false), 1000);
+    if (onRefreshScan) onRefreshScan();
+    setTimeout(() => setIsScanning(false), 800);
   };
 
   const resolvedLocalIp = localIp || selfIp || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1');

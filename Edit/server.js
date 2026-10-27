@@ -289,7 +289,10 @@ app.get('/api/media-stream-proxy', (req, res) => {
     });
 
     socket.on('join-room', ({ roomId, device }) => {
-      currentRoom = roomId || 'default-room';
+      const normalizedRoom = (!roomId || roomId === 'default-room' || roomId === 'encross-default-room')
+        ? 'encross-lan'
+        : roomId;
+      currentRoom = normalizedRoom;
 
       // Unique physical hardware key:
       // Prioritize client-generated persistent deviceId (unique per browser/app profile)
@@ -298,11 +301,13 @@ app.get('/api/media-stream-proxy', (req, res) => {
         ? device.deviceId
         : (isHost ? `host_${socket.id.substring(0, 5)}` : `client_${clientIp}_${socket.id.substring(0, 5)}`);
 
+      const hostLanIp = (serverIps.length > 0) ? serverIps[0] : clientIp;
+
       peerData = {
         id: socket.id,
         deviceId: deviceKey,
-        clientIp: device?.ip || clientIp,
-        ip: device?.ip || clientIp,
+        clientIp: isHost ? hostLanIp : (device?.ip || clientIp),
+        ip: isHost ? hostLanIp : (device?.ip || clientIp),
         webdavPort: device?.webdavPort || (device?.os === 'Android' ? 8089 : undefined),
         name: device?.name || (isHost ? 'PC' : 'Perangkat'),
         deviceType: device?.deviceType || (isHost ? 'desktop' : 'mobile'),
@@ -331,11 +336,23 @@ app.get('/api/media-stream-proxy', (req, res) => {
       roomPeers.set(deviceKey, peerData);
       socket.to(currentRoom).emit('peer-joined', peerData);
 
-      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey);
+      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey && p.id !== socket.id);
       socket.emit('room-peers', {
         self: peerData,
         peers: peersList,
         roomId: currentRoom
+      });
+    });
+
+    socket.on('get-peers', () => {
+      const roomToQuery = currentRoom || 'encross-lan';
+      if (!rooms.has(roomToQuery)) return;
+      const roomPeers = rooms.get(roomToQuery);
+      const peersList = Array.from(roomPeers.values()).filter((p) => p.deviceId !== deviceKey && p.id !== socket.id);
+      socket.emit('room-peers', {
+        self: peerData,
+        peers: peersList,
+        roomId: roomToQuery
       });
     });
 
