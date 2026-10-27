@@ -7,6 +7,21 @@ const dgram = require('dgram');
 const { execFile, spawn, exec, execSync } = require('child_process');
 const { startServer, getLocalIpAddresses } = require('./server');
 
+const LOG_FILE = 'D:/ProjekAntigravity/encross/main_debug.log';
+function logDebug(msg) {
+  try {
+    fs.appendFileSync(LOG_FILE, `[${new Date().toISOString()}] ${msg}\n`);
+  } catch (_) {}
+  console.log(msg);
+}
+
+process.on('uncaughtException', (err) => {
+  logDebug(`[CRASH] uncaughtException: ${err && (err.stack || err.message || err)}`);
+});
+process.on('unhandledRejection', (reason) => {
+  logDebug(`[CRASH] unhandledRejection: ${reason && (reason.stack || reason.message || reason)}`);
+});
+
 let mainWindow = null;
 let dropzoneWindow = null;
 let tray = null;
@@ -73,6 +88,7 @@ function createMainWindow() {
     height: 760,
     minWidth: 640,
     minHeight: 520,
+    center: true,
     title: 'ENCross Hub',
     icon: appIcon,
     backgroundColor: '#09090b',
@@ -123,6 +139,7 @@ function createMainWindow() {
   });
 
   mainWindow.once('ready-to-show', () => {
+    logDebug('mainWindow ready-to-show: calling show() and focus()');
     mainWindow.show();
     mainWindow.focus();
   });
@@ -141,6 +158,7 @@ function createMainWindow() {
 
   // Intercept close to minimize to System Tray only if tray is active
   mainWindow.on('close', (event) => {
+    logDebug(`mainWindow CLOSE event! isQuitting=${app.isQuitting} tray=${!!tray}`);
     if (!app.isQuitting) {
       if (tray && !tray.isDestroyed()) {
         event.preventDefault();
@@ -158,6 +176,7 @@ function createMainWindow() {
         }
       } else {
         // If system tray is not available, quit cleanly to avoid zombie background processes
+        logDebug('QUIT: tray not available or destroyed, quitting on close!');
         app.isQuitting = true;
         app.quit();
       }
@@ -165,6 +184,7 @@ function createMainWindow() {
   });
 
   mainWindow.on('closed', () => {
+    logDebug('mainWindow CLOSED');
     mainWindow = null;
   });
 }
@@ -177,7 +197,7 @@ function createSystemTray() {
 
     let trayIcon = null;
     if (process.platform === 'win32' && fs.existsSync(icoPath)) {
-      trayIcon = nativeImage.createFromPath(icoPath);
+      trayIcon = icoPath;
     } else if (fs.existsSync(pngPath)) {
       trayIcon = nativeImage.createFromPath(pngPath).resize({ width: 16, height: 16 });
     } else {
@@ -1207,9 +1227,12 @@ ipcMain.on('dropzone-files-dropped', (_, filePaths) => {
 // Single Instance Lock (prevents multiple desktop windows)
 const gotTheLock = app.requestSingleInstanceLock();
 if (!gotTheLock) {
+  logDebug('QUIT: gotTheLock is FALSE, another instance is running! Quitting.');
   app.quit();
 } else {
+  logDebug('GOT LOCK: This instance is primary!');
   app.on('second-instance', () => {
+    logDebug('EVENT: second-instance received! Bringing mainWindow to focus.');
     if (mainWindow && !mainWindow.isDestroyed()) {
       if (mainWindow.isMinimized()) mainWindow.restore();
       if (!mainWindow.isVisible()) mainWindow.show();
@@ -1313,7 +1336,8 @@ if (!gotTheLock) {
   });
 }
 
-app.on('before-quit', () => {
+app.on('before-quit', (e) => {
+  logDebug('app BEFORE-QUIT event!');
   if (inputProcess && !inputProcess.killed) {
     try { inputProcess.kill(); } catch (_) {}
   }
@@ -1322,6 +1346,10 @@ app.on('before-quit', () => {
     clipboardWatcher = null;
   }
   app.isQuitting = true;
+});
+
+app.on('will-quit', () => {
+  logDebug('app WILL-QUIT event!');
 });
 
 app.on('window-all-closed', () => {

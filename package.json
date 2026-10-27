@@ -10,14 +10,14 @@
     "build:android": "cd client && npm run build:android",
     "desktop": "electron .",
     "desktop:dev": "cross-env NODE_ENV=development electron .",
-    "desktop:pack": "npm run build && electron-builder --win dir",
+    "desktop:pack": "npm run build && electron-builder --win dir && powershell -Command \"Copy-Item -Path dist-desktop/win-unpacked/* -Destination release/win-unpacked/ -Recurse -Force\"",
     "desktop:dist": "npm run build && electron-builder --win"
   },
   "build": {
     "appId": "com.edvan.encross",
     "productName": "ENCross",
     "directories": {
-      "output": "release"
+      "output": "dist-desktop"
     },
     "files": [
       "desktop/**/*",

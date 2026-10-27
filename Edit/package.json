@@ -1,0 +1,67 @@
+{
+  "name": "encross",
+  "version": "1.0.0",
+  "description": "High-Performance Cross-Device P2P File Transfer & Screen Hub over WebRTC",
+  "main": "desktop/main.js",
+  "scripts": {
+    "server": "cd server && npm start",
+    "client": "cd client && npm run dev",
+    "build": "cd client && npm.cmd run build",
+    "build:android": "cd client && npm run build:android",
+    "desktop": "electron .",
+    "desktop:dev": "cross-env NODE_ENV=development electron .",
+    "desktop:pack": "npm run build && electron-builder --win dir && powershell -Command \"Copy-Item -Path dist-desktop/win-unpacked/* -Destination release/win-unpacked/ -Recurse -Force\"",
+    "desktop:dist": "npm run build && electron-builder --win"
+  },
+  "build": {
+    "appId": "com.edvan.encross",
+    "productName": "ENCross",
+    "directories": {
+      "output": "dist-desktop"
+    },
+    "files": [
+      "desktop/**/*",
+      "server/**/*",
+      "client/dist/**/*"
+    ],
+    "asarUnpack": [
+      "desktop/assets/**/*"
+    ],
+    "win": {
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "desktop/assets/icon.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": "always",
+      "createStartMenuShortcut": true,
+      "shortcutName": "ENCross"
+    }
+  },
+  "keywords": [
+    "webrtc",
+    "p2p",
+    "file-transfer",
+    "screen-sharing",
+    "websockets",
+    "fullstack",
+    "electron"
+  ],
+  "author": "Edvan",
+  "license": "MIT",
+  "devDependencies": {
+    "cross-env": "^7.0.3",
+    "electron": "^44.7.0",
+    "electron-builder": "^26.15.3"
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.7",
+    "express": "^5.3.0",
+    "socket.io": "^4.8.4"
+  }
+}

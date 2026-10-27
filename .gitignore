@@ -2,6 +2,7 @@ node_modules/
 dist/
 release/
 release-build/
+dist-desktop/
 *.exe
 .DS_Store
 *.log
