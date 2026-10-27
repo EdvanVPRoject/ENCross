@@ -18,6 +18,9 @@ import { MediaStreamingModal } from './components/MediaStreamingModal';
 import { WirelessMicModal } from './components/WirelessMicModal';
 import { TouchpadModal } from './components/TouchpadModal';
 import { MacroPadModal } from './components/MacroPadModal';
+import { RemoteKeyboardModal } from './components/RemoteKeyboardModal';
+import { PresentationClickerModal } from './components/PresentationClickerModal';
+import { WakeOnLanModal } from './components/WakeOnLanModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
@@ -202,6 +205,21 @@ export function App() {
   const [selectedPeerForMacroPad, setSelectedPeerForMacroPad] = useState(null);
   const isMacroPadModalOpenRef = useRef(isMacroPadModalOpen);
   const lastSyncedClipboardRef = useRef('');
+
+  // Remote Keyboard & Voice Typing States
+  const [isRemoteKeyboardOpen, setIsRemoteKeyboardOpen] = useState(false);
+  const [selectedPeerForKeyboard, setSelectedPeerForKeyboard] = useState(null);
+
+  // Presentation Clicker States
+  const [isPresentationClickerOpen, setIsPresentationClickerOpen] = useState(false);
+  const [selectedPeerForPresentation, setSelectedPeerForPresentation] = useState(null);
+
+  // Wake-on-LAN States
+  const [isWakeOnLanOpen, setIsWakeOnLanOpen] = useState(false);
+  const [selectedPeerForWol, setSelectedPeerForWol] = useState(null);
+
+  // Floating Dropzone State
+  const [isDropzoneActive, setIsDropzoneActive] = useState(false);
 
   // Remote File Explorer States
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
@@ -1036,6 +1054,56 @@ export function App() {
     };
   }, [socket]);
 
+  // Floating Dropzone State & Drop Receiver
+  useEffect(() => {
+    if (window.electronAPI?.getFloatingDropzoneState) {
+      window.electronAPI.getFloatingDropzoneState().then((state) => {
+        setIsDropzoneActive(Boolean(state));
+      }).catch(() => {});
+    }
+
+    const unsubState = window.electronAPI?.onDropzoneStateChanged?.((state) => {
+      setIsDropzoneActive(Boolean(state));
+    });
+
+    const unsubFiles = window.electronAPI?.onDropzoneFilesReceived?.(async (filePaths) => {
+      if (!filePaths || !Array.isArray(filePaths) || filePaths.length === 0) return;
+      const target = selectedPeer || peers[0];
+      if (!target) {
+        setIncomingToast({
+          senderName: 'Dropzone',
+          text: 'Tidak ada perangkat terhubung untuk menerima file.',
+          senderId: null
+        });
+        return;
+      }
+
+      const filesToSend = [];
+      for (const fp of filePaths) {
+        if (typeof fp === 'string' && window.electronAPI?.readFileBuffer) {
+          try {
+            const res = await window.electronAPI.readFileBuffer(fp);
+            if (res && res.buffer) {
+              const fileObj = new File([res.buffer], res.name || 'file');
+              filesToSend.push(fileObj);
+            }
+          } catch (e) {
+            console.warn('[Dropzone] Failed to read file buffer:', fp, e);
+          }
+        }
+      }
+
+      if (filesToSend.length > 0) {
+        handleSendFile(target.id, filesToSend);
+      }
+    });
+
+    return () => {
+      if (typeof unsubState === 'function') unsubState();
+      if (typeof unsubFiles === 'function') unsubFiles();
+    };
+  }, [peers, selectedPeer]);
+
   // Real-Time Battery Monitor Sync
   useEffect(() => {
     if (!FEATURE_TOGGLES.enableBatteryMonitor || !socket) return;
@@ -1166,7 +1234,7 @@ export function App() {
 
   // Send Remote Touchpad / Keyboard / Macro Command to PC
   const handleSendInput = (event, targetPeerParam = null) => {
-    const peer = targetPeerParam || selectedPeerForTouchpad || selectedPeerForMacroPad;
+    const peer = targetPeerParam || selectedPeerForKeyboard || selectedPeerForPresentation || selectedPeerForTouchpad || selectedPeerForMacroPad || selectedPeer;
     if (!peer) return;
     const sentP2P = webrtcManagerRef.current?.sendRemoteInput(peer.id, event);
     if (!sentP2P && socket) {
@@ -1869,6 +1937,15 @@ export function App() {
                 onOpenFileExplorer={handleOpenFileExplorer}
                 onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
                 onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
+                onOpenRemoteKeyboard={(peer) => { setSelectedPeerForKeyboard(peer); setIsRemoteKeyboardOpen(true); }}
+                onOpenPresentationClicker={(peer) => { setSelectedPeerForPresentation(peer); setIsPresentationClickerOpen(true); }}
+                onOpenWakeOnLan={(peer) => { setSelectedPeerForWol(peer); setIsWakeOnLanOpen(true); }}
+                onToggleDropzone={() => {
+                  if (window.electronAPI?.toggleFloatingDropzone) {
+                    window.electronAPI.toggleFloatingDropzone();
+                  }
+                }}
+                isDropzoneActive={isDropzoneActive}
                 onRingDevice={handleRingDevice}
                 onMountPhoneStorage={handleMountPhoneStorage}
                 onStartScreenShare={handleStartScreenShare}
@@ -1910,6 +1987,24 @@ export function App() {
                 setSelectedPeerForMacroPad(peer);
                 setIsMacroPadModalOpen(true);
               }}
+              onOpenRemoteKeyboard={(peer) => {
+                setSelectedPeerForKeyboard(peer);
+                setIsRemoteKeyboardOpen(true);
+              }}
+              onOpenPresentationClicker={(peer) => {
+                setSelectedPeerForPresentation(peer);
+                setIsPresentationClickerOpen(true);
+              }}
+              onOpenWakeOnLan={(peer) => {
+                setSelectedPeerForWol(peer);
+                setIsWakeOnLanOpen(true);
+              }}
+              onToggleDropzone={() => {
+                if (window.electronAPI?.toggleFloatingDropzone) {
+                  window.electronAPI.toggleFloatingDropzone();
+                }
+              }}
+              isDropzoneActive={isDropzoneActive}
               onSendFile={handleSendFile}
               onOpenTextSync={(peer) => {
                 setTextTargetPeer(peer);
@@ -2157,6 +2252,51 @@ export function App() {
           onClose={() => {
             setIsMacroPadModalOpen(false);
             setSelectedPeerForMacroPad(null);
+          }}
+        />
+      )}
+
+      {/* Remote Keyboard & Voice Typing Modal */}
+      {isRemoteKeyboardOpen && (
+        <RemoteKeyboardModal
+          isOpen={isRemoteKeyboardOpen}
+          onClose={() => {
+            setIsRemoteKeyboardOpen(false);
+            setSelectedPeerForKeyboard(null);
+          }}
+          targetPeer={selectedPeerForKeyboard || selectedPeer}
+          onSendInput={(cmd) => handleSendInput(cmd, selectedPeerForKeyboard || selectedPeer)}
+        />
+      )}
+
+      {/* Presentation Clicker Modal */}
+      {isPresentationClickerOpen && (
+        <PresentationClickerModal
+          isOpen={isPresentationClickerOpen}
+          onClose={() => {
+            setIsPresentationClickerOpen(false);
+            setSelectedPeerForPresentation(null);
+          }}
+          targetPeer={selectedPeerForPresentation || selectedPeer}
+          onSendInput={(cmd) => handleSendInput(cmd, selectedPeerForPresentation || selectedPeer)}
+        />
+      )}
+
+      {/* Wake-on-LAN Modal */}
+      {isWakeOnLanOpen && (
+        <WakeOnLanModal
+          isOpen={isWakeOnLanOpen}
+          onClose={() => {
+            setIsWakeOnLanOpen(false);
+            setSelectedPeerForWol(null);
+          }}
+          targetPeer={selectedPeerForWol || selectedPeer}
+          peers={peers}
+          onSendWakeOnLan={async (mac, broadcastIp) => {
+            if (window.electronAPI?.sendWakeOnLan) {
+              return await window.electronAPI.sendWakeOnLan({ mac, broadcastIp });
+            }
+            return { success: false, error: 'WoL not supported on this platform' };
           }}
         />
       )}

@@ -15,6 +15,10 @@ import {
   BellRing,
   HardDrive,
   Layers,
+  Keyboard,
+  Presentation,
+  Zap,
+  ClipboardList,
   Battery,
   BatteryCharging,
   BatteryWarning,
@@ -78,7 +82,12 @@ export function DeviceWorkspace({
   onSwitchCamera,
   transferHistory = [],
   onClearTransferHistory,
-  onOpenFolder
+  onOpenFolder,
+  onOpenRemoteKeyboard,
+  onOpenPresentationClicker,
+  onOpenWakeOnLan,
+  onToggleDropzone,
+  isDropzoneActive
 }) {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
@@ -814,7 +823,7 @@ export function DeviceWorkspace({
                   <span className="truncate">Mic HP (PC Mic)</span>
                 </button>
 
-                {/* Kirim Teks / Sync Clipboard */}
+                {/* Riwayat Clipboard & Teks */}
                 <button
                   onClick={() => {
                     triggerHaptic([30]);
@@ -822,8 +831,8 @@ export function DeviceWorkspace({
                   }}
                   className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer text-left"
                 >
-                  <MessageSquare className="w-4 h-4 text-[#0071e3] shrink-0" />
-                  <span className="truncate">Kirim Teks</span>
+                  <ClipboardList className="w-4 h-4 text-blue-500 shrink-0" />
+                  <span className="truncate">Riwayat Clipboard</span>
                 </button>
 
                 {/* Deringkan Ponsel */}
@@ -836,6 +845,36 @@ export function DeviceWorkspace({
                 >
                   <BellRing className="w-4 h-4 text-red-500 shrink-0" />
                   <span className="truncate">Deringkan HP</span>
+                </button>
+
+                {/* Floating Dropzone Toggle */}
+                {isElectron && (
+                  <button
+                    onClick={() => {
+                      triggerHaptic([30]);
+                      onToggleDropzone?.();
+                    }}
+                    className={`ios-pressable flex items-center gap-2 p-2.5 rounded-2xl border text-xs font-medium transition cursor-pointer text-left ${
+                      isDropzoneActive
+                        ? 'bg-blue-500/15 text-[#0071e3] border-blue-500/30 font-semibold'
+                        : 'bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border-black/6 dark:border-white/8 text-zinc-800 dark:text-zinc-200'
+                    }`}
+                  >
+                    <Upload className="w-4 h-4 text-[#0071e3] shrink-0" />
+                    <span className="truncate">{isDropzoneActive ? 'Dropzone Aktif' : 'Dropzone Mengambang'}</span>
+                  </button>
+                )}
+
+                {/* Wake-on-LAN */}
+                <button
+                  onClick={() => {
+                    triggerHaptic([30]);
+                    onOpenWakeOnLan?.(peer);
+                  }}
+                  className="ios-pressable flex items-center gap-2 p-2.5 rounded-2xl bg-amber-500/5 dark:bg-amber-500/10 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/15 text-xs font-medium transition cursor-pointer text-left"
+                >
+                  <Zap className="w-4 h-4 text-amber-500 shrink-0" />
+                  <span className="truncate">Wake-on-LAN</span>
                 </button>
               </div>
             </div>
@@ -897,6 +936,50 @@ export function DeviceWorkspace({
                   </h4>
                   <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
                     Tombol pintasan cepat Stream Deck untuk OBS, Windows, volume multimedia, dan custom macro.
+                  </p>
+                </div>
+              </button>
+
+              {/* 3. Remote Keyboard & Dikte Suara */}
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenRemoteKeyboard?.(peer);
+                }}
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-500/20 group-hover:scale-105 transition-transform">
+                  <Keyboard className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <span>Keyboard & Dikte Suara</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Ketik teks panjang atau gunakan fitur Speech-to-Text (Mic Gboard) HP langsung ke PC.
+                  </p>
+                </div>
+              </button>
+
+              {/* 4. Pengendali Presentasi / Clicker */}
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenPresentationClicker?.(peer);
+                }}
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-3 rounded-2xl bg-orange-500/10 text-orange-600 dark:text-orange-400 shrink-0 border border-orange-500/20 group-hover:scale-105 transition-transform">
+                  <Presentation className="w-6 h-6" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                    <span>Pengendali Presentasi</span>
+                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Slide clicker PowerPoint, PDF, Canva dengan tombol besar, stopwatch timer, dan pointer.
                   </p>
                 </div>
               </button>
@@ -1037,6 +1120,40 @@ export function DeviceWorkspace({
                 <div>
                   <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Pantau Layar PC</h4>
                   <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Lihat layar laptop realtime</p>
+                </div>
+              </button>
+
+              {/* Riwayat Clipboard 20 Item */}
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenTextSync?.(peer);
+                }}
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-2.5 rounded-xl bg-purple-500/10 text-purple-500 shrink-0 border border-purple-500/20 group-hover:scale-105 transition-transform">
+                  <ClipboardList className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Riwayat Clipboard</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">20 riwayat teks tersimpan</p>
+                </div>
+              </button>
+
+              {/* Wake-on-LAN */}
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenWakeOnLan?.(peer);
+                }}
+                className="ios-pressable flex items-start gap-3 p-3.5 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-500 shrink-0 border border-amber-500/20 group-hover:scale-105 transition-transform">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-semibold text-zinc-900 dark:text-white">Bangunkan PC (WoL)</h4>
+                  <p className="text-[10px] text-zinc-500 dark:text-zinc-400 mt-0.5">Nyalakan laptop via LAN</p>
                 </div>
               </button>
             </div>

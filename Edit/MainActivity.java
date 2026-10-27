@@ -589,6 +589,45 @@ public class MainActivity extends BridgeActivity {
             }
         }, "AndroidClipboard");
 
+        // Native Wake-on-LAN (Magic Packet UDP Broadcast) Bridge
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean sendWakeOnLan(String macStr, String broadcastIp) {
+                try {
+                    if (macStr == null) return false;
+                    String cleanMac = macStr.replaceAll("[:\\- ]", "");
+                    if (cleanMac.length() != 12) return false;
+                    byte[] macBytes = new byte[6];
+                    for (int i = 0; i < 6; i++) {
+                        macBytes[i] = (byte) Integer.parseInt(cleanMac.substring(i * 2, (i * 2) + 2), 16);
+                    }
+                    byte[] packetBytes = new byte[6 + 16 * macBytes.length];
+                    for (int i = 0; i < 6; i++) packetBytes[i] = (byte) 0xff;
+                    for (int i = 6; i < packetBytes.length; i += macBytes.length) {
+                        System.arraycopy(macBytes, 0, packetBytes, i, macBytes.length);
+                    }
+                    new Thread(() -> {
+                        try {
+                            java.net.InetAddress address = java.net.InetAddress.getByName(
+                                broadcastIp != null && !broadcastIp.trim().isEmpty() ? broadcastIp.trim() : "255.255.255.255"
+                            );
+                            java.net.DatagramPacket packet = new java.net.DatagramPacket(packetBytes, packetBytes.length, address, 9);
+                            java.net.DatagramSocket socket = new java.net.DatagramSocket();
+                            socket.setBroadcast(true);
+                            socket.send(packet);
+                            socket.close();
+                        } catch (Exception e) {
+                            e.printStackTrace();
+                        }
+                    }).start();
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        }, "AndroidWakeOnLan");
+
         // Clipboard change listener
         try {
             android.content.ClipboardManager cm = (android.content.ClipboardManager) getSystemService(Context.CLIPBOARD_SERVICE);

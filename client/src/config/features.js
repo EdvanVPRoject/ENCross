@@ -80,6 +80,21 @@ export const FEATURE_TOGGLES = {
 
   // 22. Virtual Macro Pad & Mini Stream Deck (Shortcut PC di Layar HP)
   enableMacroPad: true,
+
+  // 23. Clipboard History Manager (10-20 Riwayat Teks Antar Perangkat)
+  enableClipboardHistory: true,
+
+  // 24. Remote Keyboard & Dikte Suara (Ketik Dokumen & Voice Typing Gboard)
+  enableRemoteKeyboard: true,
+
+  // 25. Pengendali Presentasi (PowerPoint / PDF / Canva Clicker)
+  enablePresentationClicker: true,
+
+  // 26. Wake-on-LAN (Bangunkan PC / Laptop via Magic Packet)
+  enableWakeOnLan: true,
+
+  // 27. Floating Dropzone Widget di Windows (Drag & Drop Langsung ke HP)
+  enableFloatingDropzone: true,
 };
 
 // Konfigurasi Standar Scrcpy Screen Mirroring (Desktop)

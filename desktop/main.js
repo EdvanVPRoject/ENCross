@@ -1,11 +1,14 @@
-const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell, clipboard, powerSaveBlocker } = require('electron');
+const { app, BrowserWindow, Tray, Menu, Notification, ipcMain, nativeImage, session, desktopCapturer, shell, clipboard, powerSaveBlocker, screen } = require('electron');
 const path = require('path');
 const http = require('http');
 const fs = require('fs');
+const os = require('os');
+const dgram = require('dgram');
 const { execFile, spawn, exec, execSync } = require('child_process');
 const { startServer, getLocalIpAddresses } = require('./server');
 
 let mainWindow = null;
+let dropzoneWindow = null;
 let tray = null;
 let hasShownTrayTip = false;
 let serverLocalIp = '127.0.0.1';
@@ -203,6 +206,13 @@ function createSystemTray() {
         {
           label: `LAN: http://${serverLocalIp}:3001`,
           enabled: false
+        },
+        { type: 'separator' },
+        {
+          label: 'Dropzone Mengambang (On/Off)',
+          click: () => {
+            toggleFloatingDropzone();
+          }
         },
         { type: 'separator' },
         {
@@ -869,6 +879,20 @@ function sendInputCommand(cmdStr) {
     return;
   }
 
+  if (cmdStr.startsWith('type_enter:')) {
+    const textToType = cmdStr.slice(11);
+    try {
+      clipboard.writeText(textToType);
+      setTimeout(() => {
+        sendInputCommand('combo ctrl v');
+        setTimeout(() => {
+          sendInputCommand('k enter');
+        }, 60);
+      }, 40);
+    } catch (_) {}
+    return;
+  }
+
   ensureInputHelperRunning();
   if (inputProcess && inputProcess.stdin && !inputProcess.stdin.destroyed) {
     try {
@@ -988,6 +1012,150 @@ ipcMain.handle('unmount-phone-storage', async (_, driveLetter = 'Z:') => {
     return { success: true, message: `Drive ${driveLetter} berhasil dilepas.` };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+});
+
+// =============================================================================
+// WAKE-ON-LAN & MAC ADDRESS UTILITIES
+// =============================================================================
+function getPrimaryMacAddress() {
+  try {
+    const interfaces = os.networkInterfaces();
+    for (const name of Object.keys(interfaces)) {
+      for (const iface of interfaces[name]) {
+        if (iface.family === 'IPv4' && !iface.internal && iface.mac && iface.mac !== '00:00:00:00:00:00') {
+          return iface.mac;
+        }
+      }
+    }
+  } catch (_) {}
+  return null;
+}
+
+function sendMagicPacket(macAddress, broadcastIp = '255.255.255.255') {
+  return new Promise((resolve, reject) => {
+    try {
+      const cleanMac = (macAddress || '').replace(/[:\- ]/g, '');
+      if (cleanMac.length !== 12) {
+        return reject(new Error('Format MAC Address tidak valid (harus 12 karakter hex).'));
+      }
+      const macBuffer = Buffer.from(cleanMac, 'hex');
+      const magicPacket = Buffer.alloc(102);
+      magicPacket.fill(0xff, 0, 6);
+      for (let i = 0; i < 16; i++) {
+        macBuffer.copy(magicPacket, 6 + i * 6);
+      }
+
+      const client = dgram.createSocket('udp4');
+      client.bind(() => {
+        client.setBroadcast(true);
+        client.send(magicPacket, 0, magicPacket.length, 9, broadcastIp, (err) => {
+          client.close();
+          if (err) reject(err);
+          else resolve(true);
+        });
+      });
+    } catch (e) {
+      reject(e);
+    }
+  });
+}
+
+ipcMain.handle('get-mac-address', () => {
+  return getPrimaryMacAddress();
+});
+
+ipcMain.handle('send-wake-on-lan', async (_, { mac, broadcastIp = '255.255.255.255' } = {}) => {
+  try {
+    await sendMagicPacket(mac, broadcastIp);
+    return { success: true, message: `Magic Packet berhasil dikirim ke ${mac}` };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('remote-type-text', async (_, { text, enter = false } = {}) => {
+  if (!text) return false;
+  if (enter) {
+    sendInputCommand('type_enter:' + text);
+  } else {
+    sendInputCommand('type:' + text);
+  }
+  return true;
+});
+
+// =============================================================================
+// FLOATING DROPZONE WIDGET (Always-on-Top Bubble)
+// =============================================================================
+function toggleFloatingDropzone() {
+  if (dropzoneWindow && !dropzoneWindow.isDestroyed()) {
+    dropzoneWindow.close();
+    dropzoneWindow = null;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('dropzone-state-changed', false);
+    }
+    return false;
+  }
+
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { width, height } = primaryDisplay.workAreaSize;
+
+  dropzoneWindow = new BrowserWindow({
+    width: 80,
+    height: 80,
+    x: width - 96,
+    y: height - 120,
+    frame: false,
+    transparent: true,
+    alwaysOnTop: true,
+    skipTaskbar: true,
+    resizable: false,
+    hasShadow: false,
+    backgroundColor: '#00000000',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      nodeIntegration: false,
+      contextIsolation: true
+    }
+  });
+
+  const dropzoneHtmlPath = path.join(__dirname, 'assets/dropzone.html');
+  dropzoneWindow.loadFile(dropzoneHtmlPath);
+
+  dropzoneWindow.on('closed', () => {
+    dropzoneWindow = null;
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('dropzone-state-changed', false);
+    }
+  });
+
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('dropzone-state-changed', true);
+  }
+  return true;
+}
+
+ipcMain.handle('toggle-floating-dropzone', () => {
+  return toggleFloatingDropzone();
+});
+
+ipcMain.handle('get-floating-dropzone-state', () => {
+  return Boolean(dropzoneWindow && !dropzoneWindow.isDestroyed());
+});
+
+ipcMain.handle('read-file-buffer', async (_, filePath) => {
+  try {
+    const buf = await fs.promises.readFile(filePath);
+    const basename = path.basename(filePath);
+    return { name: basename, buffer: buf };
+  } catch (err) {
+    return { error: err.message };
+  }
+});
+
+ipcMain.on('dropzone-files-dropped', (_, filePaths) => {
+  if (mainWindow && !mainWindow.isDestroyed() && filePaths && filePaths.length > 0) {
+    mainWindow.webContents.send('dropzone-files-received', filePaths);
   }
 });
 

@@ -1,0 +1,164 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>ENCross Dropzone</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    html, body {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background: transparent;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "Segoe UI", Roboto, sans-serif;
+    }
+    .dropzone-pill {
+      -webkit-app-region: drag;
+      width: 72px;
+      height: 72px;
+      border-radius: 24px;
+      background: rgba(18, 18, 20, 0.88);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1.5px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 16px 36px rgba(0, 0, 0, 0.55), inset 0 1px 1px rgba(255, 255, 255, 0.25);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #ffffff;
+      cursor: grab;
+      position: relative;
+      transition: all 0.22s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+    .dropzone-pill:active {
+      cursor: grabbing;
+    }
+    .dropzone-pill.dragover {
+      background: rgba(0, 113, 227, 0.95);
+      border-color: #60a5fa;
+      transform: scale(1.08);
+      box-shadow: 0 0 28px rgba(0, 113, 227, 0.7);
+    }
+    .icon {
+      width: 22px;
+      height: 22px;
+      stroke: currentColor;
+      stroke-width: 2;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      pointer-events: none;
+      transition: transform 0.2s ease;
+    }
+    .dragover .icon {
+      transform: translateY(-2px);
+    }
+    .label {
+      font-size: 9px;
+      font-weight: 700;
+      margin-top: 3px;
+      letter-spacing: 0.5px;
+      opacity: 0.9;
+      text-transform: uppercase;
+      pointer-events: none;
+    }
+    .close-btn {
+      position: absolute;
+      top: -3px;
+      right: -3px;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #ef4444;
+      color: white;
+      font-size: 11px;
+      font-weight: bold;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      -webkit-app-region: no-drag;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+      line-height: 1;
+    }
+    .dropzone-pill:hover .close-btn {
+      display: flex;
+    }
+    .pulse-dot {
+      position: absolute;
+      bottom: 5px;
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: #10b981;
+    }
+  </style>
+</head>
+<body>
+  <div class="dropzone-pill" id="dropzone" title="Tarik file ke sini untuk dikirim langsung ke HP">
+    <div class="close-btn" id="closeBtn" title="Tutup Widget">✕</div>
+    <svg class="icon" viewBox="0 0 24 24">
+      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+      <polyline points="17 8 12 3 7 8"></polyline>
+      <line x1="12" y1="3" x2="12" y2="15"></line>
+    </svg>
+    <div class="label" id="statusLabel">Kirim</div>
+    <div class="pulse-dot"></div>
+  </div>
+
+  <script>
+    const dropzone = document.getElementById('dropzone');
+    const closeBtn = document.getElementById('closeBtn');
+    const statusLabel = document.getElementById('statusLabel');
+
+    closeBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      window.electronAPI?.toggleFloatingDropzone?.();
+    });
+
+    window.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.add('dragover');
+      statusLabel.textContent = 'Lepas';
+    });
+
+    window.addEventListener('dragleave', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+      statusLabel.textContent = 'Kirim';
+    });
+
+    window.addEventListener('drop', (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      dropzone.classList.remove('dragover');
+
+      if (e.dataTransfer && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        statusLabel.textContent = 'Mengirim...';
+        const fileList = Array.from(e.dataTransfer.files).map(f => f.path || f.name);
+        window.electronAPI?.notifyDropzoneFilesDropped?.(fileList);
+        setTimeout(() => {
+          statusLabel.textContent = 'Sukses!';
+          setTimeout(() => {
+            statusLabel.textContent = 'Kirim';
+          }, 1500);
+        }, 300);
+      } else {
+        statusLabel.textContent = 'Kirim';
+      }
+    });
+  </script>
+</body>
+</html>

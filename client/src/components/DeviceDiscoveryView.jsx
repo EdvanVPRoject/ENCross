@@ -21,7 +21,10 @@ import {
   Upload,
   MessageSquare,
   Folder,
-  MonitorPlay
+  MonitorPlay,
+  Keyboard,
+  Presentation,
+  Power
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { formatBytes } from '../utils/deviceInfo';
@@ -53,6 +56,9 @@ export function DeviceDiscoveryView({
   onRefreshScan,
   onOpenTouchpad,
   onOpenMacroPad,
+  onOpenRemoteKeyboard,
+  onOpenPresentationClicker,
+  onOpenWakeOnLan,
   onSendFile,
   onOpenTextSync,
   onOpenFileExplorer,
@@ -318,6 +324,30 @@ export function DeviceDiscoveryView({
                           >
                             <MousePointer className="w-3.5 h-3.5 shrink-0" />
                             <span>Touchpad</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenRemoteKeyboard?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
+                            title="Ketik & Dikte Suara ke PC"
+                          >
+                            <Keyboard className="w-3.5 h-3.5 shrink-0" />
+                            <span>Ketik</span>
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              triggerHaptic([30]);
+                              onOpenPresentationClicker?.(peer);
+                            }}
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold transition active:scale-95 border border-amber-500/20"
+                            title="Pengendali Slide Presentasi"
+                          >
+                            <Presentation className="w-3.5 h-3.5 shrink-0" />
+                            <span>Clicker</span>
                           </button>
 
                           <button

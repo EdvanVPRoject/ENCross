@@ -42,5 +42,22 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   sendRemoteInput: (cmd) => ipcRenderer.invoke('send-remote-input', cmd),
   mountPhoneStorage: (params) => ipcRenderer.invoke('mount-phone-storage', params),
-  unmountPhoneStorage: (driveLetter) => ipcRenderer.invoke('unmount-phone-storage', driveLetter)
+  unmountPhoneStorage: (driveLetter) => ipcRenderer.invoke('unmount-phone-storage', driveLetter),
+  getMacAddress: () => ipcRenderer.invoke('get-mac-address'),
+  sendWakeOnLan: (opts) => ipcRenderer.invoke('send-wake-on-lan', opts),
+  remoteTypeText: (opts) => ipcRenderer.invoke('remote-type-text', opts),
+  toggleFloatingDropzone: () => ipcRenderer.invoke('toggle-floating-dropzone'),
+  getFloatingDropzoneState: () => ipcRenderer.invoke('get-floating-dropzone-state'),
+  onDropzoneStateChanged: (callback) => {
+    const handler = (_, state) => callback(state);
+    ipcRenderer.on('dropzone-state-changed', handler);
+    return () => ipcRenderer.removeListener('dropzone-state-changed', handler);
+  },
+  onDropzoneFilesReceived: (callback) => {
+    const handler = (_, files) => callback(files);
+    ipcRenderer.on('dropzone-files-received', handler);
+    return () => ipcRenderer.removeListener('dropzone-files-received', handler);
+  },
+  notifyDropzoneFilesDropped: (filePaths) => ipcRenderer.send('dropzone-files-dropped', filePaths),
+  readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath)
 });

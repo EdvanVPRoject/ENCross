@@ -12,7 +12,7 @@ function getLocalIpAddresses() {
   for (const name of Object.keys(interfaces)) {
     for (const iface of interfaces[name]) {
       if (iface.family === 'IPv4' && !iface.internal) {
-        addresses.push({ interface: name, address: iface.address });
+        addresses.push({ interface: name, address: iface.address, mac: iface.mac });
       }
     }
   }
