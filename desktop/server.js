@@ -534,6 +534,33 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
+    socket.on('request-desktop-sources', ({ targetId, targetDeviceId }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing request-desktop-sources -> ${resolved}`);
+        io.to(resolved).emit('remote-desktop-sources-requested', { requesterId: socket.id });
+      }
+    });
+
+    socket.on('response-desktop-sources', ({ targetId, targetDeviceId, sources }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        io.to(resolved).emit('remote-desktop-sources-response', { senderId: socket.id, sources: sources || [] });
+      }
+    });
+
+    socket.on('start-remote-display-stream', ({ targetId, targetDeviceId, sourceId, preset }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing start-remote-display-stream -> ${resolved} sourceId: ${sourceId}`);
+        io.to(resolved).emit('remote-start-display-stream', {
+          requesterId: socket.id,
+          sourceId,
+          preset
+        });
+      }
+    });
+
     socket.on('request-remote-camera', ({ targetId, targetDeviceId }) => {
       const resolved = resolveTargetSocket(targetId, targetDeviceId);
       if (resolved) {

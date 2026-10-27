@@ -1202,7 +1202,7 @@ ipcMain.handle('get-desktop-sources', async (_, types = ['screen', 'window']) =>
     const queryTypes = Array.isArray(types) && types.length > 0 ? types : ['screen', 'window'];
     const sources = await desktopCapturer.getSources({
       types: queryTypes,
-      thumbnailSize: { width: 400, height: 240 },
+      thumbnailSize: { width: 320, height: 180 },
       fetchWindowIcons: true
     });
     return sources.map((s) => ({

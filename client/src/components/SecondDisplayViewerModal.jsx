@@ -20,7 +20,8 @@ import {
   Activity,
   Layers,
   Sliders,
-  Sparkles
+  Sparkles,
+  AppWindow
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 
@@ -29,7 +30,8 @@ export function SecondDisplayViewerModal({
   senderName = 'Laptop',
   pingMs = 2,
   onClose,
-  onSendInput
+  onSendInput,
+  onSwitchSource
 }) {
   const videoRef = useRef(null);
   const containerRef = useRef(null);
@@ -804,6 +806,22 @@ export function SecondDisplayViewerModal({
               </button>
             </div>
           </div>
+
+          {/* Switch Window / Display Button */}
+          {onSwitchSource && (
+            <div className="pt-2">
+              <button
+                onClick={() => {
+                  triggerHaptic([25]);
+                  onSwitchSource();
+                }}
+                className="w-full py-2.5 rounded-xl bg-sky-500/15 hover:bg-sky-500/25 active:scale-98 text-sky-300 border border-sky-500/30 font-semibold text-xs flex items-center justify-center gap-2 transition cursor-pointer shadow-sm"
+              >
+                <AppWindow className="w-4 h-4 text-sky-400" />
+                <span>Pilih Layar / Jendela Lain</span>
+              </button>
+            </div>
+          )}
 
           {/* Prominent Keluar Button inside Panel */}
           <div className="mt-auto pt-2 border-t border-white/10">

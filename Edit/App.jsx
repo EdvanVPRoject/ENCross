@@ -251,6 +251,8 @@ export function App() {
   // Virtual Second Display States
   const [isSecondDisplaySourceOpen, setIsSecondDisplaySourceOpen] = useState(false);
   const [secondDisplayTargetPeer, setSecondDisplayTargetPeer] = useState(null);
+  const [remoteDisplaySources, setRemoteDisplaySources] = useState(null);
+  const [isRemoteDisplaySourcesLoading, setIsRemoteDisplaySourcesLoading] = useState(false);
 
   // Remote File Explorer States
   const [isFileExplorerOpen, setIsFileExplorerOpen] = useState(false);
@@ -660,6 +662,55 @@ export function App() {
         setIsSecondDisplaySourceOpen(true);
         return currPeers;
       });
+    });
+
+    // Socket Event: Remote peer (HP) requested desktop display sources (screens and windows)
+    newSocket.on('remote-desktop-sources-requested', async ({ requesterId }) => {
+      if (!requesterId) return;
+      try {
+        let sources = [];
+        if (window.electronAPI?.getDesktopSources) {
+          sources = await window.electronAPI.getDesktopSources(['screen', 'window']);
+        }
+        newSocket.emit('response-desktop-sources', {
+          targetId: requesterId,
+          sources: sources || []
+        });
+      } catch (err) {
+        console.error('[App] getDesktopSources for remote failed:', err);
+        newSocket.emit('response-desktop-sources', {
+          targetId: requesterId,
+          sources: []
+        });
+      }
+    });
+
+    // Socket Event: Received desktop sources from PC on HP
+    newSocket.on('remote-desktop-sources-response', ({ sources }) => {
+      setIsRemoteDisplaySourcesLoading(false);
+      setRemoteDisplaySources(sources || []);
+    });
+
+    // Socket Event: Remote peer (HP) selected display source and requested streaming to start
+    newSocket.on('remote-start-display-stream', async ({ requesterId, sourceId, preset }) => {
+      if (!requesterId) return;
+      try {
+        if (sourceId && window.electronAPI?.setTargetDisplaySource) {
+          await window.electronAPI.setTargetDisplaySource(sourceId);
+        }
+        setIsSecondDisplaySourceOpen(false);
+        setSecondDisplayTargetPeer(null);
+        await executeStream(requesterId, 'second-display');
+        playSound('connect');
+        triggerHaptic([35]);
+        setIncomingToast({
+          senderName: 'Sistem',
+          text: 'Mengalirkan tampilan ke HP...',
+          senderId: null
+        });
+      } catch (err) {
+        console.error('[App] Failed to start remote display stream:', err);
+      }
     });
 
     // Socket Event: Remote camera request with privacy check & user gesture modal
@@ -1852,27 +1903,29 @@ export function App() {
   const handleRequestRemoteScreen = (targetId, targetDeviceId) => {
     if (!socket) return;
     triggerHaptic([30]);
+    const targetPeer = peers.find((p) => p.id === targetId) || (selectedPeer?.id === targetId ? selectedPeer : null);
+    const isTargetPc = targetPeer?.deviceType === 'desktop' || ['Windows', 'macOS', 'Linux'].includes(targetPeer?.os);
+    if (isMobileDevice && isTargetPc) {
+      handleRequestSecondDisplay(targetPeer || { id: targetId, name: 'Laptop / PC', deviceId: targetDeviceId });
+      return;
+    }
     socket.emit('request-remote-screen', { targetId, targetDeviceId });
   };
 
   const handleRequestSecondDisplay = (peer) => {
     if (!peer) return;
     triggerHaptic([30]);
+    setSecondDisplayTargetPeer(peer);
+    setIsSecondDisplaySourceOpen(true);
     if (isMobileDevice) {
+      setIsRemoteDisplaySourcesLoading(true);
+      setRemoteDisplaySources(null);
       if (socket) {
-        socket.emit('request-second-display', {
+        socket.emit('request-desktop-sources', {
           targetId: peer.id,
           targetDeviceId: peer.deviceId
         });
-        setIncomingToast({
-          senderName: peer.name || 'Laptop',
-          text: 'Meminta PC mengalirkan Monitor Tambahan...',
-          senderId: null
-        });
       }
-    } else {
-      setSecondDisplayTargetPeer(peer);
-      setIsSecondDisplaySourceOpen(true);
     }
   };
 
@@ -2517,6 +2570,12 @@ export function App() {
               setIncomingStreamPeerId(null);
             }}
             onSendInput={(cmd) => handleSendInput(cmd, incomingStreamPeerId ? { id: incomingStreamPeerId } : selectedPeer)}
+            onSwitchSource={() => {
+              const target = peers.find((p) => p.id === incomingStreamPeerId) || selectedPeer;
+              if (target) {
+                handleRequestSecondDisplay(target);
+              }
+            }}
           />
         ) : (
           <ScreenViewModal
@@ -2532,18 +2591,48 @@ export function App() {
         )
       )}
 
-      {/* Second Display Source Selector Modal (Desktop side) */}
+      {/* Second Display Source Selector Modal (Desktop & Mobile side) */}
       {isSecondDisplaySourceOpen && (
         <SecondDisplaySourceModal
           isOpen={isSecondDisplaySourceOpen}
           onClose={() => {
             setIsSecondDisplaySourceOpen(false);
             setSecondDisplayTargetPeer(null);
+            setRemoteDisplaySources(null);
+            setIsRemoteDisplaySourcesLoading(false);
           }}
           targetPeer={secondDisplayTargetPeer || selectedPeer}
+          isRemote={isMobileDevice}
+          remoteSources={remoteDisplaySources}
+          isLoadingRemote={isRemoteDisplaySourcesLoading}
+          onRequestRefreshSources={() => {
+            const target = secondDisplayTargetPeer || selectedPeer;
+            if (target && socket) {
+              setIsRemoteDisplaySourcesLoading(true);
+              socket.emit('request-desktop-sources', {
+                targetId: target.id,
+                targetDeviceId: target.deviceId
+              });
+            }
+          }}
           onStartStreaming={(source, preset) => {
             const target = secondDisplayTargetPeer || selectedPeer;
-            if (target) {
+            if (!target) return;
+            if (isMobileDevice) {
+              if (socket) {
+                socket.emit('start-remote-display-stream', {
+                  targetId: target.id,
+                  targetDeviceId: target.deviceId,
+                  sourceId: source?.id || null,
+                  preset: preset || '60fps'
+                });
+                setIncomingToast({
+                  senderName: target.name || 'Laptop',
+                  text: 'Menghubungkan mirror layar PC...',
+                  senderId: null
+                });
+              }
+            } else {
               executeStream(target.id, 'second-display');
             }
           }}

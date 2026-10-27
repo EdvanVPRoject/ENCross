@@ -674,6 +674,36 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Request desktop display sources (screens and windows) from PC
+  socket.on('request-desktop-sources', ({ targetId }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-desktop-sources-requested', {
+        requesterId: socket.id
+      });
+    }
+  });
+
+  // Response with desktop display sources back to requester (e.g. HP)
+  socket.on('response-desktop-sources', ({ targetId, sources }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-desktop-sources-response', {
+        senderId: socket.id,
+        sources: sources || []
+      });
+    }
+  });
+
+  // Request PC to start streaming selected display source to remote peer
+  socket.on('start-remote-display-stream', ({ targetId, sourceId, preset }) => {
+    if (targetId) {
+      io.to(targetId).emit('remote-start-display-stream', {
+        requesterId: socket.id,
+        sourceId,
+        preset
+      });
+    }
+  });
+
   // Request remote peer to start camera stream (e.g. Laptop requesting HP webcam)
   socket.on('request-remote-camera', ({ targetId }) => {
     if (targetId) {
