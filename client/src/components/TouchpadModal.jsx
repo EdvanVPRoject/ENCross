@@ -58,16 +58,6 @@ export function TouchpadModal({
   const inputRef = useRef(null);
   const lastValRef = useRef('');
 
-  // Auto-focus keyboard on mount so virtual keyboard opens immediately
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (inputRef.current) {
-        inputRef.current.focus();
-      }
-    }, 200);
-    return () => clearTimeout(timer);
-  }, []);
-
   // Custom Macros State
   const [customMacros, setCustomMacros] = useState(() => {
     try {
@@ -118,6 +108,10 @@ export function TouchpadModal({
 
   // Touchpad Events
   const handleTouchStart = (e) => {
+    // Smoothly blur keyboard focus if user touches the trackpad to prevent keyboard fight
+    if (isKeyboardFocused && inputRef.current) {
+      inputRef.current.blur();
+    }
     if (e.touches.length === 1) {
       const t = e.touches[0];
       touchState.current = {
@@ -319,14 +313,17 @@ export function TouchpadModal({
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-2.5 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 select-none font-sans"
+      className="fixed inset-0 z-50 flex flex-col justify-start sm:justify-center items-center p-0 sm:p-4 bg-black/70 backdrop-blur-md animate-in fade-in duration-200 select-none font-sans"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-lg max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-ios-sheet smooth-gpu"
+        className="apple-card border-0 sm:border border-black/10 dark:border-white/10 rounded-b-3xl sm:rounded-3xl w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden smooth-gpu"
       >
         {/* 1. Header Bar */}
-        <div className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3 shrink-0">
+        <div
+          style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 0.75rem)' }}
+          className="flex items-center justify-between px-4 sm:px-5 py-3 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3 shrink-0"
+        >
           <div className="flex items-center gap-2.5 min-w-0">
             <div className="p-2 rounded-xl bg-gradient-to-tr from-emerald-500 to-blue-500 text-white shadow-xs">
               <MousePointer className="w-4 h-4" />
@@ -389,7 +386,7 @@ export function TouchpadModal({
         )}
 
         {/* Scrollable Body */}
-        <div className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 flex flex-col gap-3.5">
+        <div className="flex-1 overflow-y-auto no-scrollbar p-3 sm:p-4 flex flex-col gap-3.5 overscroll-contain">
           {/* ============================================================== */}
           {/* SECTION A: DI ATASNYA ADA MOUSEPAD (Touchpad Surface on Top)   */}
           {/* ============================================================== */}
@@ -400,7 +397,7 @@ export function TouchpadModal({
               onTouchStart={handleTouchStart}
               onTouchMove={handleTouchMove}
               onTouchEnd={handleTouchEnd}
-              className="h-44 sm:h-52 rounded-2xl bg-black/4 dark:bg-white/5 border border-black/8 dark:border-white/10 flex flex-col items-center justify-center text-center p-4 relative overflow-hidden cursor-crosshair active:border-[#0071e3] transition-colors shadow-inner"
+              className="h-40 sm:h-52 rounded-2xl bg-black/4 dark:bg-white/5 border border-black/8 dark:border-white/10 flex flex-col items-center justify-center text-center p-4 relative overflow-hidden cursor-crosshair active:border-[#0071e3] transition-colors shadow-inner"
               style={{ touchAction: 'none' }}
             >
               {/* Subtle tactile grid lines */}
@@ -479,13 +476,21 @@ export function TouchpadModal({
                 type="button"
                 onClick={() => {
                   triggerHaptic([15]);
-                  inputRef.current?.focus();
+                  if (isKeyboardFocused) {
+                    inputRef.current?.blur();
+                  } else {
+                    inputRef.current?.focus();
+                  }
                 }}
-                className="px-2.5 py-1 rounded-lg bg-[#0071e3]/10 hover:bg-[#0071e3]/15 text-[#0071e3] text-[11px] font-medium flex items-center gap-1 transition active:scale-95 cursor-pointer"
-                title="Buka atau fokuskan Keyboard"
+                className={`px-2.5 py-1 rounded-lg text-[11px] font-medium flex items-center gap-1 transition active:scale-95 cursor-pointer border ${
+                  isKeyboardFocused
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30 font-semibold'
+                    : 'bg-[#0071e3]/10 hover:bg-[#0071e3]/15 text-[#0071e3] border-[#0071e3]/20'
+                }`}
+                title={isKeyboardFocused ? 'Tutup Keyboard' : 'Buka Keyboard'}
               >
                 <Keyboard className="w-3.5 h-3.5" />
-                <span>Buka Keyboard</span>
+                <span>{isKeyboardFocused ? 'Tutup Keyboard' : 'Buka Keyboard'}</span>
               </button>
             </div>
 
@@ -501,7 +506,6 @@ export function TouchpadModal({
               <Keyboard className="w-4 h-4 text-zinc-400 mr-2 shrink-0" />
               <input
                 ref={inputRef}
-                autoFocus
                 type="text"
                 value={inputText}
                 onChange={handleInputChange}
