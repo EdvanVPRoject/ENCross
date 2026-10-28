@@ -111,63 +111,64 @@ export function DeviceDiscoveryView({
   return (
     <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 flex flex-col gap-5 animate-view-enter smooth-gpu">
       {/* 1. Header Card: "Perangkat Ini" (My Device - Apple AirDrop Header) */}
-      <div className="apple-card p-4 sm:p-5 shadow-sm relative overflow-hidden transition-all duration-200">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 relative z-10">
-          <div className="flex items-center gap-3.5">
-            <div className="p-3 bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 rounded-2xl shrink-0 shadow-xs">
-              {getDeviceIcon(selfInfo?.deviceType || 'laptop', 'w-6 h-6 sm:w-7 sm:h-7')}
+      <div className="apple-card px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm relative overflow-hidden transition-all duration-200">
+        <div className="flex items-center justify-between gap-3 relative z-10">
+          <div className="flex items-center gap-3 min-w-0">
+            <div className="relative shrink-0">
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shadow-xs">
+                {getDeviceIcon(selfInfo?.deviceType || 'laptop', 'w-5 h-5 sm:w-6 sm:h-6 text-blue-500 dark:text-blue-400')}
+              </div>
+              <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" />
             </div>
             <div className="min-w-0">
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1.5">
                 <span className="text-[10px] uppercase tracking-wider font-semibold text-zinc-500 dark:text-zinc-400 font-sans">
                   Perangkat Ini
                 </span>
-                <span className="inline-flex items-center gap-1.5 text-[10px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.2 rounded-full font-sans font-medium">
-                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                  Siap Terhubung
+                <span className="inline-flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full font-medium">
+                  <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                  Siap
                 </span>
               </div>
-              <h2 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white truncate flex items-center gap-2">
-                {selfInfo?.name || selfInfo?.deviceName || 'ENCross Hub'}
+              <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1.5">
+                <span>{selfInfo?.name || selfInfo?.deviceName || 'ENCross Hub'}</span>
                 <button
                   onClick={onOpenRename}
-                  className="text-xs text-blue-500 hover:text-blue-600 dark:text-blue-400 font-normal underline cursor-pointer"
+                  className="text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 font-normal underline cursor-pointer"
                   title="Ganti nama perangkat"
                 >
                   Ubah
                 </button>
               </h2>
-              <div className="flex items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 font-mono mt-0.5">
-                <span className="font-medium text-zinc-700 dark:text-zinc-300">{resolvedLocalIp}</span>
-                <span>•</span>
-                <span>{selfInfo?.os || 'System'}</span>
-              </div>
+              <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono truncate mt-0.5">
+                {resolvedLocalIp} • {selfInfo?.os || 'System'}
+              </p>
             </div>
           </div>
 
           {/* Quick Action Capsule Buttons */}
-          <div className="flex items-center gap-2 self-start sm:self-center shrink-0">
+          <div className="flex items-center gap-1.5 shrink-0">
             <button
               onClick={onOpenConnect}
-              className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
+              className="flex items-center gap-1 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
               title="Hubungkan manual via IP address"
             >
               <Link className="w-3.5 h-3.5 text-blue-500" />
-              <span>Input IP</span>
+              <span className="hidden xs:inline">Input IP</span>
             </button>
 
             <button
               onClick={onOpenQR}
-              className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
+              className="flex items-center gap-1 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
               title="Tampilkan QR code untuk scan dari HP"
             >
               <QrCode className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-              <span>QR Code</span>
+              <span className="hidden xs:inline">QR</span>
             </button>
 
             <button
               onClick={handleRefreshScan}
-              className="p-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-600 dark:text-zinc-300 border border-black/8 dark:border-white/10 rounded-full transition cursor-pointer shadow-xs"
+              className="p-1.5 sm:p-2 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-600 dark:text-zinc-300 border border-black/8 dark:border-white/10 rounded-full transition cursor-pointer shadow-xs"
               title="Pindai ulang jaringan lokal"
             >
               <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-blue-500' : ''}`} />
@@ -398,35 +399,11 @@ export function DeviceDiscoveryView({
                               triggerHaptic([30]);
                               onOpenTouchpad?.(peer);
                             }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-semibold transition active:scale-95 border border-emerald-500/20"
-                            title="Buka Touchpad & Mouse PC"
+                            className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition active:scale-95 border border-emerald-500/25 shadow-xs"
+                            title="Buka Remote Input: Mousepad, Keyboard Realtime & MacroPad PC"
                           >
                             <MousePointer className="w-3.5 h-3.5 shrink-0" />
-                            <span>Touchpad</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenRemoteKeyboard?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
-                            title="Ketik & Dikte Suara ke PC"
-                          >
-                            <Keyboard className="w-3.5 h-3.5 shrink-0" />
-                            <span>Ketik</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenPresentationClicker?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold transition active:scale-95 border border-amber-500/20"
-                            title="Pengendali Slide Presentasi"
-                          >
-                            <Presentation className="w-3.5 h-3.5 shrink-0" />
-                            <span>Clicker</span>
+                            <span>Remote Input (Mouse, Ketik & Macro)</span>
                           </button>
 
                           <button
@@ -435,22 +412,10 @@ export function DeviceDiscoveryView({
                               onOpenSecondDisplay?.(peer);
                             }}
                             className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-semibold transition active:scale-95 border border-sky-500/20"
-                            title="Monitor Tambahan Nirkabel"
+                            title="Mirroring Layar Laptop"
                           >
                             <Tv className="w-3.5 h-3.5 shrink-0" />
-                            <span>Monitor</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenMacroPad?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-400 text-xs font-semibold transition active:scale-95 border border-purple-500/20"
-                            title="Buka Macro Pad & Shortcut"
-                          >
-                            <Layers className="w-3.5 h-3.5 shrink-0" />
-                            <span>Macro</span>
+                            <span>Mirror Layar</span>
                           </button>
 
                           <button
@@ -461,23 +426,23 @@ export function DeviceDiscoveryView({
                                 fileInputRef.current.click();
                               }
                             }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
+                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
                             title="Kirim file langsung ke PC"
                           >
-                            <Upload className="w-3.5 h-3.5 shrink-0 text-blue-500" />
+                            <Upload className="w-3.5 h-3.5 shrink-0" />
                             <span>Kirim File</span>
                           </button>
 
                           <button
                             onClick={() => {
                               triggerHaptic([30]);
-                              onOpenTextSync?.(peer);
+                              onOpenPresentationClicker?.(peer);
                             }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
-                            title="Kirim pesan / clipboard"
+                            className="col-span-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold transition active:scale-95 border border-amber-500/20"
+                            title="Pengendali Slide Presentasi PowerPoint / Canva"
                           >
-                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-sky-400" />
-                            <span>Teks</span>
+                            <Presentation className="w-3.5 h-3.5 shrink-0" />
+                            <span>Clicker Slide Presentasi</span>
                           </button>
                         </>
                       )}
@@ -526,39 +491,26 @@ export function DeviceDiscoveryView({
             })}
           </div>
         ) : (
-          /* Empty State: Pure Apple Clean Minimalist Empty State with Organic AirDrop Breathing Beacon */
-          <div className="apple-card border-dashed p-8 sm:p-12 text-center flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="relative w-18 h-18 flex items-center justify-center mb-3">
-              <div className="airdrop-beacon absolute inset-0 border border-blue-500/25" />
-              <div className="airdrop-beacon absolute inset-0 border border-blue-500/20" style={{ animationDelay: '1s' }} />
-              <div className="w-14 h-14 rounded-full bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 flex items-center justify-center relative z-10 shadow-xs">
-                <Smartphone className="w-6 h-6 text-zinc-400 dark:text-zinc-500" />
+          /* Empty State: Sleek Apple AirDrop Radar Scanner Beacon */
+          <div className="apple-card border border-dashed border-black/10 dark:border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="relative w-20 h-20 flex items-center justify-center mb-4">
+              <div className="absolute inset-0 rounded-full border border-blue-500/25 airdrop-beacon" />
+              <div className="absolute inset-0 rounded-full border border-blue-500/20 airdrop-beacon" style={{ animationDelay: '1s' }} />
+              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center relative z-10 shadow-xs">
+                <Wifi className="w-6 h-6 text-blue-500 animate-pulse" />
               </div>
             </div>
 
-            <h4 className="text-base font-semibold text-zinc-900 dark:text-white mb-1">
-              Mencari Perangkat di Sekitar
+            <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white mb-1.5">
+              Mencari Perangkat di Sekitar...
             </h4>
-            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto mb-5 leading-relaxed">
-              Buka aplikasi ENCross di ponsel atau laptop lain dalam jaringan Wi-Fi lokal yang sama. Perangkat akan otomatis terdeteksi di sini.
+            <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
+              Buka aplikasi ENCross di laptop atau HP lain dalam satu jaringan Wi-Fi lokal. Perangkat akan otomatis muncul di sini.
             </p>
 
-            <div className="flex flex-wrap items-center justify-center gap-2.5">
-              <button
-                onClick={onOpenConnect}
-                className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-4 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
-              >
-                <Link className="w-3.5 h-3.5 text-blue-500" />
-                <span>Hubungkan Manual via IP</span>
-              </button>
-
-              <button
-                onClick={onOpenQR}
-                className="ios-pressable flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-4 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
-              >
-                <QrCode className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-                <span>Pindai QR Code</span>
-              </button>
+            <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 bg-black/3 dark:bg-white/3 px-3.5 py-1.5 rounded-full border border-black/6 dark:border-white/6">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+              <span>Gunakan tombol <b>Input IP</b> atau <b>QR</b> di atas untuk hubungkan manual</span>
             </div>
           </div>
         )}

@@ -938,73 +938,48 @@ export function DeviceWorkspace({
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {/* 1. Remote Touchpad & Numpad */}
+              {/* 1. Unified Remote Input (Mousepad + Keyboard Realtime + MacroPad PC) */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
                   onOpenTouchpad?.(peer);
                 }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+                className="col-span-1 sm:col-span-2 ios-pressable flex items-start gap-4 p-4.5 rounded-2xl bg-gradient-to-br from-emerald-500/10 via-blue-500/5 to-purple-500/10 hover:from-emerald-500/15 hover:via-blue-500/10 hover:to-purple-500/15 border-2 border-emerald-500/30 text-left transition cursor-pointer shadow-sm group relative overflow-hidden"
               >
-                <div className="p-3 rounded-2xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 shrink-0 border border-emerald-500/20 group-hover:scale-105 transition-transform">
+                <div className="p-3 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-500 text-white shrink-0 shadow-md group-hover:scale-105 transition-transform">
                   <MousePointer className="w-6 h-6" />
                 </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                    <span>Remote Mouse & Touchpad</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                    Layar sentuh HP sebagai trackpad presisi, scrolling dua jari, klik kanan, dan numpad PC.
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                      <span>Remote Input Terpadu</span>
+                      <ArrowRight className="w-4 h-4 text-emerald-500 group-hover:translate-x-1 transition-transform" />
+                    </h4>
+                    <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 border border-emerald-500/30">
+                      MOUSE + KEYBOARD + MACROPAD
+                    </span>
+                  </div>
+                  <p className="text-xs text-zinc-600 dark:text-zinc-300 mt-1 leading-relaxed">
+                    Kontrol PC lengkap dalam satu tempat: mousepad sentuh presisi & scroll dua jari, keyboard realtime PC dengan tombol Enter & shortcut, serta tombol Stream Deck / MacroPad cepat.
                   </p>
+                  <div className="flex items-center gap-3 mt-2 text-[11px] text-zinc-500 dark:text-zinc-400 font-medium flex-wrap">
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Touchpad Presisi
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-blue-500" />
+                      Keyboard Realtime
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <span className="w-1.5 h-1.5 rounded-full bg-purple-500" />
+                      Shortcut MacroPad
+                    </span>
+                  </div>
                 </div>
               </button>
 
-              {/* 2. Macro Pad & Stream Deck */}
-              <button
-                onClick={() => {
-                  triggerHaptic([30]);
-                  onOpenMacroPad?.(peer);
-                }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
-              >
-                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0 border border-purple-500/20 group-hover:scale-105 transition-transform">
-                  <Layers className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                    <span>Macro Pad & Shortcut PC</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                    Tombol pintasan cepat Stream Deck untuk OBS, Windows, volume multimedia, dan custom macro.
-                  </p>
-                </div>
-              </button>
-
-              {/* 3. Remote Keyboard & Dikte Suara */}
-              <button
-                onClick={() => {
-                  triggerHaptic([30]);
-                  onOpenRemoteKeyboard?.(peer);
-                }}
-                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
-              >
-                <div className="p-3 rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 shrink-0 border border-indigo-500/20 group-hover:scale-105 transition-transform">
-                  <Keyboard className="w-6 h-6" />
-                </div>
-                <div>
-                  <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                    <span>Keyboard & Dikte Suara</span>
-                    <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
-                  </h4>
-                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                    Ketik teks panjang atau gunakan fitur Speech-to-Text (Mic Gboard) HP langsung ke PC.
-                  </p>
-                </div>
-              </button>
-
-              {/* 4. Pengendali Presentasi / Clicker */}
+              {/* 2. Pengendali Presentasi / Clicker */}
               <button
                 onClick={() => {
                   triggerHaptic([30]);
@@ -1026,7 +1001,7 @@ export function DeviceWorkspace({
                 </div>
               </button>
 
-              {/* 5. Monitor Tambahan Nirkabel */}
+              {/* 3. Monitor Tambahan Nirkabel */}
               {FEATURE_TOGGLES.enableSecondDisplay !== false && (
                 <button
                   onClick={() => {
@@ -1040,11 +1015,11 @@ export function DeviceWorkspace({
                   </div>
                   <div>
                     <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
-                      <span>Monitor Tambahan Nirkabel</span>
+                      <span>Mirror & Monitor Layar</span>
                       <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
                     </h4>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
-                      Jadikan HP/Tablet sebagai layar kedua PC atau alirkan jendela aplikasi khusus dengan kontrol sentuh 60 FPS.
+                      Jadikan HP/Tablet sebagai monitor kedua PC atau cermin layar laptop dengan kontrol sentuh 60 FPS.
                     </p>
                   </div>
                 </button>
