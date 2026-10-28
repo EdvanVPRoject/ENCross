@@ -67,22 +67,46 @@ export function SecondDisplayViewerModal({
 
   // 1. Fullscreen & Orientation Lock on Mount
   useEffect(() => {
-    // Attempt system orientation lock to landscape
+    // 1. Native Android Orientation Lock (Immediate sensor landscape)
     try {
-      if (screen.orientation && screen.orientation.lock) {
+      if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+        window.AndroidDownloader.setScreenOrientation('landscape');
+      }
+    } catch (_) {}
+
+    // 2. Web Screen Orientation API (Standard W3C)
+    try {
+      if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.lock) {
         screen.orientation.lock('landscape').catch(() => {});
       }
     } catch (_) {}
 
-    // Auto-request fullscreen for true borderless StarDesk experience
+    // 3. Auto-request fullscreen for true borderless StarDesk experience
     try {
       if (containerRef.current && containerRef.current.requestFullscreen) {
-        containerRef.current.requestFullscreen().catch(() => {});
+        containerRef.current.requestFullscreen()
+          .then(() => {
+            // Re-attempt orientation lock once in fullscreen for strict browsers
+            try {
+              if (screen.orientation?.lock) {
+                screen.orientation.lock('landscape').catch(() => {});
+              }
+            } catch (_) {}
+          })
+          .catch(() => {});
       }
     } catch (_) {}
 
     const handleFullscreenChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement));
+      const isFs = Boolean(document.fullscreenElement);
+      setIsFullscreen(isFs);
+      if (isFs) {
+        try {
+          if (screen.orientation?.lock) {
+            screen.orientation.lock('landscape').catch(() => {});
+          }
+        } catch (_) {}
+      }
     };
     document.addEventListener('fullscreenchange', handleFullscreenChange);
 
@@ -98,9 +122,14 @@ export function SecondDisplayViewerModal({
     return () => {
       document.removeEventListener('fullscreenchange', handleFullscreenChange);
       window.removeEventListener('keydown', handleKeyDown);
-      // Unlock orientation on exit
+      // Restore orientation on exit
       try {
-        if (screen.orientation && screen.orientation.unlock) {
+        if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+          window.AndroidDownloader.setScreenOrientation('unspecified');
+        }
+      } catch (_) {}
+      try {
+        if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.unlock) {
           screen.orientation.unlock();
         }
       } catch (_) {}
@@ -171,7 +200,12 @@ export function SecondDisplayViewerModal({
       document.exitFullscreen().catch(() => {});
     }
     try {
-      if (screen.orientation && screen.orientation.unlock) {
+      if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+        window.AndroidDownloader.setScreenOrientation('unspecified');
+      }
+    } catch (_) {}
+    try {
+      if (typeof screen !== 'undefined' && screen.orientation && screen.orientation.unlock) {
         screen.orientation.unlock();
       }
     } catch (_) {}

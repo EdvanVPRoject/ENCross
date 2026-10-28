@@ -28,6 +28,35 @@ export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCam
   const [isMuted, setIsMuted] = useState(true);
   const [showObsGuide, setShowObsGuide] = useState(false);
 
+  // Screen mirroring landscape orientation lock
+  useEffect(() => {
+    if (mode !== 'camera') {
+      try {
+        if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+          window.AndroidDownloader.setScreenOrientation('landscape');
+        }
+      } catch (_) {}
+      try {
+        if (typeof screen !== 'undefined' && screen.orientation?.lock) {
+          screen.orientation.lock('landscape').catch(() => {});
+        }
+      } catch (_) {}
+    }
+
+    return () => {
+      try {
+        if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+          window.AndroidDownloader.setScreenOrientation('unspecified');
+        }
+      } catch (_) {}
+      try {
+        if (typeof screen !== 'undefined' && screen.orientation?.unlock) {
+          screen.orientation.unlock();
+        }
+      } catch (_) {}
+    };
+  }, [mode]);
+
   useEffect(() => {
     const video = videoRef.current;
     if (video && stream) {
@@ -247,6 +276,16 @@ export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCam
             <button
               onClick={() => {
                 triggerHaptic([30]);
+                try {
+                  if (typeof window !== 'undefined' && window.AndroidDownloader?.setScreenOrientation) {
+                    window.AndroidDownloader.setScreenOrientation('unspecified');
+                  }
+                } catch (_) {}
+                try {
+                  if (typeof screen !== 'undefined' && screen.orientation?.unlock) {
+                    screen.orientation.unlock();
+                  }
+                } catch (_) {}
                 onClose();
               }}
               className="p-2 rounded-full text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white hover:bg-black/5 dark:hover:bg-white/10 transition cursor-pointer"

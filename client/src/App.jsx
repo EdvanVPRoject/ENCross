@@ -2597,6 +2597,11 @@ export function App() {
             setSecondDisplayTargetPeer(null);
             setRemoteDisplaySources(null);
             setIsRemoteDisplaySourcesLoading(false);
+            try {
+              if (window.AndroidDownloader?.setScreenOrientation) {
+                window.AndroidDownloader.setScreenOrientation('unspecified');
+              }
+            } catch (_) {}
           }}
           targetPeer={secondDisplayTargetPeer || selectedPeer}
           isRemote={isMobileDevice}
@@ -2616,6 +2621,11 @@ export function App() {
             const target = secondDisplayTargetPeer || selectedPeer;
             if (!target) return;
             if (isMobileDevice) {
+              try {
+                if (window.AndroidDownloader?.setScreenOrientation) {
+                  window.AndroidDownloader.setScreenOrientation('landscape');
+                }
+              } catch (_) {}
               if (socket) {
                 socket.emit('start-remote-display-stream', {
                   targetId: target.id,

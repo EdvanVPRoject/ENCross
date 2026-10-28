@@ -3,6 +3,7 @@ package com.vancross.app;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.content.pm.ActivityInfo;
 import android.content.BroadcastReceiver;
 import android.media.AudioManager;
 import android.media.Ringtone;
@@ -333,6 +334,23 @@ public class MainActivity extends BridgeActivity {
             @JavascriptInterface
             public void minimizeToBackground() {
                 runOnUiThread(() -> moveTaskToBack(true));
+            }
+
+            @JavascriptInterface
+            public void setScreenOrientation(String orientation) {
+                runOnUiThread(() -> {
+                    try {
+                        if ("landscape".equalsIgnoreCase(orientation)) {
+                            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_SENSOR_LANDSCAPE);
+                        } else if ("portrait".equalsIgnoreCase(orientation)) {
+                            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_PORTRAIT);
+                        } else {
+                            setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED);
+                        }
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                });
             }
         }, "AndroidDownloader");
 
