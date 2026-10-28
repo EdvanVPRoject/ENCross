@@ -61,5 +61,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
   notifyDropzoneFilesDropped: (filePaths) => ipcRenderer.send('dropzone-files-dropped', filePaths),
   readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath),
   getDesktopSources: (types) => ipcRenderer.invoke('get-desktop-sources', types),
-  setTargetDisplaySource: (sourceId) => ipcRenderer.invoke('set-target-display-source', sourceId)
+  setTargetDisplaySource: (sourceId) => ipcRenderer.invoke('set-target-display-source', sourceId),
+  launchPcApp: (opts) => ipcRenderer.invoke('launch-pc-app', opts)
 });

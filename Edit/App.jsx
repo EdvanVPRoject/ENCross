@@ -23,6 +23,7 @@ import { PresentationClickerModal } from './components/PresentationClickerModal'
 import { WakeOnLanModal } from './components/WakeOnLanModal';
 import { SecondDisplaySourceModal } from './components/SecondDisplaySourceModal';
 import { SecondDisplayViewerModal } from './components/SecondDisplayViewerModal';
+import { PcAppLauncherModal } from './components/PcAppLauncherModal';
 import { ScreenMirroringOverlay } from './components/ScreenMirroringOverlay';
 import { PairingModal } from './components/PairingModal';
 import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
@@ -272,6 +273,8 @@ export function App() {
   const [incomingStreamMode, setIncomingStreamMode] = useState('screen');
   const [incomingStreamPeerId, setIncomingStreamPeerId] = useState(null);
   const [screenSenderName, setScreenSenderName] = useState('');
+  const [isFullScreenMirrorOpen, setIsFullScreenMirrorOpen] = useState(false);
+  const [isPcAppLauncherOpen, setIsPcAppLauncherOpen] = useState(false);
   const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
   const [activeSharingMode, setActiveSharingMode] = useState(null);
   const [cameraFacingMode, setCameraFacingMode] = useState('environment');
@@ -554,6 +557,8 @@ export function App() {
       setIncomingStream(stream);
       setIncomingStreamMode(mode || 'screen');
       setIncomingStreamPeerId(peerId);
+      // When screen mirror arrives, do NOT hijack mobile screen to fullscreen:
+      setIsFullScreenMirrorOpen(false);
       playSound('connect');
       triggerHaptic([40]);
       setPeers((currPeers) => {
@@ -712,6 +717,40 @@ export function App() {
         });
       } catch (err) {
         console.error('[App] Failed to start remote display stream:', err);
+      }
+    });
+
+    // Socket Event: Remote peer requested to launch and stream a PC application
+    newSocket.on('remote-launch-pc-app', async ({ requesterId, command, appName }) => {
+      if (!requesterId || !command) return;
+      try {
+        if (window.electronAPI?.launchPcApp) {
+          await window.electronAPI.launchPcApp({ command });
+        }
+        setIncomingToast({
+          senderName: 'Sistem',
+          text: `Membuka ${appName || 'aplikasi'} di PC...`,
+          senderId: null
+        });
+        setTimeout(async () => {
+          if (window.electronAPI?.getDesktopSources) {
+            const sources = await window.electronAPI.getDesktopSources(['window', 'screen']);
+            newSocket.emit('response-desktop-sources', {
+              targetId: requesterId,
+              sources: sources || []
+            });
+            const matched = sources?.find((s) =>
+              s.name?.toLowerCase().includes((appName || '').toLowerCase()) ||
+              s.id?.startsWith('window')
+            );
+            if (matched && window.electronAPI?.setTargetDisplaySource) {
+              await window.electronAPI.setTargetDisplaySource(matched.id);
+            }
+            await executeStream(requesterId, 'second-display');
+          }
+        }, 1500);
+      } catch (err) {
+        console.error('[App] Failed to launch PC app for remote:', err);
       }
     });
 
@@ -2283,6 +2322,17 @@ export function App() {
                 onClearTransferHistory={handleClearTransferHistory}
                 onOpenFolder={handleOpenFolder}
                 autoStartMirror={autoStartMirror}
+                onOpenFullScreenMirror={() => setIsFullScreenMirrorOpen(true)}
+                onStopIncomingMirror={() => {
+                  setIncomingStream(null);
+                  setIncomingStreamPeerId(null);
+                  setIsFullScreenMirrorOpen(false);
+                }}
+                onOpenPcAppLauncher={(target) => {
+                  const p = target || selectedPeer;
+                  if (p) setSecondDisplayTargetPeer(p);
+                  setIsPcAppLauncherOpen(true);
+                }}
               />
             </ErrorBoundary>
           </div>
@@ -2558,22 +2608,23 @@ export function App() {
             }}
           />
         ) : (incomingStreamMode === 'second-display' || incomingStreamMode === 'screen') ? (
-          <SecondDisplayViewerModal
-            stream={incomingStream}
-            senderName={screenSenderName || 'Laptop'}
-            pingMs={pingMs}
-            onClose={() => {
-              setIncomingStream(null);
-              setIncomingStreamPeerId(null);
-            }}
-            onSendInput={(cmd) => handleSendInput(cmd, incomingStreamPeerId ? { id: incomingStreamPeerId } : selectedPeer)}
-            onSwitchSource={() => {
-              const target = peers.find((p) => p.id === incomingStreamPeerId) || selectedPeer;
-              if (target) {
-                handleRequestSecondDisplay(target);
-              }
-            }}
-          />
+          isFullScreenMirrorOpen ? (
+            <SecondDisplayViewerModal
+              stream={incomingStream}
+              senderName={screenSenderName || 'Laptop'}
+              pingMs={pingMs}
+              onClose={() => {
+                setIsFullScreenMirrorOpen(false);
+              }}
+              onSendInput={(cmd) => handleSendInput(cmd, incomingStreamPeerId ? { id: incomingStreamPeerId } : selectedPeer)}
+              onSwitchSource={() => {
+                const target = peers.find((p) => p.id === incomingStreamPeerId) || selectedPeer;
+                if (target) {
+                  handleRequestSecondDisplay(target);
+                }
+              }}
+            />
+          ) : null
         ) : (
           <ScreenViewModal
             stream={incomingStream}
@@ -2641,6 +2692,73 @@ export function App() {
               }
             } else {
               executeStream(target.id, 'second-display');
+            }
+          }}
+        />
+      )}
+
+      {/* PC App Launcher Modal: Buka Aplikasi PC di Layar HP */}
+      {isPcAppLauncherOpen && (
+        <PcAppLauncherModal
+          isOpen={isPcAppLauncherOpen}
+          onClose={() => setIsPcAppLauncherOpen(false)}
+          targetPeer={secondDisplayTargetPeer || selectedPeer}
+          remoteSources={remoteDisplaySources}
+          isLoading={isRemoteDisplaySourcesLoading}
+          onRequestRefresh={() => {
+            const target = secondDisplayTargetPeer || selectedPeer;
+            if (target && socket) {
+              setIsRemoteDisplaySourcesLoading(true);
+              socket.emit('request-desktop-sources', {
+                targetId: target.id,
+                targetDeviceId: target.deviceId
+              });
+            }
+          }}
+          onSelectSource={(source) => {
+            const target = secondDisplayTargetPeer || selectedPeer;
+            if (!target) return;
+            try {
+              if (window.AndroidDownloader?.setScreenOrientation) {
+                window.AndroidDownloader.setScreenOrientation('landscape');
+              }
+            } catch (_) {}
+            if (socket) {
+              socket.emit('start-remote-display-stream', {
+                targetId: target.id,
+                targetDeviceId: target.deviceId,
+                sourceId: source?.id || null,
+                preset: '60fps'
+              });
+              setIsFullScreenMirrorOpen(true);
+              setIncomingToast({
+                senderName: target.name || 'Laptop',
+                text: `Membuka jendela ${source?.name || 'PC'}...`,
+                senderId: null
+              });
+            }
+          }}
+          onLaunchApp={(command, appName) => {
+            const target = secondDisplayTargetPeer || selectedPeer;
+            if (!target) return;
+            try {
+              if (window.AndroidDownloader?.setScreenOrientation) {
+                window.AndroidDownloader.setScreenOrientation('landscape');
+              }
+            } catch (_) {}
+            if (socket) {
+              socket.emit('launch-pc-app', {
+                targetId: target.id,
+                targetDeviceId: target.deviceId,
+                command,
+                appName
+              });
+              setIsFullScreenMirrorOpen(true);
+              setIncomingToast({
+                senderName: target.name || 'Laptop',
+                text: `Meluncurkan ${appName || 'aplikasi'} di PC...`,
+                senderId: null
+              });
             }
           }}
         />

@@ -561,6 +561,18 @@ app.get('/api/media-stream-proxy', (req, res) => {
       }
     });
 
+    socket.on('launch-pc-app', ({ targetId, targetDeviceId, command, appName }) => {
+      const resolved = resolveTargetSocket(targetId, targetDeviceId);
+      if (resolved) {
+        console.log(`[Server] Routing launch-pc-app -> ${resolved} cmd: ${command}`);
+        io.to(resolved).emit('remote-launch-pc-app', {
+          requesterId: socket.id,
+          command,
+          appName
+        });
+      }
+    });
+
     socket.on('request-remote-camera', ({ targetId, targetDeviceId }) => {
       const resolved = resolveTargetSocket(targetId, targetDeviceId);
       if (resolved) {

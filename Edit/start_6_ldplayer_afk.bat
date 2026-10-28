@@ -7,7 +7,7 @@ echo   ROBLOX AFK MANAGER - 6 INSTANCE LDPLAYER 9
 echo ========================================================
 echo.
 echo [1/4] Mengatur konfigurasi hemat daya (15 FPS, No Audio)...
-ldconsole.exe globalsetting --fps 15 --audio 0 --cleanmode 1
+ldconsole.exe globalsetting --fps 15 --audio 0 --cleanmode 0
 
 echo [2/4] Menjalankan 6 Instance LDPlayer...
 for %%i in (0 1 2 3 4 5) do (

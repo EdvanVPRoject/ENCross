@@ -1209,6 +1209,19 @@ ipcMain.handle('read-file-buffer', async (_, filePath) => {
   }
 });
 
+ipcMain.handle('launch-pc-app', async (_, { command }) => {
+  if (!command || typeof command !== 'string') return { success: false, error: 'Command invalid' };
+  try {
+    const sanitized = command.trim();
+    exec(`start "" ${sanitized}`, (err) => {
+      if (err) console.warn('[Electron] launch-pc-app error:', err);
+    });
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
 let targetDisplaySourceId = null;
 
 ipcMain.handle('set-target-display-source', (_, sourceId) => {

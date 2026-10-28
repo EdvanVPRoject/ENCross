@@ -45,7 +45,9 @@ import {
   FolderOpen,
   Trash2,
   Tv,
-  Loader2
+  Loader2,
+  AppWindow,
+  X
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { FEATURE_TOGGLES } from '../config/features';
@@ -91,12 +93,16 @@ export function DeviceWorkspace({
   onToggleDropzone,
   isDropzoneActive,
   onOpenSecondDisplay,
-  autoStartMirror = false
+  autoStartMirror = false,
+  onOpenFullScreenMirror,
+  onStopIncomingMirror,
+  onOpenPcAppLauncher
 }) {
   const fileInputRef = useRef(null);
   const folderInputRef = useRef(null);
   const mirrorContainerRef = useRef(null);
   const videoRef = useRef(null);
+  const clientMirrorVideoRef = useRef(null);
   const rafRef = useRef(null);
 
   const [showHistory, setShowHistory] = useState(true);
@@ -213,6 +219,23 @@ export function DeviceWorkspace({
         try {
           videoEl.pause();
           videoEl.srcObject = null;
+        } catch (_) {}
+      }
+    };
+  }, [incomingStream]);
+
+  // Hook live incoming WebRTC stream for the mobile in-workspace mirror display card
+  useEffect(() => {
+    const previewEl = clientMirrorVideoRef.current;
+    if (incomingStream && previewEl) {
+      previewEl.srcObject = incomingStream;
+      previewEl.play().catch(console.warn);
+    }
+    return () => {
+      if (previewEl) {
+        try {
+          previewEl.pause();
+          previewEl.srcObject = null;
         } catch (_) {}
       }
     };
@@ -1024,7 +1047,103 @@ export function DeviceWorkspace({
                   </div>
                 </button>
               )}
+
+              {/* 4. Buka Aplikasi PC di Layar HP */}
+              <button
+                onClick={() => {
+                  triggerHaptic([30]);
+                  onOpenPcAppLauncher?.(peer);
+                }}
+                className="ios-pressable flex items-start gap-3.5 p-4 rounded-2xl bg-black/3 dark:bg-white/5 hover:bg-black/6 dark:hover:bg-white/8 border border-black/8 dark:border-white/10 text-left transition cursor-pointer shadow-sm group"
+              >
+                <div className="p-3 rounded-2xl bg-purple-500/10 text-purple-600 dark:text-purple-400 shrink-0 border border-purple-500/20 group-hover:scale-105 transition-transform">
+                  <AppWindow className="w-6 h-6" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-1.5">
+                    <h4 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                      <span>Buka Aplikasi PC di HP</span>
+                      <ArrowRight className="w-3.5 h-3.5 text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+                    </h4>
+                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded-full bg-purple-500/20 text-purple-500 dark:text-purple-400 border border-purple-500/30">
+                      Baru
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-1 leading-relaxed">
+                    Pilih jendela terbuka (Chrome, VS Code, Game, Roblox) atau luncurkan aplikasi PC langsung di HP.
+                  </p>
+                </div>
+              </button>
             </div>
+
+            {/* Live Active Mirroring Card underneath Mirror & Monitor Layar */}
+            {incomingStream && (incomingStreamMode === 'second-display' || incomingStreamMode === 'screen') && (
+              <div className="mt-3 p-4 rounded-2xl bg-gradient-to-br from-sky-500/15 via-blue-500/5 to-purple-500/10 border border-sky-500/30 shadow-lg animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500"></span>
+                    </span>
+                    <span className="text-xs font-bold text-sky-600 dark:text-sky-300 uppercase tracking-wider">
+                      Sedang Melakukan Mirroring
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5 text-[10px] font-semibold px-2 py-0.5 rounded-full bg-sky-500/20 text-sky-600 dark:text-sky-300 border border-sky-500/30">
+                    <Tv className="w-3 h-3" />
+                    <span>60 FPS Lancar</span>
+                  </div>
+                </div>
+
+                {/* Live Stream Mini Video Preview */}
+                <div
+                  onClick={onOpenFullScreenMirror}
+                  className="relative w-full aspect-video rounded-xl bg-black overflow-hidden border border-black/10 dark:border-white/10 group cursor-pointer shadow-inner mb-3 flex items-center justify-center"
+                  title="Ketuk untuk membuka tampilan layar penuh"
+                >
+                  <video
+                    ref={clientMirrorVideoRef}
+                    autoPlay
+                    playsInline
+                    muted
+                    className="w-full h-full object-contain pointer-events-none"
+                  />
+                  <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 text-white text-xs font-semibold backdrop-blur-2xs">
+                    <Maximize2 className="w-4 h-4 text-sky-400" />
+                    <span>Buka Layar Penuh</span>
+                  </div>
+                </div>
+
+                {/* Action Controls */}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={onOpenFullScreenMirror}
+                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl bg-sky-600 hover:bg-sky-500 active:scale-95 text-white text-xs font-semibold transition cursor-pointer shadow-sm"
+                  >
+                    <Maximize2 className="w-3.5 h-3.5" />
+                    <span>Buka Layar Penuh</span>
+                  </button>
+
+                  <button
+                    onClick={() => onOpenTouchpad?.(peer)}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition cursor-pointer border border-black/8 dark:border-white/10"
+                    title="Buka Remote Mouse & Keyboard"
+                  >
+                    <MousePointer className="w-3.5 h-3.5 text-emerald-500" />
+                    <span>Remote Input</span>
+                  </button>
+
+                  <button
+                    onClick={onStopIncomingMirror}
+                    className="flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-xl bg-red-500/15 hover:bg-red-500/25 active:scale-95 text-red-600 dark:text-red-300 text-xs font-medium transition cursor-pointer border border-red-500/30"
+                    title="Hentikan Mirroring"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                    <span>Hentikan</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Section 2: Transfer & Penyimpanan Berkas */}
