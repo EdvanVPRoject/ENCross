@@ -10,6 +10,15 @@ const ICE_SERVERS = {
 const CHUNK_SIZE = 64 * 1024; // 64 KB chunks for fast WebRTC throughput
 const BUFFER_THRESHOLD = 8 * 1024 * 1024; // 8 MB backpressure limit
 
+// Enhance SDP for high bitrate and low-latency LAN 60 FPS video streaming
+function boostSdpBitrate(sdp, bitrateKbps = 12000) {
+  if (!sdp || typeof sdp !== 'string') return sdp;
+  return sdp.replace(
+    /(m=video [^\r\n]+(\r?\n)(?:c=[^\r\n]+\r?\n)?)/,
+    `$1b=AS:${bitrateKbps}\r\nb=TIAS:${bitrateKbps * 1000}\r\n`
+  );
+}
+
 // Native Android MediaProjection Screen Mirroring helper
 function startNativeAndroidScreenCapture() {
   return new Promise((resolve, reject) => {
@@ -140,7 +149,9 @@ export class WebRTCManager {
         peerObj.pendingCandidates = [];
       }
 
-      const answer = await pc.createAnswer();
+      const rawAnswer = await pc.createAnswer();
+      const boostedAnswerSdp = boostSdpBitrate(rawAnswer.sdp, 12000);
+      const answer = { type: rawAnswer.type, sdp: boostedAnswerSdp };
       await pc.setLocalDescription(answer);
 
       this.socket.emit('signal-answer', {
@@ -721,34 +732,61 @@ export class WebRTCManager {
       if (hasNativeCapture) {
         stream = await startNativeAndroidScreenCapture();
       } else if (navigator.mediaDevices && navigator.mediaDevices.getDisplayMedia) {
+        const displayVideoConstraints = {
+          frameRate: { ideal: 60, max: 60 },
+          width: { ideal: 1920, max: 1920 },
+          height: { ideal: 1080, max: 1080 },
+          cursor: 'always'
+        };
+
         try {
           stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true,
+            video: displayVideoConstraints,
             audio: Boolean(includeAudio)
           });
         } catch (dispErr) {
           if (includeAudio) {
             try {
               stream = await navigator.mediaDevices.getDisplayMedia({
-                video: true,
+                video: displayVideoConstraints,
                 audio: false
               });
             } catch (fallbackErr) {
-              if (fallbackErr.name === 'NotAllowedError') {
-                throw new Error('Izin berbagi layar dibatalkan.');
+              try {
+                stream = await navigator.mediaDevices.getDisplayMedia({
+                  video: true,
+                  audio: false
+                });
+              } catch (lastErr) {
+                if (fallbackErr.name === 'NotAllowedError' || lastErr.name === 'NotAllowedError') {
+                  throw new Error('Izin berbagi layar dibatalkan.');
+                }
+                throw new Error('Gagal memulai mirroring layar: ' + (fallbackErr.message || 'Tidak didukung'));
               }
-              throw new Error('Gagal memulai mirroring layar: ' + (fallbackErr.message || 'Tidak didukung'));
             }
           } else {
-            if (dispErr.name === 'NotAllowedError') {
-              throw new Error('Izin berbagi layar dibatalkan.');
+            try {
+              stream = await navigator.mediaDevices.getDisplayMedia({
+                video: true,
+                audio: false
+              });
+            } catch (lastErr) {
+              if (dispErr.name === 'NotAllowedError' || lastErr.name === 'NotAllowedError') {
+                throw new Error('Izin berbagi layar dibatalkan.');
+              }
+              throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
             }
-            throw new Error('Gagal memulai mirroring layar: ' + (dispErr.message || 'Tidak didukung'));
           }
         }
       } else {
         throw new Error('Mirroring Layar dari HP dibatasi oleh sistem Android WebView. Gunakan aplikasi ENCross APK untuk siaran layar via MediaProjection.');
       }
+    }
+
+    // Force WebRTC encoder to prioritize fluid 60 FPS motion rather than static detail
+    const videoTrack = stream.getVideoTracks()[0];
+    if (videoTrack && 'contentHint' in videoTrack) {
+      videoTrack.contentHint = 'motion';
     }
 
     peerObj.localStream = stream;
@@ -769,6 +807,48 @@ export class WebRTCManager {
       pc.addTrack(track, stream);
     });
 
+    // Configure video sender for smooth 60 FPS LAN streaming with high bandwidth
+    const senders = pc.getSenders();
+    for (const sender of senders) {
+      if (sender.track && sender.track.kind === 'video') {
+        try {
+          const params = sender.getParameters();
+          if (!params.encodings || params.encodings.length === 0) {
+            params.encodings = [{}];
+          }
+          params.encodings[0].maxBitrate = 12000000; // 12 Mbps
+          params.encodings[0].maxFramerate = 60;
+          params.degradationPreference = 'maintain-framerate';
+          await sender.setParameters(params);
+        } catch (e) {
+          console.warn('[WebRTC] sender parameter adjustment notice:', e);
+        }
+      }
+    }
+
+    // Prioritize hardware-accelerated H.264 codec
+    if (typeof RTCRtpReceiver !== 'undefined' && RTCRtpReceiver.getCapabilities) {
+      try {
+        const videoCaps = RTCRtpReceiver.getCapabilities('video');
+        if (videoCaps && Array.isArray(videoCaps.codecs)) {
+          const h264 = videoCaps.codecs.filter(c => c.mimeType.toLowerCase() === 'video/h264');
+          const others = videoCaps.codecs.filter(c => c.mimeType.toLowerCase() !== 'video/h264');
+          if (h264.length > 0) {
+            const sortedCodecs = [...h264, ...others];
+            pc.getTransceivers().forEach(transceiver => {
+              if (transceiver.sender && transceiver.sender.track && transceiver.sender.track.kind === 'video') {
+                try {
+                  transceiver.setCodecPreferences(sortedCodecs);
+                } catch (_) {}
+              }
+            });
+          }
+        }
+      } catch (codecErr) {
+        console.warn('[WebRTC] setCodecPreferences notice:', codecErr);
+      }
+    }
+
     // Handle user clicking "Stop Sharing" on browser banner or track ended
     const primaryTrack = stream.getVideoTracks()[0] || stream.getAudioTracks()[0];
     if (primaryTrack) {
@@ -777,8 +857,10 @@ export class WebRTCManager {
       };
     }
 
-    // Renegotiate offer
-    const offer = await pc.createOffer();
+    // Renegotiate offer with high bitrate SDP
+    const rawOffer = await pc.createOffer();
+    const boostedOfferSdp = boostSdpBitrate(rawOffer.sdp, 12000);
+    const offer = { type: rawOffer.type, sdp: boostedOfferSdp };
     await pc.setLocalDescription(offer);
     this.socket.emit('signal-offer', {
       targetId: peerId,

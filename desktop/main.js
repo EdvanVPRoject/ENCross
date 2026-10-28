@@ -22,6 +22,13 @@ process.on('unhandledRejection', (reason) => {
   logDebug(`[CRASH] unhandledRejection: ${reason && (reason.stack || reason.message || reason)}`);
 });
 
+// Hardware video acceleration & zero-latency WebRTC flags for smooth 60 FPS mirroring
+app.commandLine.appendSwitch('enable-gpu-rasterization');
+app.commandLine.appendSwitch('enable-zero-copy');
+app.commandLine.appendSwitch('ignore-gpu-blocklist');
+app.commandLine.appendSwitch('enable-features', 'WebRtcHWDecoding,WebRtcHWEncoding,CanvasOopRasterization,D3D11VideoDecoder');
+app.commandLine.appendSwitch('disable-features', 'WebRtcHideLocalIpsWithMdns');
+
 let mainWindow = null;
 let dropzoneWindow = null;
 let tray = null;

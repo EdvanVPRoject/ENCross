@@ -438,7 +438,7 @@ export function SecondDisplayViewerModal({
           autoPlay
           playsInline
           muted={isMuted}
-          className={`w-full h-full pointer-events-none transition-all duration-200 ${
+          className={`w-full h-full pointer-events-none ${
             fitMode === 'fill'
               ? 'object-fill'
               : fitMode === 'cover'

@@ -42,7 +42,6 @@ com.android.bluetooth
 com.android.bluetoothmidiservice
 com.android.traceur
 com.android.traceur.auto_generated_rro_product__
-com.android.vending
 com.android.cameraextensions
 com.android.companiondevicemanager
 com.android.bookmarkprovider

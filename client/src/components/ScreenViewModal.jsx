@@ -303,7 +303,7 @@ export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCam
             autoPlay
             playsInline
             muted={isMuted}
-            className="w-full h-full object-contain cursor-pointer transition-transform duration-200"
+            className="w-full h-full object-contain cursor-pointer"
             style={{
               transform: `${isMirrored ? 'scaleX(-1)' : ''} rotate(${rotation}deg)`
             }}
