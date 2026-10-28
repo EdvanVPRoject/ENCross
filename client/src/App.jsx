@@ -1072,10 +1072,10 @@ export function App() {
       }
     });
 
-    // Socket Event: Mutual Real-time Connection & Workspace Synchronization
+    // Socket Event: Mutual Real-time Connection Synchronization (pairing status only, independent workspace navigation)
     newSocket.on('connection-sync', ({ senderId, senderDeviceId, status, requester }) => {
       console.log(`[Connection Sync Event] From ${requester?.name} (${senderId}), status: ${status}`);
-      if (status === 'workspace-open' || status === 'connected') {
+      if (status === 'connected') {
         playSound('connect');
         triggerHaptic([30]);
         const peerObj = {
@@ -1091,14 +1091,8 @@ export function App() {
           senderName: peerObj.name,
           text: `✓ ${peerObj.name} terhubung secara real-time.`
         });
-        if (window.electronAPI) {
-          setSelectedPeer((curr) => curr || peerObj);
-        }
-      } else if (status === 'workspace-close') {
+      } else if (status === 'disconnected') {
         setActivePeerConnection(null);
-        if (window.electronAPI) {
-          setSelectedPeer(null);
-        }
       }
     });
 
@@ -1463,25 +1457,9 @@ export function App() {
 
   const handleSelectDevice = (peer) => {
     setSelectedPeer(peer);
-    if (socket && peer.id) {
-      socket.emit('connection-sync', {
-        targetId: peer.id,
-        targetDeviceId: peer.deviceId,
-        status: 'workspace-open',
-        requester: selfInfo
-      });
-    }
   };
 
   const handleBackFromWorkspace = () => {
-    if (socket && selectedPeer?.id) {
-      socket.emit('connection-sync', {
-        targetId: selectedPeer.id,
-        targetDeviceId: selectedPeer.deviceId,
-        status: 'workspace-close',
-        requester: selfInfo
-      });
-    }
     setSelectedPeer(null);
     setAutoStartMirror(false);
   };
