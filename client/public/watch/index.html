@@ -1,0 +1,696 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>ENCross Wear OS Remote</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+    }
+
+    body {
+      background-color: #000000;
+      color: #ffffff;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Circular Screen Wrapper (Optimized for Wear OS round bezels) */
+    .watch-container {
+      position: relative;
+      width: 100vw;
+      height: 100vh;
+      max-width: 480px;
+      max-height: 480px;
+      border-radius: 50%;
+      background: #000000;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 24px 22px;
+    }
+
+    /* Top Status Bar */
+    .status-bar {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 10;
+      margin-top: 2px;
+    }
+
+    .time-text {
+      font-size: 11px;
+      font-weight: 700;
+      color: #94a3b8;
+      letter-spacing: 0.5px;
+    }
+
+    .page-title {
+      font-size: 11px;
+      font-weight: 800;
+      text-transform: uppercase;
+      letter-spacing: 1.2px;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      margin-top: 1px;
+    }
+
+    .connection-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: #22c55e;
+      box-shadow: 0 0 6px #22c55e;
+      transition: background-color 0.3s;
+    }
+
+    .connection-dot.offline {
+      background-color: #ef4444;
+      box-shadow: 0 0 6px #ef4444;
+    }
+
+    /* Sliding Viewport */
+    .slider-viewport {
+      width: 100%;
+      height: 100%;
+      position: relative;
+      overflow: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slides-wrapper {
+      display: flex;
+      width: 400%;
+      height: 100%;
+      transition: transform 0.28s cubic-bezier(0.2, 0.9, 0.3, 1);
+    }
+
+    .slide-page {
+      width: 25%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+      padding: 6px 12px;
+    }
+
+    /* Common Button Styles */
+    .wear-btn {
+      background: #18181b;
+      color: #f4f4f5;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: transform 0.1s, background-color 0.12s, border-color 0.12s;
+      outline: none;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .wear-btn:active {
+      transform: scale(0.91);
+      background-color: #27272a;
+      border-color: rgba(255, 255, 255, 0.3);
+    }
+
+    /* Mode 1: Media Layout */
+    .media-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .media-vol-btn {
+      width: 110px;
+      height: 34px;
+      font-size: 13px;
+      font-weight: 700;
+      background: rgba(30, 41, 59, 0.85);
+      border-color: rgba(56, 189, 248, 0.3);
+      color: #38bdf8;
+    }
+
+    .media-vol-btn:active {
+      background: rgba(56, 189, 248, 0.25);
+    }
+
+    .media-center-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      width: 100%;
+    }
+
+    .media-track-btn {
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      font-size: 16px;
+      background: #27272a;
+    }
+
+    .media-play-btn {
+      width: 66px;
+      height: 66px;
+      border-radius: 50%;
+      font-size: 24px;
+      background: linear-gradient(135deg, #059669, #10b981);
+      border: 2px solid rgba(52, 211, 153, 0.5);
+      color: #ffffff;
+      box-shadow: 0 0 16px rgba(16, 185, 129, 0.4);
+    }
+
+    .media-play-btn:active {
+      transform: scale(0.88);
+      background: linear-gradient(135deg, #047857, #059669);
+    }
+
+    .media-mute-btn {
+      width: 72px;
+      height: 26px;
+      font-size: 10px;
+      font-weight: 700;
+      color: #ef4444;
+      background: rgba(239, 68, 68, 0.12);
+      border-color: rgba(239, 68, 68, 0.3);
+      letter-spacing: 0.5px;
+    }
+
+    /* Mode 2: Presentation Slides Layout */
+    .slides-layout {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+
+    .slides-nav-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .slide-big-btn {
+      flex: 1;
+      height: 72px;
+      border-radius: 20px;
+      font-size: 14px;
+      font-weight: 800;
+      display: flex;
+      flex-direction: column;
+      gap: 3px;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slide-prev {
+      background: rgba(39, 39, 42, 0.9);
+      border-color: rgba(255, 255, 255, 0.18);
+      color: #e4e4e7;
+    }
+
+    .slide-next {
+      background: linear-gradient(135deg, #0284c7, #2563eb);
+      border-color: rgba(96, 165, 250, 0.6);
+      color: #ffffff;
+      box-shadow: 0 0 14px rgba(37, 99, 235, 0.35);
+    }
+
+    .slides-sub-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      width: 100%;
+    }
+
+    .slide-small-btn {
+      flex: 1;
+      height: 30px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Mode 3: Quick PC Actions Grid */
+    .actions-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 8px;
+      width: 100%;
+      max-width: 220px;
+    }
+
+    .action-tile {
+      height: 52px;
+      border-radius: 18px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      font-size: 11px;
+      font-weight: 700;
+      background: #18181b;
+      border-color: rgba(255, 255, 255, 0.14);
+    }
+
+    .action-tile.lock {
+      background: rgba(239, 68, 68, 0.14);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #f87171;
+    }
+
+    .action-tile.desktop {
+      background: rgba(147, 51, 234, 0.14);
+      border-color: rgba(168, 85, 247, 0.35);
+      color: #c084fc;
+    }
+
+    .action-tile.taskview {
+      background: rgba(245, 158, 11, 0.14);
+      border-color: rgba(251, 191, 36, 0.35);
+      color: #fcd34d;
+    }
+
+    .action-tile.sleep {
+      background: rgba(59, 130, 246, 0.14);
+      border-color: rgba(96, 165, 250, 0.35);
+      color: #93c5fd;
+    }
+
+    /* Mode 4: Touchpad Area */
+    .touchpad-area {
+      width: 100%;
+      height: 100px;
+      background: radial-gradient(circle, rgba(39, 39, 42, 0.8) 0%, rgba(24, 24, 27, 0.95) 100%);
+      border: 1.5px dashed rgba(255, 255, 255, 0.2);
+      border-radius: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      color: #71717a;
+      font-size: 11px;
+      font-weight: 600;
+      touch-action: none;
+      position: relative;
+    }
+
+    .touchpad-area.active {
+      border-color: #38bdf8;
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.25);
+    }
+
+    .mouse-btns-row {
+      display: flex;
+      width: 100%;
+      gap: 8px;
+      margin-top: 8px;
+    }
+
+    .mouse-click-btn {
+      flex: 1;
+      height: 32px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    /* Bottom Page Indicator Dots */
+    .page-dots {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      z-index: 10;
+      margin-bottom: 2px;
+      cursor: pointer;
+    }
+
+    .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background-color: rgba(255, 255, 255, 0.25);
+      transition: background-color 0.25s, width 0.25s;
+    }
+
+    .dot.active {
+      width: 16px;
+      border-radius: 4px;
+      background-color: #38bdf8;
+    }
+
+    /* Feedback Flash Notification */
+    .feedback-toast {
+      position: absolute;
+      top: 36px;
+      background: rgba(15, 23, 42, 0.92);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      color: #e2e8f0;
+      padding: 3px 10px;
+      border-radius: 9999px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.3px;
+      opacity: 0;
+      transform: translateY(-4px);
+      transition: opacity 0.2s, transform 0.2s;
+      pointer-events: none;
+      z-index: 50;
+    }
+
+    .feedback-toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="watch-container" id="watchContainer">
+    <!-- Top Status Bar -->
+    <div class="status-bar">
+      <div class="time-text" id="watchTime">--:--</div>
+      <div class="page-title">
+        <span class="connection-dot" id="connDot" title="Status Koneksi PC"></span>
+        <span id="pageTitleText">MEDIA</span>
+      </div>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div class="feedback-toast" id="feedbackToast">OK</div>
+
+    <!-- Sliding Viewport -->
+    <div class="slider-viewport" id="sliderViewport">
+      <div class="slides-wrapper" id="slidesWrapper">
+
+        <!-- ================= PAGE 1: MEDIA ================= -->
+        <div class="slide-page">
+          <div class="media-layout">
+            <button class="wear-btn media-vol-btn" onclick="triggerCmd('media volup', 'Volume +')">
+              ▲ VOL +
+            </button>
+
+            <div class="media-center-row">
+              <button class="wear-btn media-track-btn" onclick="triggerCmd('media prev', 'Prev Track')">
+                ⏮
+              </button>
+              <button class="wear-btn media-play-btn" onclick="triggerCmd('media playpause', 'Play / Pause')">
+                ⏯
+              </button>
+              <button class="wear-btn media-track-btn" onclick="triggerCmd('media next', 'Next Track')">
+                ⏭
+              </button>
+            </div>
+
+            <button class="wear-btn media-vol-btn" onclick="triggerCmd('media voldown', 'Volume -')">
+              ▼ VOL -
+            </button>
+
+            <button class="wear-btn media-mute-btn" onclick="triggerCmd('media mute', 'Mute')">
+              🔇 MUTE
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 2: PRESENTATION SLIDES ================= -->
+        <div class="slide-page">
+          <div class="slides-layout">
+            <button class="wear-btn" style="width: 120px; height: 28px; font-size: 11px; color: #34d399; background: rgba(16, 185, 129, 0.12); border-color: rgba(52, 211, 153, 0.3);" onclick="triggerCmd('k f5', 'Mulai Slide (F5)')">
+              ▶ MULAI (F5)
+            </button>
+
+            <div class="slides-nav-row">
+              <button class="wear-btn slide-big-btn slide-prev" onclick="triggerCmd('k left', 'Slide Sebelumnya')">
+                <span style="font-size: 18px;">◀</span>
+                <span>PREV</span>
+              </button>
+
+              <button class="wear-btn slide-big-btn slide-next" onclick="triggerCmd('k right', 'Slide Berikutnya')">
+                <span style="font-size: 18px;">▶</span>
+                <span>NEXT</span>
+              </button>
+            </div>
+
+            <div class="slides-sub-row">
+              <button class="wear-btn slide-small-btn" onclick="triggerCmd('k b', 'Layar Hitam')">
+                ⬛ Black (B)
+              </button>
+              <button class="wear-btn slide-small-btn" style="color: #f87171;" onclick="triggerCmd('k esc', 'Keluar Slide')">
+                ✕ Keluar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 3: PC QUICK ACTIONS ================= -->
+        <div class="slide-page">
+          <div class="actions-grid">
+            <button class="wear-btn action-tile lock" onclick="triggerCmd('lock', 'PC Terkunci')">
+              <span style="font-size: 16px;">🔒</span>
+              <span>Kunci PC</span>
+            </button>
+
+            <button class="wear-btn action-tile desktop" onclick="triggerCmd('combo win d', 'Desktop')">
+              <span style="font-size: 16px;">🖥️</span>
+              <span>Desktop</span>
+            </button>
+
+            <button class="wear-btn action-tile taskview" onclick="triggerCmd('combo win tab', 'Task View')">
+              <span style="font-size: 16px;">🗂️</span>
+              <span>Task View</span>
+            </button>
+
+            <button class="wear-btn action-tile sleep" onclick="triggerCmd('sleep', 'PC Sleep')">
+              <span style="font-size: 16px;">💤</span>
+              <span>Sleep</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- ================= PAGE 4: TOUCHPAD ================= -->
+        <div class="slide-page">
+          <div style="width: 100%; display: flex; flex-direction: column; align-items: center;">
+            <div class="touchpad-area" id="touchpadSurface">
+              <span>Sentuh & Geser</span>
+              <span style="font-size: 9px; opacity: 0.6; margin-top: 2px;">Ketuk = Klik Kiri</span>
+            </div>
+
+            <div class="mouse-btns-row">
+              <button class="wear-btn mouse-click-btn" onclick="triggerCmd('c left', 'Klik Kiri')">
+                Klik Kiri
+              </button>
+              <button class="wear-btn mouse-click-btn" onclick="triggerCmd('c right', 'Klik Kanan')">
+                Klik Kanan
+              </button>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- Bottom Page Indicator Dots -->
+    <div class="page-dots" id="pageDots">
+      <div class="dot active" onclick="goToPage(0)"></div>
+      <div class="dot" onclick="goToPage(1)"></div>
+      <div class="dot" onclick="goToPage(2)"></div>
+      <div class="dot" onclick="goToPage(3)"></div>
+    </div>
+  </div>
+
+  <script>
+    const PAGE_TITLES = ['🎵 MEDIA', '📽️ SLIDES', '⚡ ACTIONS', '🖱️ TOUCHPAD'];
+    let currentPage = 0;
+    const slidesWrapper = document.getElementById('slidesWrapper');
+    const pageTitleText = document.getElementById('pageTitleText');
+    const dots = document.querySelectorAll('.page-dots .dot');
+    const toast = document.getElementById('feedbackToast');
+    const connDot = document.getElementById('connDot');
+    let toastTimeout = null;
+
+    // Live Watch Clock
+    function updateClock() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      document.getElementById('watchTime').textContent = `${h}:${m}`;
+    }
+    setInterval(updateClock, 1000);
+    updateClock();
+
+    // Haptic Feedback
+    function vibrate(ms = 30) {
+      if ('vibrate' in navigator) {
+        try { navigator.vibrate(ms); } catch (_) {}
+      }
+    }
+
+    // Show Feedback Toast
+    function showToast(text) {
+      toast.textContent = text;
+      toast.classList.add('show');
+      if (toastTimeout) clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => {
+        toast.classList.remove('show');
+      }, 1000);
+    }
+
+    // Trigger Command to PC Server
+    async function triggerCmd(cmd, label) {
+      vibrate(35);
+      showToast(label || cmd);
+
+      try {
+        const resp = await fetch(`/api/remote-input?cmd=${encodeURIComponent(cmd)}`, {
+          method: 'GET',
+          cache: 'no-store',
+          keepalive: true
+        });
+        if (resp.ok) {
+          connDot.classList.remove('offline');
+        } else {
+          // Retry via POST
+          fetch('/api/remote-input', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmd })
+          });
+        }
+      } catch (err) {
+        connDot.classList.add('offline');
+      }
+    }
+
+    // Page Carousel Navigation
+    function goToPage(pageIdx) {
+      if (pageIdx < 0) pageIdx = 0;
+      if (pageIdx > 3) pageIdx = 3;
+      currentPage = pageIdx;
+      slidesWrapper.style.transform = `translateX(-${pageIdx * 25}%)`;
+      pageTitleText.textContent = PAGE_TITLES[pageIdx];
+
+      dots.forEach((dot, idx) => {
+        dot.classList.toggle('active', idx === pageIdx);
+      });
+      vibrate(20);
+    }
+
+    // Swipe Gesture Detection
+    let touchStartX = 0;
+    let touchStartY = 0;
+    const viewport = document.getElementById('sliderViewport');
+
+    viewport.addEventListener('touchstart', (e) => {
+      touchStartX = e.changedTouches[0].screenX;
+      touchStartY = e.changedTouches[0].screenY;
+    }, { passive: true });
+
+    viewport.addEventListener('touchend', (e) => {
+      const touchEndX = e.changedTouches[0].screenX;
+      const touchEndY = e.changedTouches[0].screenY;
+      const dx = touchEndX - touchStartX;
+      const dy = touchEndY - touchStartY;
+
+      // Check if horizontal swipe dominant
+      if (Math.abs(dx) > 36 && Math.abs(dx) > Math.abs(dy)) {
+        if (dx < 0) {
+          goToPage(currentPage + 1); // Swipe left -> Next
+        } else {
+          goToPage(currentPage - 1); // Swipe right -> Prev
+        }
+      }
+    }, { passive: true });
+
+    // Touchpad Gestures
+    const touchpad = document.getElementById('touchpadSurface');
+    let padLastX = 0;
+    let padLastY = 0;
+    let padMoved = false;
+    let padDownTime = 0;
+
+    touchpad.addEventListener('touchstart', (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      padLastX = t.clientX;
+      padLastY = t.clientY;
+      padMoved = false;
+      padDownTime = Date.now();
+      touchpad.classList.add('active');
+    }, { passive: false });
+
+    touchpad.addEventListener('touchmove', (e) => {
+      e.preventDefault();
+      const t = e.touches[0];
+      const dx = Math.round((t.clientX - padLastX) * 1.5);
+      const dy = Math.round((t.clientY - padLastY) * 1.5);
+
+      if (Math.abs(dx) > 0 || Math.abs(dy) > 0) {
+        padMoved = true;
+        padLastX = t.clientX;
+        padLastY = t.clientY;
+        // Send relative mouse move
+        fetch(`/api/remote-input?cmd=m%20${dx}%20${dy}`, { keepalive: true }).catch(() => {});
+      }
+    }, { passive: false });
+
+    touchpad.addEventListener('touchend', (e) => {
+      e.preventDefault();
+      touchpad.classList.remove('active');
+      const duration = Date.now() - padDownTime;
+      // If short tap without move, trigger click
+      if (!padMoved && duration < 300) {
+        triggerCmd('c left', 'Klik');
+      }
+    }, { passive: false });
+
+    // Heartbeat check
+    async function checkHealth() {
+      try {
+        const r = await fetch('/api/network-info', { cache: 'no-store' });
+        connDot.classList.toggle('offline', !r.ok);
+      } catch (_) {
+        connDot.classList.add('offline');
+      }
+    }
+    setInterval(checkHealth, 8000);
+    checkHealth();
+  </script>
+</body>
+</html>

@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --sat: env(safe-area-inset-top, 0px);
   --sab: env(safe-area-inset-bottom, 0px);
@@ -40,6 +42,7 @@ html.light, body.light {
     overflow-x: hidden;
     position: relative;
     box-sizing: border-box;
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -100,54 +103,80 @@ html.light .apple-card:hover {
   transition: transform 0.08s cubic-bezier(0.2, 0, 0, 1);
 }
 
-/* iOS Sheet & Modal Spring Pop */
+/* iOS Sheet & Modal Spring Pop (Apple Fluid Physics) */
 @keyframes iosSheetIn {
   0% {
     opacity: 0;
-    transform: translateY(28px) scale(0.97);
+    transform: translate3d(0, 36px, 0) scale(0.96);
+  }
+  70% {
+    opacity: 1;
+    transform: translate3d(0, -2px, 0) scale(1.004);
   }
   100% {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0) scale(1);
   }
 }
 
 .animate-ios-sheet {
-  animation: iosSheetIn 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosSheetIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
   will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
-/* iOS View Push & Pop Transitions */
+@keyframes backdropFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-backdrop-in {
+  animation: backdropFadeIn 0.22s ease-out forwards;
+}
+
+/* iOS View Push & Pop Transitions (Hardware-accelerated 3D transforms) */
 @keyframes iosPushIn {
   0% {
     opacity: 0;
-    transform: translateX(18px) scale(0.995);
+    transform: translate3d(24px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 @keyframes iosPopIn {
   0% {
     opacity: 0;
-    transform: translateX(-16px) scale(0.995);
+    transform: translate3d(-24px, 0, 0);
   }
   100% {
     opacity: 1;
-    transform: translateX(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-ios-push {
-  animation: iosPushIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosPushIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 .animate-ios-pop {
-  animation: iosPopIn 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: iosPopIn 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 /* iOS Fluid Staggered Card Entrance */
@@ -215,17 +244,20 @@ html.light .apple-card:hover {
 @keyframes viewEnter {
   from {
     opacity: 0;
-    transform: translateY(8px) scale(0.995);
+    transform: translate3d(0, 12px, 0);
   }
   to {
     opacity: 1;
-    transform: translateY(0) scale(1);
+    transform: translate3d(0, 0, 0);
   }
 }
 
 .animate-view-enter {
-  animation: viewEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  animation: viewEnter 0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   will-change: transform, opacity;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  transform-style: preserve-3d;
 }
 
 @keyframes modalPop {
@@ -258,6 +290,22 @@ html.light .apple-card:hover {
 .animate-pulse-glow {
   animation: pulseGlow 2.2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   will-change: transform, opacity;
+}
+
+/* Sleek iOS / macOS style scrollbar */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(120, 120, 128, 0.25);
+  border-radius: 9999px;
+}
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(120, 120, 128, 0.45);
 }
 
 /* GPU hardware acceleration for smooth 60/120fps motion */

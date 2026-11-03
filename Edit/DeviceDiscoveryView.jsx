@@ -9,26 +9,23 @@ import {
   BatteryWarning,
   ArrowRight,
   RefreshCw,
-  QrCode,
-  Link,
   Clock,
   Trash2,
   FolderOpen,
   ArrowDownLeft,
   ArrowUpRight,
   MousePointer,
-  Layers,
   Upload,
   MessageSquare,
   Folder,
   MonitorPlay,
   Keyboard,
-  Presentation,
-  Power,
   Tv,
   ShieldCheck,
   Shield,
-  Unlink
+  QrCode,
+  Activity,
+  Sliders
 } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import { formatBytes } from '../utils/deviceInfo';
@@ -59,10 +56,7 @@ export function DeviceDiscoveryView({
   onOpenFolder,
   onRefreshScan,
   onOpenTouchpad,
-  onOpenMacroPad,
   onOpenRemoteKeyboard,
-  onOpenPresentationClicker,
-  onOpenWakeOnLan,
   onOpenSecondDisplay,
   onSendFile,
   onOpenTextSync,
@@ -77,6 +71,7 @@ export function DeviceDiscoveryView({
   const activeTargetPeerIdRef = useRef(null);
   const [isScanning, setIsScanning] = useState(false);
   const [showHistory, setShowHistory] = useState(true);
+  const [isDragOverHub, setIsDragOverHub] = useState(false);
 
   const getDeviceIcon = (deviceType, className = 'w-6 h-6') => {
     switch (deviceType?.toLowerCase()) {
@@ -88,7 +83,7 @@ export function DeviceDiscoveryView({
       case 'desktop':
       case 'laptop':
       default:
-        return <Laptop className={`${className} text-zinc-600 dark:text-zinc-300`} />;
+        return <Laptop className={`${className} text-blue-500 dark:text-blue-400`} />;
     }
   };
 
@@ -96,7 +91,7 @@ export function DeviceDiscoveryView({
     triggerHaptic([30]);
     setIsScanning(true);
     if (onRefreshScan) onRefreshScan();
-    setTimeout(() => setIsScanning(false), 800);
+    setTimeout(() => setIsScanning(false), 750);
   };
 
   const isSelfMobile =
@@ -108,15 +103,17 @@ export function DeviceDiscoveryView({
     ? (selfIp && selfIp !== '127.0.0.1' ? selfIp : (localIp || '127.0.0.1'))
     : (localIp || selfIp || (typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'));
 
+  const primaryPeer = peers[0] || null;
+
   return (
-    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-4 flex flex-col gap-5 animate-view-enter smooth-gpu">
-      {/* 1. Header Card: "Perangkat Ini" (My Device - Apple AirDrop Header) */}
+    <div className="w-full max-w-4xl mx-auto px-3 sm:px-6 py-3.5 sm:py-5 flex flex-col gap-4 animate-view-enter smooth-gpu">
+      {/* 1. Header Card: "Perangkat Ini" */}
       <div className="apple-card px-4 py-3 sm:px-5 sm:py-3.5 shadow-sm relative overflow-hidden transition-all duration-200">
         <div className="flex items-center justify-between gap-3 relative z-10">
           <div className="flex items-center gap-3 min-w-0">
             <div className="relative shrink-0">
-              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 flex items-center justify-center text-zinc-700 dark:text-zinc-200 shadow-xs">
-                {getDeviceIcon(selfInfo?.deviceType || 'laptop', 'w-5 h-5 sm:w-6 sm:h-6 text-blue-500 dark:text-blue-400')}
+              <div className="w-10 h-10 sm:w-11 sm:h-11 rounded-2xl bg-blue-500/10 dark:bg-blue-500/12 border border-blue-500/20 flex items-center justify-center text-blue-500 dark:text-blue-400 shadow-xs">
+                {getDeviceIcon(selfInfo?.deviceType || 'laptop', 'w-5 h-5 sm:w-6 sm:h-6')}
               </div>
               <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-emerald-500 border-2 border-white dark:border-zinc-900 rounded-full" />
             </div>
@@ -127,14 +124,15 @@ export function DeviceDiscoveryView({
                 </span>
                 <span className="inline-flex items-center gap-1 text-[9px] text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-1.5 py-0.2 rounded-full font-medium">
                   <span className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                  Siap
+                  Aktif
                 </span>
               </div>
               <h2 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white truncate flex items-center gap-1.5">
                 <span>{selfInfo?.name || selfInfo?.deviceName || 'ENCross Hub'}</span>
                 <button
+                  type="button"
                   onClick={onOpenRename}
-                  className="text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 font-normal underline cursor-pointer"
+                  className="text-[11px] text-blue-500 hover:text-blue-600 dark:text-blue-400 font-medium hover:underline cursor-pointer px-1"
                   title="Ganti nama perangkat"
                 >
                   Ubah
@@ -146,52 +144,47 @@ export function DeviceDiscoveryView({
             </div>
           </div>
 
-          {/* Quick Action Capsule Buttons */}
+          {/* Right Actions: IP Host & Pindai Ulang */}
           <div className="flex items-center gap-1.5 shrink-0">
+            {onOpenConnect && (
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([20]);
+                  onOpenConnect();
+                }}
+                className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/6 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-300 border border-black/8 dark:border-white/10 px-2.5 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
+                title="Atur IP Server / Host Manual"
+              >
+                <Sliders className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
+                <span className="hidden sm:inline">IP Host</span>
+              </button>
+            )}
             <button
-              onClick={onOpenConnect}
-              className="flex items-center gap-1 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
-              title="Hubungkan manual via IP address"
-            >
-              <Link className="w-3.5 h-3.5 text-blue-500" />
-              <span className="hidden xs:inline">Input IP</span>
-            </button>
-
-            <button
-              onClick={onOpenQR}
-              className="flex items-center gap-1 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-2.5 sm:px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
-              title="Tampilkan QR code untuk scan dari HP"
-            >
-              <QrCode className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />
-              <span className="hidden xs:inline">QR</span>
-            </button>
-
-            <button
+              type="button"
               onClick={handleRefreshScan}
-              className="p-1.5 sm:p-2 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-600 dark:text-zinc-300 border border-black/8 dark:border-white/10 rounded-full transition cursor-pointer shadow-xs"
-              title="Pindai ulang jaringan lokal"
+              className="flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-white/8 dark:hover:bg-white/12 active:scale-95 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 px-3 py-1.5 rounded-full text-xs font-medium transition cursor-pointer shadow-xs"
+              title="Pindai ulang jaringan lokal untuk mendeteksi perangkat"
             >
-              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-blue-500' : ''}`} />
+              <RefreshCw className={`w-3.5 h-3.5 ${isScanning ? 'animate-spin text-blue-500' : 'text-zinc-500 dark:text-zinc-400'}`} />
+              <span className="hidden xs:inline">Pindai</span>
             </button>
           </div>
         </div>
       </div>
 
-      {/* 2. Main Section: Discovered / Connected Devices (Apple AirDrop Shelf) */}
+      {/* 2. Main Section: Discovered / Connected Devices */}
       <div className="flex flex-col gap-3">
         <div className="flex items-center justify-between px-1">
           <div className="flex items-center gap-2">
             <h3 className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 tracking-wider uppercase">
-              Perangkat di Sekitar ({peers.length})
+              Perangkat Terdeteksi ({peers.length})
             </h3>
-            <span className="text-[11px] text-zinc-400 dark:text-zinc-500 font-medium hidden sm:inline">
-              Pilih perangkat untuk transfer berkas atau kontrol layar
-            </span>
           </div>
 
           <span className="text-[11px] text-zinc-500 dark:text-zinc-400 flex items-center gap-1.5 font-medium">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-            Auto-Discovery Aktif
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+            LAN Auto-Discovery
           </span>
         </div>
 
@@ -209,51 +202,20 @@ export function DeviceDiscoveryView({
           }}
         />
 
-        {/* Active Real-Time Synchronized Connection Banner */}
-        {activePeerConnection?.peer && (
-          <div className="apple-card p-3.5 bg-emerald-500/10 border-2 border-emerald-500/30 rounded-2xl flex items-center justify-between gap-3 animate-ios-pop shadow-sm">
-            <div className="flex items-center gap-3 min-w-0">
-              <div className="p-2.5 bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 rounded-xl shrink-0">
-                {getDeviceIcon(activePeerConnection.peer.deviceType, 'w-5 h-5')}
-              </div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-ping" />
-                  <h4 className="text-xs sm:text-sm font-bold text-zinc-900 dark:text-white truncate">
-                    {activePeerConnection.peer.name} Sedang Terhubung
-                  </h4>
-                  <span className="text-[10px] bg-emerald-500 text-white px-2 py-0.2 rounded-full font-mono font-semibold">
-                    SINKRON
-                  </span>
-                </div>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
-                  Koneksi disinkronkan secara real-time. Buka workspace untuk mulai kontrol & transfer berkas.
-                </p>
-              </div>
-            </div>
-            <button
-              onClick={() => {
-                triggerHaptic([35]);
-                onSelectDevice(activePeerConnection.peer);
-              }}
-              className="bg-emerald-600 hover:bg-emerald-700 active:scale-95 text-white px-4 py-1.5 rounded-full text-xs font-semibold shrink-0 shadow-sm transition cursor-pointer"
-            >
-              Buka Workspace
-            </button>
-          </div>
-        )}
-
-        {/* Device List or Quiet Minimal Empty State */}
+        {/* Device List or Radar Empty State */}
         {peers.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
+          <div className="grid grid-cols-1 gap-3.5">
             {peers.map((peer, idx) => {
-              const isPeerMobile = peer.deviceType?.toLowerCase() === 'mobile' || peer.deviceType?.toLowerCase() === 'smartphone';
+              const isPeerMobile =
+                peer.deviceType?.toLowerCase() === 'mobile' ||
+                peer.deviceType?.toLowerCase() === 'smartphone';
               const isPaired = pairedDevices.some(
                 (p) => (p.deviceId && p.deviceId === peer.deviceId) || (p.id && p.id === peer.id)
               );
               const isConnectedActive =
                 activePeerConnection?.peer &&
-                ((activePeerConnection.peer.deviceId && activePeerConnection.peer.deviceId === peer.deviceId) ||
+                ((activePeerConnection.peer.deviceId &&
+                  activePeerConnection.peer.deviceId === peer.deviceId) ||
                   activePeerConnection.peer.id === peer.id);
 
               return (
@@ -267,194 +229,177 @@ export function DeviceDiscoveryView({
                       onPairDevice(peer);
                     }
                   }}
-                  style={{ animationDelay: `${idx * 70}ms` }}
-                  className={`apple-card ios-card-enter ios-pressable p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group shadow-sm transition-all duration-200 ${
+                  style={{ animationDelay: `${idx * 60}ms` }}
+                  className={`apple-card ios-card-enter p-4 sm:p-5 cursor-pointer flex flex-col justify-between relative group shadow-sm transition-all duration-200 ${
                     isConnectedActive
-                      ? 'border-2 border-emerald-500/50 shadow-emerald-500/10'
+                      ? 'border-2 border-emerald-500/45'
                       : isPaired
                       ? 'hover:border-blue-500/40'
                       : 'hover:border-amber-500/40'
                   }`}
                 >
-                  <div>
-                    {/* Top row: Icon, Type & Online Status */}
-                    <div className="flex items-start justify-between mb-3">
-                      <div className="p-2.5 bg-black/5 dark:bg-white/5 border border-black/8 dark:border-white/10 rounded-2xl transition-colors">
+                  {/* Top row: Icon, Device Info & Status Badges */}
+                  <div className="flex items-start justify-between gap-3 mb-3.5">
+                    <div className="flex items-center gap-3 min-w-0">
+                      <div className="p-3 bg-blue-500/10 dark:bg-blue-500/12 border border-blue-500/20 rounded-2xl shrink-0 group-hover:scale-105 transition-transform">
                         {getDeviceIcon(peer.deviceType, 'w-6 h-6')}
                       </div>
-
-                      <div className="flex items-center gap-1.5">
-                        {isConnectedActive ? (
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/15 border border-emerald-500/30">
-                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                            <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-bold">
-                              TERHUBUNG AKTIF
-                            </span>
-                          </div>
-                        ) : isPaired ? (
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-blue-500/10 border border-blue-500/20">
-                            <ShieldCheck className="w-3.5 h-3.5 text-blue-500" />
-                            <span className="font-mono text-[10px] text-blue-600 dark:text-blue-400 font-medium">
-                              TERPASANG
-                            </span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-amber-500/10 border border-amber-500/20">
-                            <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                            <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 font-medium">
-                              BELUM DIPASANGKAN
-                            </span>
-                          </div>
-                        )}
+                      <div className="min-w-0">
+                        <h4 className="text-base sm:text-lg font-bold text-zinc-900 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors truncate">
+                          {peer.name}
+                        </h4>
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-sans mt-0.5 flex-wrap">
+                          <span className="bg-black/5 dark:bg-white/8 px-2 py-0.5 rounded-md text-zinc-700 dark:text-zinc-300 font-mono text-[11px] font-medium">
+                            {peer.os || 'OS'}
+                          </span>
+                          <span>•</span>
+                          <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-mono">
+                            {peer.ip || 'Wi-Fi LAN'}
+                          </span>
+                          {pingMs && (
+                            <>
+                              <span>•</span>
+                              <span className="text-emerald-600 dark:text-emerald-400 text-[11px] font-mono font-semibold">
+                                {pingMs} ms
+                              </span>
+                            </>
+                          )}
+                          {peer.battery && typeof peer.battery.level === 'number' && peer.battery.level >= 0 && (
+                            <>
+                              <span>•</span>
+                              <span className="inline-flex items-center gap-1 bg-black/5 dark:bg-white/8 px-2 py-0.5 rounded-md text-zinc-700 dark:text-zinc-300 text-[11px] font-mono">
+                                {peer.battery.isCharging ? (
+                                  <BatteryCharging className="w-3 h-3 text-emerald-500" />
+                                ) : peer.battery.level <= 20 ? (
+                                  <BatteryWarning className="w-3 h-3 text-amber-500" />
+                                ) : (
+                                  <Battery className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
+                                )}
+                                <span>{peer.battery.level}%</span>
+                              </span>
+                            </>
+                          )}
+                        </div>
                       </div>
                     </div>
 
-                    {/* Device Name & Details */}
-                    <h4 className="text-base font-bold text-zinc-900 dark:text-white group-hover:text-blue-500 dark:group-hover:text-blue-400 transition-colors truncate mb-1">
-                      {peer.name}
-                    </h4>
-
-                    <div className="flex items-center gap-1.5 text-xs text-zinc-500 dark:text-zinc-400 font-sans mb-3 flex-wrap">
-                      <span className="bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full text-zinc-700 dark:text-zinc-300 font-mono text-[11px]">
-                        {peer.os || 'OS'}
-                      </span>
-                      <span>•</span>
-                      <span className="text-zinc-500 dark:text-zinc-400 text-[11px] font-mono">{peer.ip || 'Wi-Fi LAN'}</span>
-                      {peer.battery && typeof peer.battery.level === 'number' && peer.battery.level >= 0 && (
-                        <>
-                          <span>•</span>
-                          <span className="inline-flex items-center gap-1 bg-black/5 dark:bg-white/5 px-2 py-0.5 rounded-full text-zinc-700 dark:text-zinc-300 text-[11px] font-mono">
-                            {peer.battery.isCharging ? (
-                              <BatteryCharging className="w-3 h-3 text-emerald-500" />
-                            ) : peer.battery.level <= 20 ? (
-                              <BatteryWarning className="w-3 h-3 text-amber-500" />
-                            ) : (
-                              <Battery className="w-3 h-3 text-zinc-500 dark:text-zinc-400" />
-                            )}
-                            <span>{peer.battery.level}%</span>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      {isPaired ? (
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/12 border border-emerald-500/25">
+                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                          <span className="font-mono text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold">
+                            TERHUBUNG
                           </span>
-                        </>
-                      )}
-                    </div>
-
-                    {/* Quick 1-Tap Action Feature Bar */}
-                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-1.5 my-3" onClick={(e) => e.stopPropagation()}>
-                      {isPeerMobile ? (
-                        <>
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onStartMirroring?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-[#0071e3] dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
-                            title="Buka mirror layar ponsel"
-                          >
-                            <MonitorPlay className="w-3.5 h-3.5 shrink-0" />
-                            <span>Mirror</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              if (fileInputRef.current) {
-                                activeTargetPeerIdRef.current = peer.id;
-                                fileInputRef.current.click();
-                              }
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
-                            title="Kirim file langsung ke ponsel"
-                          >
-                            <Upload className="w-3.5 h-3.5 shrink-0 text-emerald-500" />
-                            <span>Kirim File</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenFileExplorer?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
-                            title="Jelajah berkas ponsel"
-                          >
-                            <Folder className="w-3.5 h-3.5 shrink-0 text-amber-500" />
-                            <span>Jelajah</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenTextSync?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 text-zinc-800 dark:text-zinc-200 text-xs font-medium transition active:scale-95 border border-black/8 dark:border-white/10"
-                            title="Kirim teks / clipboard"
-                          >
-                            <MessageSquare className="w-3.5 h-3.5 shrink-0 text-purple-400" />
-                            <span>Teks</span>
-                          </button>
-                        </>
+                        </div>
                       ) : (
-                        <>
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenTouchpad?.(peer);
-                            }}
-                            className="col-span-2 flex items-center justify-center gap-2 px-3 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 text-xs font-bold transition active:scale-95 border border-emerald-500/25 shadow-xs"
-                            title="Buka Remote Input: Mousepad, Keyboard Realtime & MacroPad PC"
-                          >
-                            <MousePointer className="w-3.5 h-3.5 shrink-0" />
-                            <span>Remote Input (Mouse, Ketik & Macro)</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenSecondDisplay?.(peer);
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-sky-500/10 hover:bg-sky-500/20 text-sky-600 dark:text-sky-400 text-xs font-semibold transition active:scale-95 border border-sky-500/20"
-                            title="Mirroring Layar Laptop"
-                          >
-                            <Tv className="w-3.5 h-3.5 shrink-0" />
-                            <span>Mirror Layar</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              if (fileInputRef.current) {
-                                activeTargetPeerIdRef.current = peer.id;
-                                fileInputRef.current.click();
-                              }
-                            }}
-                            className="flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-blue-500/10 hover:bg-blue-500/20 text-blue-600 dark:text-blue-400 text-xs font-semibold transition active:scale-95 border border-blue-500/20"
-                            title="Kirim file langsung ke PC"
-                          >
-                            <Upload className="w-3.5 h-3.5 shrink-0" />
-                            <span>Kirim File</span>
-                          </button>
-
-                          <button
-                            onClick={() => {
-                              triggerHaptic([30]);
-                              onOpenPresentationClicker?.(peer);
-                            }}
-                            className="col-span-2 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-xl bg-amber-500/10 hover:bg-amber-500/20 text-amber-600 dark:text-amber-400 text-xs font-semibold transition active:scale-95 border border-amber-500/20"
-                            title="Pengendali Slide Presentasi PowerPoint / Canva"
-                          >
-                            <Presentation className="w-3.5 h-3.5 shrink-0" />
-                            <span>Clicker Slide Presentasi</span>
-                          </button>
-                        </>
+                        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-amber-500/10 border border-amber-500/20">
+                          <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                          <span className="font-mono text-[10px] text-amber-600 dark:text-amber-400 font-medium">
+                            BELUM PAIR
+                          </span>
+                        </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Bottom Connect / Pair Button (Apple Capsule Button) */}
-                  <div className="pt-2.5 border-t border-black/8 dark:border-white/10 flex items-center justify-between text-xs">
+                  {/* Interactive 1-Tap Quick Action Strip (Only for Paired Devices) */}
+                  {isPaired && (
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      className="grid grid-cols-4 gap-2 mb-3.5 pt-1"
+                    >
+                      {!isPeerMobile ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic([25]);
+                            onOpenTouchpad?.(peer);
+                          }}
+                          className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-blue-500/12 dark:hover:bg-blue-500/15 border border-black/6 dark:border-white/8 hover:border-blue-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                          title="Buka Touchpad & Mouse PC"
+                        >
+                          <MousePointer className="w-4 h-4 text-blue-500 shrink-0" />
+                          <span className="text-[11px] font-semibold truncate">Touchpad</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic([25]);
+                            onStartMirroring?.(peer);
+                          }}
+                          className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-blue-500/12 dark:hover:bg-blue-500/15 border border-black/6 dark:border-white/8 hover:border-blue-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                          title="Mirror Layar HP ke PC"
+                        >
+                          <MonitorPlay className="w-4 h-4 text-blue-500 shrink-0" />
+                          <span className="text-[11px] font-semibold truncate">Mirror HP</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic([25]);
+                          activeTargetPeerIdRef.current = peer.id;
+                          fileInputRef.current?.click();
+                        }}
+                        className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-emerald-500/12 dark:hover:bg-emerald-500/15 border border-black/6 dark:border-white/8 hover:border-emerald-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                        title="Kirim Berkas Langsung"
+                      >
+                        <Upload className="w-4 h-4 text-emerald-500 shrink-0" />
+                        <span className="text-[11px] font-semibold truncate">Kirim File</span>
+                      </button>
+
+                      {!isPeerMobile ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic([25]);
+                            onOpenSecondDisplay?.(peer);
+                          }}
+                          className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-sky-500/12 dark:hover:bg-sky-500/15 border border-black/6 dark:border-white/8 hover:border-sky-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                          title="Mirror Layar PC ke HP"
+                        >
+                          <Tv className="w-4 h-4 text-sky-500 shrink-0" />
+                          <span className="text-[11px] font-semibold truncate">Layar PC</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            triggerHaptic([25]);
+                            onOpenFileExplorer?.(peer);
+                          }}
+                          className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-amber-500/12 dark:hover:bg-amber-500/15 border border-black/6 dark:border-white/8 hover:border-amber-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                          title="Jelajah Berkas Perangkat"
+                        >
+                          <Folder className="w-4 h-4 text-amber-500 shrink-0" />
+                          <span className="text-[11px] font-semibold truncate">Explorer</span>
+                        </button>
+                      )}
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          triggerHaptic([25]);
+                          onOpenTextSync?.(peer);
+                        }}
+                        className="ios-pressable flex flex-col sm:flex-row items-center justify-center gap-1.5 py-2.5 px-2 rounded-xl bg-black/4 dark:bg-white/6 hover:bg-indigo-500/12 dark:hover:bg-indigo-500/15 border border-black/6 dark:border-white/8 hover:border-indigo-500/30 text-zinc-800 dark:text-zinc-200 transition cursor-pointer active:scale-95"
+                        title="Sinkronisasi Clipboard & Teks"
+                      >
+                        <MessageSquare className="w-4 h-4 text-indigo-500 shrink-0" />
+                        <span className="text-[11px] font-semibold truncate">Clipboard</span>
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Bottom Connect / Pair Bar */}
+                  <div className="pt-3 border-t border-black/8 dark:border-white/10 flex items-center justify-between text-xs">
                     {isPaired ? (
                       <>
-                        <div className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
-                          <span>Terpasang & Siap Sinkron</span>
+                        <div className="flex items-center gap-2 text-zinc-500 dark:text-zinc-400 font-medium text-[11px]">
+                          <ShieldCheck className="w-3.5 h-3.5 text-blue-500 shrink-0" />
+                          <span>Sinkronisasi P2P Siap</span>
                           <button
                             type="button"
                             onClick={(e) => {
@@ -468,20 +413,20 @@ export function DeviceDiscoveryView({
                             Lepas
                           </button>
                         </div>
-                        <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-3.5 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
+                        <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
                           <span>Buka Workspace</span>
-                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-300" />
+                          <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-0.5 transition-transform duration-200" />
                         </div>
                       </>
                     ) : (
                       <>
                         <span className="text-amber-600 dark:text-amber-400 font-medium text-[11px] flex items-center gap-1">
-                          <Shield className="w-3 h-3 text-amber-500" />
-                          <span>Perlu pairing diawal</span>
+                          <Shield className="w-3.5 h-3.5 text-amber-500" />
+                          <span>Konfirmasi akses pertama kali</span>
                         </span>
-                        <div className="flex items-center gap-1.5 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white px-4 py-1.5 rounded-full font-semibold transition-all shadow-xs group-hover:shadow-sm">
+                        <div className="flex items-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white px-4 py-1.5 rounded-full font-semibold transition-all shadow-xs">
                           <ShieldCheck className="w-3.5 h-3.5 stroke-[2.2]" />
-                          <span>Pasangkan (Pair)</span>
+                          <span>Pasangkan</span>
                         </div>
                       </>
                     )}
@@ -491,36 +436,171 @@ export function DeviceDiscoveryView({
             })}
           </div>
         ) : (
-          /* Empty State: Sleek Apple AirDrop Radar Scanner Beacon */
-          <div className="apple-card border border-dashed border-black/10 dark:border-white/10 p-8 sm:p-12 text-center flex flex-col items-center justify-center relative overflow-hidden">
-            <div className="relative w-20 h-20 flex items-center justify-center mb-4">
+          /* Empty State: Radar Scanner Beacon */
+          <div className="apple-card border border-dashed border-black/10 dark:border-white/10 p-8 sm:p-10 text-center flex flex-col items-center justify-center relative overflow-hidden">
+            <div className="relative w-18 h-18 flex items-center justify-center mb-3.5">
               <div className="absolute inset-0 rounded-full border border-blue-500/25 airdrop-beacon" />
               <div className="absolute inset-0 rounded-full border border-blue-500/20 airdrop-beacon" style={{ animationDelay: '1s' }} />
-              <div className="w-14 h-14 rounded-full bg-gradient-to-tr from-blue-500/10 to-indigo-500/10 border border-blue-500/20 flex items-center justify-center relative z-10 shadow-xs">
+              <div className="w-13 h-13 rounded-full bg-blue-500/10 border border-blue-500/25 flex items-center justify-center relative z-10 shadow-xs">
                 <Wifi className="w-6 h-6 text-blue-500 animate-pulse" />
               </div>
             </div>
 
-            <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white mb-1.5">
-              Mencari Perangkat di Sekitar...
+            <h4 className="text-sm sm:text-base font-bold text-zinc-900 dark:text-white mb-1">
+              Memindai Perangkat di Jaringan LAN...
             </h4>
             <p className="text-xs text-zinc-500 dark:text-zinc-400 max-w-sm mx-auto leading-relaxed">
-              Buka aplikasi ENCross di laptop atau HP lain dalam satu jaringan Wi-Fi lokal. Perangkat akan otomatis muncul di sini.
+              Pastikan laptop dan ponsel berada di jaringan Wi-Fi atau Hotspot yang sama.
             </p>
 
-            <div className="mt-4 flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400 bg-black/3 dark:bg-white/3 px-3.5 py-1.5 rounded-full border border-black/6 dark:border-white/6">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-              <span>Gunakan tombol <b>Input IP</b> atau <b>QR</b> di atas untuk hubungkan manual</span>
+            <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+              {onOpenConnect && (
+                <button
+                  type="button"
+                  onClick={onOpenConnect}
+                  className="ios-pressable flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#0071e3] text-white text-xs font-semibold shadow-xs cursor-pointer"
+                >
+                  <Sliders className="w-3.5 h-3.5" />
+                  <span>Masukkan IP Manual</span>
+                </button>
+              )}
+              {onOpenQR && (
+                <button
+                  type="button"
+                  onClick={onOpenQR}
+                  className="ios-pressable flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-black/5 dark:bg-white/8 text-zinc-700 dark:text-zinc-200 border border-black/8 dark:border-white/10 text-xs font-semibold cursor-pointer"
+                >
+                  <QrCode className="w-3.5 h-3.5 text-blue-500" />
+                  <span>Kode QR</span>
+                </button>
+              )}
             </div>
           </div>
         )}
       </div>
 
-      {/* 3. Collapsible Session Transfer History (Safari / Finder Download Tray Style) */}
+      {/* 3. Interactive Quick Transfer & LAN Telemetry Bento Grid (Eliminates empty dead space when connected) */}
+      {primaryPeer && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+          {/* Card A: Instant Dropzone & File/Clipboard Dispatch */}
+          <div
+            onDragOver={(e) => {
+              e.preventDefault();
+              setIsDragOverHub(true);
+            }}
+            onDragLeave={() => setIsDragOverHub(false)}
+            onDrop={(e) => {
+              e.preventDefault();
+              setIsDragOverHub(false);
+              if (e.dataTransfer.files?.length > 0 && onSendFile) {
+                triggerHaptic([35]);
+                onSendFile(primaryPeer.id, Array.from(e.dataTransfer.files));
+              }
+            }}
+            className={`apple-card p-4 flex flex-col justify-between gap-3 transition-all ${
+              isDragOverHub ? 'border-2 border-blue-500 bg-blue-500/5' : ''
+            }`}
+          >
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-emerald-500/10 text-emerald-500 border border-emerald-500/20">
+                  <Upload className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-white">
+                    Kirim Instan ke {primaryPeer.name}
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                    Transfer berkas & teks P2P tanpa kompresi
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([25]);
+                  activeTargetPeerIdRef.current = primaryPeer.id;
+                  fileInputRef.current?.click();
+                }}
+                className="ios-pressable flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-[#0071e3] hover:bg-[#0077ed] text-white text-xs font-semibold transition cursor-pointer shadow-xs active:scale-95"
+              >
+                <Upload className="w-3.5 h-3.5" />
+                <span>Pilih Berkas</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([25]);
+                  onOpenTextSync?.(primaryPeer);
+                }}
+                className="ios-pressable flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 text-xs font-semibold transition cursor-pointer active:scale-95"
+              >
+                <MessageSquare className="w-3.5 h-3.5 text-blue-500" />
+                <span>Kirim Teks</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Card B: Live LAN Telemetry & Quick Keyboard/Explorer */}
+          <div className="apple-card p-4 flex flex-col justify-between gap-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 border border-blue-500/20">
+                  <Activity className="w-4 h-4" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-zinc-900 dark:text-white">
+                    Status Jaringan & Kontrol
+                  </h4>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono">
+                    WebRTC P2P • {pingMs ? `${pingMs} ms` : 'Direct LAN'}
+                  </p>
+                </div>
+              </div>
+              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 font-semibold">
+                Stabil
+              </span>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([25]);
+                  onOpenFileExplorer?.(primaryPeer);
+                }}
+                className="ios-pressable flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 text-xs font-semibold transition cursor-pointer active:scale-95"
+              >
+                <Folder className="w-3.5 h-3.5 text-amber-500" />
+                <span>Jelajah File</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  triggerHaptic([25]);
+                  onOpenRemoteKeyboard?.(primaryPeer);
+                }}
+                className="ios-pressable flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl bg-black/5 dark:bg-white/8 hover:bg-black/10 dark:hover:bg-white/12 text-zinc-800 dark:text-zinc-200 border border-black/8 dark:border-white/10 text-xs font-semibold transition cursor-pointer active:scale-95"
+              >
+                <Keyboard className="w-3.5 h-3.5 text-indigo-500" />
+                <span>Keyboard PC</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 4. Collapsible Session Transfer History */}
       {transferHistory.length > 0 && (
         <div className="apple-card p-3.5 sm:p-4 shadow-sm animate-view-enter">
           <div className="flex items-center justify-between mb-2.5">
             <button
+              type="button"
               onClick={() => {
                 triggerHaptic([15]);
                 setShowHistory(!showHistory);
@@ -528,29 +608,33 @@ export function DeviceDiscoveryView({
               className="flex items-center gap-2 text-xs font-bold text-zinc-800 dark:text-zinc-200 hover:text-blue-500 transition cursor-pointer"
             >
               <Clock className="w-4 h-4 text-blue-500" />
-              <span>Riwayat Pengiriman Sesi ({transferHistory.length})</span>
-              <span className="text-[10px] text-zinc-500 font-normal">[{showHistory ? 'Sembunyikan' : 'Lihat'}]</span>
+              <span>Riwayat Transfer ({transferHistory.length})</span>
+              <span className="text-[10px] text-zinc-500 font-normal">
+                [{showHistory ? 'Tutup' : 'Buka'}]
+              </span>
             </button>
 
             <div className="flex items-center gap-1.5">
               {onOpenFolder && showHistory && (
                 <button
+                  type="button"
                   onClick={onOpenFolder}
                   className="text-[11px] text-zinc-600 dark:text-zinc-300 hover:text-blue-500 transition cursor-pointer flex items-center gap-1 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10"
                   title="Buka Folder Unduhan"
                 >
                   <FolderOpen className="w-3.5 h-3.5 text-amber-500" />
-                  <span className="hidden sm:inline">Folder Unduhan</span>
+                  <span className="hidden sm:inline">Folder</span>
                 </button>
               )}
               {onClearTransferHistory && showHistory && (
                 <button
+                  type="button"
                   onClick={onClearTransferHistory}
                   className="text-[11px] text-zinc-500 hover:text-red-500 transition cursor-pointer flex items-center gap-1 bg-black/5 dark:bg-white/5 hover:bg-red-500/10 px-2.5 py-1 rounded-full border border-black/8 dark:border-white/10"
                   title="Hapus riwayat sesi"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span>Hapus</span>
+                  <span>Bersihkan</span>
                 </button>
               )}
             </div>
@@ -579,11 +663,15 @@ export function DeviceDiscoveryView({
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-100 text-xs" title={name}>{name}</p>
+                        <p className="truncate font-semibold text-zinc-900 dark:text-zinc-100 text-xs" title={name}>
+                          {name}
+                        </p>
                         <p className="text-[10px] text-zinc-500 flex items-center gap-1.5">
                           {sizeStr && <span>{sizeStr}</span>}
                           {sizeStr && <span>•</span>}
-                          <span className={isUpload ? 'text-blue-500 font-medium' : 'text-emerald-500 font-medium'}>{statusLabel}</span>
+                          <span className={isUpload ? 'text-blue-500 font-medium' : 'text-emerald-500 font-medium'}>
+                            {statusLabel}
+                          </span>
                           {timeStr && <span>• {timeStr}</span>}
                         </p>
                       </div>

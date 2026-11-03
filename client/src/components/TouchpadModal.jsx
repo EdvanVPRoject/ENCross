@@ -48,7 +48,16 @@ export function TouchpadModal({
 }) {
   // Navigation & Category Tabs
   const [activeMacroTab, setActiveMacroTab] = useState(initialTab);
-  const [sensitivity, setSensitivity] = useState(1.4);
+  const [sensitivity, setSensitivity] = useState(() => {
+    try {
+      const saved = localStorage.getItem('encross_touchpad_sensitivity');
+      if (saved) {
+        const val = parseFloat(saved);
+        if (!isNaN(val) && val >= 1.0 && val <= 4.0) return val;
+      }
+    } catch (_) {}
+    return 2.2; // Default lebih kencang & responsif (sebelumnya 1.4 terasa lambat)
+  });
   const [showSensitivitySlider, setShowSensitivitySlider] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
 
@@ -134,13 +143,19 @@ export function TouchpadModal({
     e.preventDefault(); // Prevent accidental mobile pull-to-refresh
     if (e.touches.length === 1 && !touchState.current.isTwoFinger) {
       const t = e.touches[0];
-      const dx = (t.clientX - touchState.current.lastX) * sensitivity;
-      const dy = (t.clientY - touchState.current.lastY) * sensitivity;
+      const rawDx = t.clientX - touchState.current.lastX;
+      const rawDy = t.clientY - touchState.current.lastY;
+      const dist = Math.hypot(rawDx, rawDy);
+
+      // Natural ballistic acceleration: presisi saat pelan, kencang & lincah saat flick/geser cepat
+      const accel = dist > 3 ? 1 + Math.min(1.2, (dist - 3) * 0.06) : 1;
+      const dx = rawDx * sensitivity * accel;
+      const dy = rawDy * sensitivity * accel;
 
       touchState.current.lastX = t.clientX;
       touchState.current.lastY = t.clientY;
 
-      if (Math.abs(dx) > 0.4 || Math.abs(dy) > 0.4) {
+      if (Math.abs(dx) > 0.3 || Math.abs(dy) > 0.3) {
         touchState.current.moved = true;
         const roundX = Math.round(dx);
         const roundY = Math.round(dy);
@@ -317,7 +332,7 @@ export function TouchpadModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="apple-card border-0 sm:border border-black/10 dark:border-white/10 rounded-b-3xl sm:rounded-3xl w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden smooth-gpu"
+        className="apple-card border-0 sm:border border-black/10 dark:border-white/10 rounded-b-3xl sm:rounded-3xl w-full max-w-lg h-full sm:h-auto sm:max-h-[92vh] flex flex-col shadow-2xl overflow-hidden animate-ios-sheet smooth-gpu"
       >
         {/* 1. Header Bar */}
         <div
@@ -373,11 +388,17 @@ export function TouchpadModal({
               <span className="text-[10px] text-zinc-400">1.0x</span>
               <input
                 type="range"
-                min="0.8"
-                max="2.4"
+                min="1.0"
+                max="3.5"
                 step="0.1"
                 value={sensitivity}
-                onChange={(e) => setSensitivity(parseFloat(e.target.value))}
+                onChange={(e) => {
+                  const val = parseFloat(e.target.value);
+                  setSensitivity(val);
+                  try {
+                    localStorage.setItem('encross_touchpad_sensitivity', String(val));
+                  } catch (_) {}
+                }}
                 className="w-full accent-[#0071e3] cursor-pointer"
               />
               <span className="text-[10px] text-zinc-400 font-mono">{sensitivity.toFixed(1)}x</span>

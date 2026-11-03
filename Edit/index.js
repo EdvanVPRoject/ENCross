@@ -26,6 +26,8 @@ const io = new Server(server, {
     origin: '*',
     methods: ['GET', 'POST']
   },
+  pingInterval: 5000, // Frequent ping (5s) to detect mobile disconnection & keep NAT ports alive
+  pingTimeout: 10000,  // Fast timeout (10s) to clear zombie sockets promptly
   maxHttpBufferSize: 1e8 // 100MB buffer for fallback binary streaming
 });
 
@@ -52,13 +54,18 @@ function getLocalIpAddresses() {
 // rooms: { [roomId: string]: { [socketId: string]: PeerInfo } }
 const rooms = new Map();
 
+// Helper to check if a socket is actively connected
+const isSocketActive = (id) =>
+  Boolean(id && (io.sockets?.sockets?.has ? io.sockets.sockets.has(id) : Boolean(io.sockets?.sockets?.[id])));
+
 // Authoritative real-time room peer broadcast: ensures all devices in the room receive the exact synchronized peer list
 function broadcastRoomPeers(roomName) {
   if (!roomName || !rooms.has(roomName)) return;
   const rPeers = rooms.get(roomName);
   for (const [dKey, pData] of rPeers.entries()) {
+    if (!isSocketActive(pData.id)) continue;
     const peersForThisDevice = Array.from(rPeers.values()).filter(
-      (p) => p.deviceId !== dKey && p.id !== pData.id
+      (p) => p.deviceId !== dKey && p.id !== pData.id && isSocketActive(p.id)
     );
     io.to(pData.id).emit('room-peers', {
       self: pData,
@@ -558,13 +565,18 @@ io.on('connection', (socket) => {
     }
   });
 
-  // Auto Clipboard Sync
-  socket.on('sync-clipboard', ({ targetId, text }) => {
-    if (!text || typeof text !== 'string') return;
+  // Auto Clipboard Sync (Text, Images & Screenshots)
+  socket.on('sync-clipboard', (data) => {
+    if (!data) return;
+    const targetId = data.targetId;
     const payload = {
       senderId: socket.id,
       senderName: peerData?.name || 'Perangkat',
-      text
+      type: data.type || (data.dataUrl ? 'image' : 'text'),
+      text: data.text || '',
+      dataUrl: data.dataUrl || null,
+      fileName: data.fileName || null,
+      timestamp: data.timestamp || Date.now()
     };
     if (targetId) {
       io.to(targetId).emit('sync-clipboard', payload);

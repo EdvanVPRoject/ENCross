@@ -25,7 +25,7 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
   const [outputDevices, setOutputDevices] = useState([]);
   const [selectedOutput, setSelectedOutput] = useState('');
 
-  // Enumerate audio output devices
+  // Enumerate audio output devices & auto-select VB-Cable if available
   useEffect(() => {
     async function loadAudioOutputs() {
       try {
@@ -33,6 +33,12 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
           const devices = await navigator.mediaDevices.enumerateDevices();
           const outputs = devices.filter((d) => d.kind === 'audiooutput');
           setOutputDevices(outputs);
+
+          // Auto-select VB-Cable if available and no output selected yet
+          const cableDev = outputs.find((d) => d.label.toLowerCase().includes('cable'));
+          if (cableDev) {
+            setSelectedOutput((curr) => curr || cableDev.deviceId);
+          }
         }
       } catch (err) {
         console.warn('[WirelessMic] Failed to enumerate audio devices:', err);
@@ -44,6 +50,15 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
       navigator.mediaDevices?.removeEventListener?.('devicechange', loadAudioOutputs);
     };
   }, []);
+
+  // Ensure sinkId is always synchronized to selectedOutput
+  useEffect(() => {
+    if (audioRef.current && typeof audioRef.current.setSinkId === 'function' && selectedOutput) {
+      audioRef.current.setSinkId(selectedOutput).catch((err) => {
+        console.warn('[WirelessMic] setSinkId effect error:', err);
+      });
+    }
+  }, [selectedOutput, stream]);
 
   const handleOutputChange = async (deviceId) => {
     setSelectedOutput(deviceId);
@@ -213,7 +228,7 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
       {/* Hidden Audio Element */}
       <audio ref={audioRef} autoPlay playsInline />
 
-      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden text-left flex flex-col relative">
+      <div className="apple-card border border-black/10 dark:border-white/10 rounded-3xl w-full max-w-md shadow-2xl overflow-hidden text-left flex flex-col relative animate-ios-sheet smooth-gpu">
         {/* Header */}
         <div className="p-4 sm:p-5 border-b border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3 flex items-center justify-between">
           <div className="flex items-center gap-3 min-w-0">
@@ -308,36 +323,53 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
 
         {/* Controls & Tools */}
         <div className="p-4 sm:p-5 border-t border-black/8 dark:border-white/10 bg-black/3 dark:bg-white/3 flex flex-col gap-3.5">
-          {/* Speaker Monitor & Volume Slider */}
-          <div className="flex items-center justify-between gap-3 bg-black/4 dark:bg-white/5 p-3 rounded-2xl border border-black/8 dark:border-white/10">
-            <button
-              onClick={toggleMute}
-              className={`px-3 py-2 rounded-full transition cursor-pointer flex items-center gap-2 text-xs font-medium ${
-                isMuted
-                  ? 'bg-black/5 dark:bg-white/8 text-zinc-500 dark:text-zinc-400'
-                  : 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20'
-              }`}
-              title={isMuted ? 'Aktifkan Speaker Monitor Laptop' : 'Senyapkan Speaker Monitor (Cegah Feedback)'}
-            >
-              {isMuted ? <VolumeX className="w-4 h-4 text-zinc-400" /> : <Volume2 className="w-4 h-4 text-teal-500" />}
-              <span>{isMuted ? 'Speaker Senyap' : 'Monitor Speaker Aktif'}</span>
-            </button>
+          {/* Audio Output Transmission & Volume */}
+          <div className="flex flex-col gap-2 bg-black/4 dark:bg-white/5 p-3 rounded-2xl border border-black/8 dark:border-white/10">
+            <div className="flex items-center justify-between gap-3">
+              <button
+                onClick={toggleMute}
+                className={`px-3 py-2 rounded-full transition cursor-pointer flex items-center gap-2 text-xs font-medium ${
+                  isMuted || volume === 0
+                    ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border border-amber-500/30'
+                    : 'bg-teal-500/10 text-teal-600 dark:text-teal-400 border border-teal-500/20'
+                }`}
+                title={isMuted ? 'Buka Suara Mic ke PC' : 'Senyapkan Suara Mic'}
+              >
+                {isMuted || volume === 0 ? <VolumeX className="w-4 h-4 text-amber-500" /> : <Volume2 className="w-4 h-4 text-teal-500" />}
+                <span>
+                  {outputDevices.some((d) => d.deviceId === selectedOutput && d.label.toLowerCase().includes('cable'))
+                    ? isMuted || volume === 0 ? 'Aliran VB-Cable Senyap' : 'Aliran VB-Cable Aktif'
+                    : isMuted ? 'Speaker Senyap' : 'Monitor Speaker Aktif'}
+                </span>
+              </button>
 
-            <div className="flex items-center gap-2 flex-1 max-w-[130px]">
-              <input
-                type="range"
-                min="0"
-                max="1"
-                step="0.05"
-                value={volume}
-                onChange={(e) => setVolume(parseFloat(e.target.value))}
-                className="w-full accent-[#0071e3] cursor-pointer"
-                title={`Volume: ${Math.round(volume * 100)}%`}
-              />
-              <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono w-7 text-right">
-                {Math.round(volume * 100)}%
-              </span>
+              <div className="flex items-center gap-2 flex-1 max-w-[140px]">
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={volume}
+                  onChange={(e) => {
+                    const newVol = parseFloat(e.target.value);
+                    setVolume(newVol);
+                    if (newVol > 0 && isMuted) setIsMuted(false);
+                  }}
+                  className="w-full accent-[#0071e3] cursor-pointer"
+                  title={`Volume: ${Math.round(volume * 100)}%`}
+                />
+                <span className="text-[11px] text-zinc-500 dark:text-zinc-400 font-mono w-7 text-right">
+                  {Math.round(volume * 100)}%
+                </span>
+              </div>
             </div>
+
+            {(isMuted || volume === 0) && (
+              <div className="text-[11px] text-amber-600 dark:text-amber-400 bg-amber-500/10 border border-amber-500/20 rounded-xl px-2.5 py-1.5 flex items-center gap-1.5 animate-in fade-in">
+                <span>⚠️</span>
+                <span>Volume 0% / Senyap. Naikkan slider volume agar Voicemod dapat mendengar suara mic!</span>
+              </div>
+            )}
           </div>
 
           {/* Audio Output Route Selector */}
@@ -390,7 +422,7 @@ export function WirelessMicModal({ stream, senderName, onClose }) {
 
           <div className="text-[11px] text-zinc-500 dark:text-zinc-400 leading-relaxed px-1">
             <p>
-              💡 <strong className="text-zinc-700 dark:text-zinc-300">Tips:</strong> Jika laptop Anda dekat dengan HP, biarkan speaker disenyapkan agar tidak terjadi gema saat meeting atau merekam suara.
+              💡 <strong className="text-zinc-700 dark:text-zinc-300">Catatan Voicemod:</strong> Karena suara dialirkan langsung ke <strong>CABLE Input</strong>, laptop Anda <strong>tidak akan bergema</strong> meskipun volume 100%. Pastikan volume di atas tetap 100% agar Voicemod menerima sinyal suara dari HP.
             </p>
           </div>
 

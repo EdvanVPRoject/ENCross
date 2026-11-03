@@ -9,3 +9,6 @@ dist-desktop/
 .env
 *.apk
 .sokudo/
+
+scratch/
+audit_search.js

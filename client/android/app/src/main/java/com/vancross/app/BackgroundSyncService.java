@@ -38,6 +38,10 @@ public class BackgroundSyncService extends Service {
             return START_NOT_STICKY;
         }
 
+        // Guarantee locks are fresh and active
+        acquireWakeLock();
+        acquireWifiLock();
+
         Notification notification = createNotification();
 
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
@@ -150,6 +154,14 @@ public class BackgroundSyncService extends Service {
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setCategory(NotificationCompat.CATEGORY_SERVICE)
             .build();
+    }
+
+    @Override
+    public void onTaskRemoved(Intent rootIntent) {
+        // App swiped from recent tasks: keep WakeLock and WifiLock intact
+        acquireWakeLock();
+        acquireWifiLock();
+        super.onTaskRemoved(rootIntent);
     }
 
     @Override

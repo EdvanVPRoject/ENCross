@@ -37,7 +37,7 @@ export function SecondDisplayViewerModal({
   const containerRef = useRef(null);
 
   // Core StarDesk Viewer State
-  const [fitMode, setFitMode] = useState('fill'); // 'fill' (stretch full screen like StarDesk) | 'contain' | 'cover'
+  const [fitMode, setFitMode] = useState('contain'); // Default: rasio asli layar laptop (16:9 / 16:10)
   const [isRotated90, setIsRotated90] = useState(false); // CSS 90-degree landscape rotation fallback
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
@@ -45,7 +45,7 @@ export function SecondDisplayViewerModal({
 
   // StarDesk UI Overlays
   const [showHud, setShowHud] = useState(true); // Top-left telemetry HUD
-  const [showVirtualMouse, setShowVirtualMouse] = useState(true); // Floating on-screen mouse buttons
+  const [showVirtualMouse, setShowVirtualMouse] = useState(false); // Dock bawah sembunyi default agar taskbar PC tidak tertutup
   const [isPanelOpen, setIsPanelOpen] = useState(false); // StarDesk right-side settings drawer
   const [isKeyboardOpen, setIsKeyboardOpen] = useState(false); // Bottom keyboard ribbon & text input
   const [isDraggingMouse, setIsDraggingMouse] = useState(false); // Dragging state for left mouse button
@@ -242,8 +242,63 @@ export function SecondDisplayViewerModal({
       clientY = centerY + dx;
     }
 
-    const relX = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
-    const relY = Math.max(0, Math.min(1, (clientY - rect.top) / rect.height));
+    const boxW = rect.width;
+    const boxH = rect.height;
+    if (boxW <= 0 || boxH <= 0) return { relX: 0.5, relY: 0.5 };
+
+    const vidW = video.videoWidth || 1920;
+    const vidH = video.videoHeight || 1080;
+
+    let relX = 0.5;
+    let relY = 0.5;
+
+    if (fitMode === 'contain') {
+      const boxRatio = boxW / boxH;
+      const vidRatio = vidW / vidH;
+
+      if (boxRatio > vidRatio) {
+        // Pillarbox: video centered horizontally with black bars on left and right
+        const renderedW = boxH * vidRatio;
+        const offsetX = (boxW - renderedW) / 2;
+        const localX = clientX - rect.left - offsetX;
+        const localY = clientY - rect.top;
+        relX = Math.max(0, Math.min(1, localX / renderedW));
+        relY = Math.max(0, Math.min(1, localY / boxH));
+      } else {
+        // Letterbox: video centered vertically with black bars on top and bottom
+        const renderedH = boxW / vidRatio;
+        const offsetY = (boxH - renderedH) / 2;
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top - offsetY;
+        relX = Math.max(0, Math.min(1, localX / boxW));
+        relY = Math.max(0, Math.min(1, localY / renderedH));
+      }
+    } else if (fitMode === 'cover') {
+      const boxRatio = boxW / boxH;
+      const vidRatio = vidW / vidH;
+
+      if (boxRatio > vidRatio) {
+        // Cropped top and bottom
+        const renderedH = boxW / vidRatio;
+        const offsetY = (boxH - renderedH) / 2;
+        const localX = clientX - rect.left;
+        const localY = clientY - rect.top - offsetY;
+        relX = Math.max(0, Math.min(1, localX / boxW));
+        relY = Math.max(0, Math.min(1, localY / renderedH));
+      } else {
+        // Cropped left and right
+        const renderedW = boxH * vidRatio;
+        const offsetX = (boxW - renderedW) / 2;
+        const localX = clientX - rect.left - offsetX;
+        const localY = clientY - rect.top;
+        relX = Math.max(0, Math.min(1, localX / renderedW));
+        relY = Math.max(0, Math.min(1, localY / boxH));
+      }
+    } else {
+      // 'fill' (stretched)
+      relX = Math.max(0, Math.min(1, (clientX - rect.left) / boxW));
+      relY = Math.max(0, Math.min(1, (clientY - rect.top) / boxH));
+    }
 
     return { relX, relY };
   };
@@ -297,9 +352,13 @@ export function SecondDisplayViewerModal({
     }
 
     if (inputMode === 'trackpad') {
-      // Relative mouse delta
-      const sensitivity = 1.35;
-      sendCmd(`m ${(dx * sensitivity).toFixed(1)} ${(dy * sensitivity).toFixed(1)}`);
+      // Relative mouse delta with natural acceleration
+      const baseSensitivity = 2.0; // Default kencang & lincah (sebelumnya 1.35)
+      const dist = Math.hypot(dx, dy);
+      const accel = dist > 3 ? 1 + Math.min(1.2, (dist - 3) * 0.06) : 1;
+      const finalDx = (dx * baseSensitivity * accel).toFixed(1);
+      const finalDy = (dy * baseSensitivity * accel).toFixed(1);
+      sendCmd(`m ${finalDx} ${finalDy}`);
     } else {
       // Direct touch dragging / movement
       const { relX, relY } = getRelativeCoords(touch);
@@ -448,69 +507,192 @@ export function SecondDisplayViewerModal({
         />
       </div>
 
-      {/* 3. Floating Virtual Mouse Widget (StarDesk On-Screen Mouse) */}
+      {/* 3. Floating Interactive Control Dock (Mode Switcher + Left/Right Click + Scroll) */}
       {showVirtualMouse && (
-        <div className="absolute bottom-4 left-4 z-40 flex items-center gap-1.5 bg-black/65 backdrop-blur-md border border-white/12 p-1.5 rounded-full shadow-2xl animate-in fade-in duration-200">
-          {/* Left Click Button */}
-          <button
-            onClick={handleLeftClick}
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-blue-600 active:scale-95 text-white font-medium text-xs transition cursor-pointer border border-white/5"
-            title="Klik Kiri"
-          >
-            L-Click
-          </button>
-
-          {/* Mouse Drag Toggle (Lock Left Button Down) */}
-          <button
-            onClick={toggleDragMouse}
-            className={`px-2.5 py-1.5 rounded-full font-medium text-xs transition cursor-pointer active:scale-95 border ${
-              isDraggingMouse
-                ? 'bg-amber-500 text-black border-amber-400 font-bold'
-                : 'bg-white/10 hover:bg-white/20 text-zinc-300 border-white/5'
-            }`}
-            title={isDraggingMouse ? 'Lepas Drag' : 'Tahan Drag (Tahan Klik Kiri)'}
-          >
-            {isDraggingMouse ? 'Dragging...' : 'Drag'}
-          </button>
-
-          {/* Scroll Wheel Buttons */}
-          <div className="flex items-center bg-white/5 rounded-full p-0.5 border border-white/5">
+        <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-40 flex items-center gap-2 bg-black/80 backdrop-blur-xl border border-white/15 p-1.5 sm:p-2 rounded-2xl shadow-2xl animate-in fade-in duration-200 flex-wrap max-w-[calc(100vw-5rem)]">
+          {/* Mode Selector: Mode Tap vs Mode Mouse */}
+          <div className="flex bg-white/10 p-0.5 rounded-xl border border-white/10 text-[11px]">
             <button
-              onClick={() => handleScrollWheel(120)}
-              className="p-1 rounded-full hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
-              title="Scroll Atas"
+              onClick={() => {
+                triggerHaptic([20]);
+                setInputMode('touch');
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                inputMode === 'touch'
+                  ? 'bg-[#0071e3] text-white shadow-sm ring-1 ring-blue-400/50'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+              title="Mode Tap: Sentuh langsung di layar HP untuk klik pada posisi tersebut di PC"
             >
-              <ChevronDown className="w-3.5 h-3.5 rotate-180" />
+              <Fingerprint className="w-3.5 h-3.5" />
+              <span>Mode Tap</span>
             </button>
             <button
-              onClick={() => handleScrollWheel(-120)}
-              className="p-1 rounded-full hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
-              title="Scroll Bawah"
+              onClick={() => {
+                triggerHaptic([20]);
+                setInputMode('trackpad');
+              }}
+              className={`px-2.5 sm:px-3 py-1.5 rounded-lg font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                inputMode === 'trackpad'
+                  ? 'bg-[#0071e3] text-white shadow-sm ring-1 ring-blue-400/50'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+              title="Mode Mouse: Geser jari seperti trackpad laptop untuk menggerakkan kursor PC"
             >
-              <ChevronDown className="w-3.5 h-3.5" />
+              <MousePointer className="w-3.5 h-3.5" />
+              <span>Mode Mouse</span>
             </button>
           </div>
 
-          {/* Right Click Button */}
-          <button
-            onClick={handleRightClick}
-            className="px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:bg-blue-600 active:scale-95 text-white font-medium text-xs transition cursor-pointer border border-white/5"
-            title="Klik Kanan"
-          >
-            R-Click
-          </button>
+          <span className="w-px h-6 bg-white/15 mx-0.5 hidden xs:block" />
+
+          {/* Klik Kiri and Klik Kanan Buttons */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={handleLeftClick}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:bg-blue-600 active:scale-95 text-white font-semibold text-xs transition cursor-pointer border border-white/10 shadow-sm flex items-center gap-1.5"
+              title="Klik Kiri Mouse"
+            >
+              <span className="w-2 h-2 rounded-full bg-blue-400 shrink-0" />
+              <span>Klik Kiri</span>
+            </button>
+
+            <button
+              onClick={handleRightClick}
+              className="px-3 py-1.5 rounded-xl bg-white/10 hover:bg-white/20 active:bg-purple-600 active:scale-95 text-white font-semibold text-xs transition cursor-pointer border border-white/10 shadow-sm flex items-center gap-1.5"
+              title="Klik Kanan Mouse"
+            >
+              <span className="w-2 h-2 rounded-full bg-purple-400 shrink-0" />
+              <span>Klik Kanan</span>
+            </button>
+          </div>
+
+          <span className="w-px h-6 bg-white/15 mx-0.5 hidden sm:block" />
+
+          {/* Mouse Drag & Scroll Wheel */}
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={toggleDragMouse}
+              className={`px-2.5 py-1.5 rounded-xl font-semibold text-xs transition cursor-pointer active:scale-95 border ${
+                isDraggingMouse
+                  ? 'bg-amber-500 text-black border-amber-400 font-bold shadow-sm'
+                  : 'bg-white/8 hover:bg-white/16 text-zinc-300 border-white/8'
+              }`}
+              title={isDraggingMouse ? 'Lepas Drag' : 'Tahan Drag (Tahan Tombol Kiri Mouse)'}
+            >
+              {isDraggingMouse ? 'Dragging...' : 'Drag'}
+            </button>
+
+            <div className="flex items-center bg-white/8 rounded-xl p-0.5 border border-white/10">
+              <button
+                onClick={() => handleScrollWheel(120)}
+                className="p-1 rounded-lg hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Scroll Ke Atas"
+              >
+                <ChevronDown className="w-3.5 h-3.5 rotate-180" />
+              </button>
+              <button
+                onClick={() => handleScrollWheel(-120)}
+                className="p-1 rounded-lg hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Scroll Ke Bawah"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
       {/* 4. StarDesk Right Sidebar (Vertical Action Bar) */}
-      <div className="absolute right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-2 bg-black/60 backdrop-blur-md border border-white/12 p-2 rounded-2xl shadow-2xl">
-        {/* Button 1: StarDesk Panel Drawer */}
+      <div className="absolute right-2.5 sm:right-3 top-1/2 -translate-y-1/2 z-40 flex flex-col items-center gap-1.5 bg-black/75 backdrop-blur-xl border border-white/12 p-1.5 rounded-2xl shadow-2xl max-h-[94vh] overflow-y-auto no-scrollbar">
+        {/* Button 1: Mode Switcher (Mouse Trackpad vs Direct Tap) */}
+        <button
+          onClick={() => {
+            triggerHaptic([20]);
+            setInputMode((prev) => (prev === 'trackpad' ? 'touch' : 'trackpad'));
+          }}
+          className={`p-2 w-11 rounded-xl transition cursor-pointer active:scale-95 flex flex-col items-center gap-0.5 border ${
+            inputMode === 'trackpad'
+              ? 'bg-[#0071e3] text-white border-blue-400/50 shadow-md ring-1 ring-blue-400/40'
+              : 'bg-white/8 hover:bg-white/16 text-emerald-400 border-white/8 hover:text-emerald-300'
+          }`}
+          title={inputMode === 'trackpad' ? 'Mode Mouse Aktif (Klik untuk ganti ke Mode Tap)' : 'Mode Tap Aktif (Klik untuk ganti ke Mode Mouse)'}
+        >
+          {inputMode === 'trackpad' ? (
+            <MousePointer className="w-4 h-4 text-white" />
+          ) : (
+            <Fingerprint className="w-4 h-4" />
+          )}
+          <span className="text-[8px] font-bold tracking-tight">
+            {inputMode === 'trackpad' ? 'Mouse' : 'Tap'}
+          </span>
+        </button>
+
+        {/* Mouse Action Controls (When in Trackpad Mode) */}
+        {inputMode === 'trackpad' && (
+          <div className="flex flex-col items-center gap-1 w-full animate-in fade-in zoom-in-95 duration-150">
+            {/* L & R Click */}
+            <button
+              onClick={handleLeftClick}
+              className="w-11 py-1 rounded-lg bg-blue-600/30 hover:bg-blue-600/60 active:bg-blue-600 active:scale-90 text-blue-200 hover:text-white border border-blue-500/40 transition cursor-pointer flex flex-col items-center gap-0.5 shadow-sm"
+              title="Klik Kiri Mouse"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+              <span className="text-[8px] font-bold tracking-tight">L-Klik</span>
+            </button>
+
+            <button
+              onClick={handleRightClick}
+              className="w-11 py-1 rounded-lg bg-purple-600/30 hover:bg-purple-600/60 active:bg-purple-600 active:scale-90 text-purple-200 hover:text-white border border-purple-500/40 transition cursor-pointer flex flex-col items-center gap-0.5 shadow-sm"
+              title="Klik Kanan Mouse"
+            >
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400" />
+              <span className="text-[8px] font-bold tracking-tight">R-Klik</span>
+            </button>
+
+            {/* Scroll Up / Down */}
+            <div className="flex flex-col items-center bg-white/8 rounded-lg p-0.5 border border-white/10 w-11">
+              <button
+                onClick={() => handleScrollWheel(120)}
+                className="w-full py-0.5 flex justify-center rounded hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Scroll Ke Atas"
+              >
+                <ChevronDown className="w-3.5 h-3.5 rotate-180" />
+              </button>
+              <div className="w-6 h-px bg-white/10 my-0.5" />
+              <button
+                onClick={() => handleScrollWheel(-120)}
+                className="w-full py-0.5 flex justify-center rounded hover:bg-white/15 active:scale-90 text-zinc-300 hover:text-white transition cursor-pointer"
+                title="Scroll Ke Bawah"
+              >
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            {/* Drag Button */}
+            <button
+              onClick={toggleDragMouse}
+              className={`w-11 py-1 rounded-lg text-[8px] font-bold transition cursor-pointer active:scale-90 border ${
+                isDraggingMouse
+                  ? 'bg-amber-500 text-black border-amber-400 shadow-sm'
+                  : 'bg-white/8 hover:bg-white/16 text-zinc-300 border-white/8'
+              }`}
+              title={isDraggingMouse ? 'Lepas Drag' : 'Tahan Drag (Klik Kiri Tahan)'}
+            >
+              {isDraggingMouse ? 'Lepas' : 'Drag'}
+            </button>
+          </div>
+        )}
+
+        <div className="w-6 h-px bg-white/15 my-0.5" />
+
+        {/* Button 2: StarDesk Panel Drawer */}
         <button
           onClick={() => {
             triggerHaptic([20]);
             setIsPanelOpen(!isPanelOpen);
           }}
-          className={`p-2.5 rounded-xl transition cursor-pointer active:scale-95 flex flex-col items-center gap-0.5 ${
+          className={`p-2 w-11 rounded-xl transition cursor-pointer active:scale-95 flex flex-col items-center gap-0.5 ${
             isPanelOpen
               ? 'bg-blue-600 text-white shadow-md'
               : 'bg-white/8 hover:bg-white/16 text-zinc-300 hover:text-white'
@@ -521,13 +703,13 @@ export function SecondDisplayViewerModal({
           <span className="text-[8px] font-medium tracking-tight">Panel</span>
         </button>
 
-        {/* Button 2: Keyboard & Hotkey Bar */}
+        {/* Button 3: Keyboard & Hotkey Bar */}
         <button
           onClick={() => {
             triggerHaptic([20]);
             setIsKeyboardOpen(!isKeyboardOpen);
           }}
-          className={`p-2.5 rounded-xl transition cursor-pointer active:scale-95 flex flex-col items-center gap-0.5 ${
+          className={`p-2 w-11 rounded-xl transition cursor-pointer active:scale-95 flex flex-col items-center gap-0.5 ${
             isKeyboardOpen
               ? 'bg-blue-600 text-white shadow-md'
               : 'bg-white/8 hover:bg-white/16 text-zinc-300 hover:text-white'
@@ -538,30 +720,32 @@ export function SecondDisplayViewerModal({
           <span className="text-[8px] font-medium tracking-tight">Key</span>
         </button>
 
-        {/* Button 3: Show Desktop (Win + D) */}
+        {/* Button 4: Show Desktop (Win + D) */}
         <button
           onClick={() => handleQuickKey('combo win d')}
-          className="p-2.5 rounded-xl bg-white/8 hover:bg-white/16 active:bg-blue-600 active:scale-95 text-zinc-300 hover:text-white transition cursor-pointer flex flex-col items-center gap-0.5"
+          className="p-2 w-11 rounded-xl bg-white/8 hover:bg-white/16 active:bg-blue-600 active:scale-95 text-zinc-300 hover:text-white transition cursor-pointer flex flex-col items-center gap-0.5"
           title="Tampilkan Desktop (Win + D)"
         >
           <Monitor className="w-4 h-4 text-emerald-400" />
           <span className="text-[8px] font-medium tracking-tight">Desktop</span>
         </button>
 
-        {/* Button 4: Task View (Win + Tab) */}
+        {/* Button 5: Task View (Win + Tab) */}
         <button
           onClick={() => handleQuickKey('combo win tab')}
-          className="p-2.5 rounded-xl bg-white/8 hover:bg-white/16 active:bg-blue-600 active:scale-95 text-zinc-300 hover:text-white transition cursor-pointer flex flex-col items-center gap-0.5"
+          className="p-2 w-11 rounded-xl bg-white/8 hover:bg-white/16 active:bg-blue-600 active:scale-95 text-zinc-300 hover:text-white transition cursor-pointer flex flex-col items-center gap-0.5"
           title="Lihat Semua Jendela (Win + Tab)"
         >
           <LayoutGrid className="w-4 h-4 text-purple-400" />
           <span className="text-[8px] font-medium tracking-tight">Tasks</span>
         </button>
 
-        {/* Button 5: Keluar (Clear, Prominent Exit Button!) */}
+        <div className="w-6 h-px bg-white/15 my-0.5" />
+
+        {/* Button 6: Keluar (Clear, Prominent Exit Button!) */}
         <button
           onClick={handleClose}
-          className="p-2.5 rounded-xl bg-red-600/80 hover:bg-red-600 active:bg-red-700 active:scale-95 text-white transition cursor-pointer flex flex-col items-center gap-0.5 shadow-md shadow-red-900/40"
+          className="p-2 w-11 rounded-xl bg-red-600/80 hover:bg-red-600 active:bg-red-700 active:scale-95 text-white transition cursor-pointer flex flex-col items-center gap-0.5 shadow-md shadow-red-900/40"
           title="Keluar dari Tampilan Mirroring"
         >
           <LogOut className="w-4 h-4" />
@@ -701,20 +885,20 @@ export function SecondDisplayViewerModal({
             <label className="text-[11px] font-medium text-zinc-400">Rasio Tampilan Layar</label>
             <div className="grid grid-cols-3 gap-1 bg-white/6 p-1 rounded-xl border border-white/8 text-[11px]">
               <button
-                onClick={() => setFitMode('fill')}
-                className={`py-1.5 rounded-lg font-medium transition cursor-pointer ${
-                  fitMode === 'fill' ? 'bg-blue-600 text-white shadow' : 'text-zinc-400 hover:text-white'
-                }`}
-              >
-                Penuh (StarDesk)
-              </button>
-              <button
                 onClick={() => setFitMode('contain')}
                 className={`py-1.5 rounded-lg font-medium transition cursor-pointer ${
                   fitMode === 'contain' ? 'bg-blue-600 text-white shadow' : 'text-zinc-400 hover:text-white'
                 }`}
               >
-                Asli (Fit)
+                Asli (Default)
+              </button>
+              <button
+                onClick={() => setFitMode('fill')}
+                className={`py-1.5 rounded-lg font-medium transition cursor-pointer ${
+                  fitMode === 'fill' ? 'bg-blue-600 text-white shadow' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                Penuh (Stretch)
               </button>
               <button
                 onClick={() => setFitMode('cover')}

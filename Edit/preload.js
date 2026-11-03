@@ -35,6 +35,9 @@ contextBridge.exposeInMainWorld('electronAPI', {
   },
   getClipboardText: () => ipcRenderer.invoke('get-clipboard-text'),
   setClipboardText: (text) => ipcRenderer.invoke('set-clipboard-text', text),
+  setClipboardImage: (dataUrl) => ipcRenderer.invoke('set-clipboard-image', dataUrl),
+  saveScreenshotFile: (opts) => ipcRenderer.invoke('save-screenshot-file', opts),
+  checkGameRunning: () => ipcRenderer.invoke('check-game-running'),
   onClipboardChanged: (callback) => {
     const handler = (_, text) => callback(text);
     ipcRenderer.on('clipboard-changed', handler);
@@ -62,5 +65,7 @@ contextBridge.exposeInMainWorld('electronAPI', {
   readFileBuffer: (filePath) => ipcRenderer.invoke('read-file-buffer', filePath),
   getDesktopSources: (types) => ipcRenderer.invoke('get-desktop-sources', types),
   setTargetDisplaySource: (sourceId) => ipcRenderer.invoke('set-target-display-source', sourceId),
-  launchPcApp: (opts) => ipcRenderer.invoke('launch-pc-app', opts)
+  launchPcApp: (opts) => ipcRenderer.invoke('launch-pc-app', opts),
+  launchPhoneAppAdb: (opts) => ipcRenderer.invoke('launch-phone-app-adb', opts),
+  getPhoneInstalledAppsAdb: (opts) => ipcRenderer.invoke('get-phone-installed-apps-adb', opts)
 });

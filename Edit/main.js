@@ -894,6 +894,14 @@ function ensureInputHelperRunning() {
 function sendInputCommand(cmdStr) {
   if (!cmdStr || typeof cmdStr !== 'string') return;
 
+  if (cmdStr === 'lock' || cmdStr === 'pc_lock') {
+    try { exec('rundll32.exe user32.dll,LockWorkStation'); } catch (_) {}
+  }
+  if (cmdStr === 'sleep' || cmdStr === 'pc_sleep') {
+    try { exec('rundll32.exe powrprof.dll,SetSuspendState 0,1,0'); } catch (_) {}
+    return;
+  }
+
   // Direct zero-latency Unicode typing via SendInput (no clipboard pollution)
   if (cmdStr.startsWith('text ')) {
     ensureInputHelperRunning();
@@ -1006,6 +1014,83 @@ ipcMain.handle('set-clipboard-text', (_, text) => {
     }
   } catch (_) {}
   return false;
+});
+
+ipcMain.handle('set-clipboard-image', (_, dataUrl) => {
+  try {
+    if (typeof dataUrl === 'string' && dataUrl.startsWith('data:image')) {
+      const img = nativeImage.createFromDataURL(dataUrl);
+      if (!img.isEmpty()) {
+        clipboard.writeImage(img);
+        return true;
+      }
+    }
+  } catch (err) {
+    console.warn('[Clipboard] set-clipboard-image error:', err.message);
+  }
+  return false;
+});
+
+ipcMain.handle('save-screenshot-file', async (_, { dataUrl, fileName }) => {
+  try {
+    if (!dataUrl || !dataUrl.startsWith('data:image')) return { success: false };
+    const base64Data = dataUrl.replace(/^data:image\/\w+;base64,/, '');
+    const buffer = Buffer.from(base64Data, 'base64');
+    const picturesDir = app.getPath('pictures') || path.join(os.homedir(), 'Pictures');
+    const targetDir = path.join(picturesDir, 'ENCross Screenshots');
+    if (!fs.existsSync(targetDir)) {
+      fs.mkdirSync(targetDir, { recursive: true });
+    }
+    const safeName = fileName || Screenshot_.png;
+    const fullPath = path.join(targetDir, safeName);
+    fs.writeFileSync(fullPath, buffer);
+    return { success: true, path: fullPath };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+// Detect whether a competitive game (like Valorant, CS2, etc.) is currently running
+const GAME_EXECUTABLES = [
+  'valorant-win64-shipping.exe',
+  'valorant.exe',
+  'riotclientservices.exe',
+  'cs2.exe',
+  'csgo.exe',
+  'dota2.exe',
+  'league of legends.exe',
+  'overwatch.exe',
+  'fortniteclient-win64-shipping.exe',
+  'genshinimpact.exe',
+  'honkaistarrail.exe',
+  'r5apex.exe',
+  'gta5.exe',
+  'rainbowsix.exe'
+];
+let cachedGameStatus = { isGameRunning: false, gameName: null, checkedAt: 0 };
+
+ipcMain.handle('check-game-running', async () => {
+  const now = Date.now();
+  if (now - cachedGameStatus.checkedAt < 4000) {
+    return cachedGameStatus;
+  }
+  return new Promise((resolve) => {
+    exec('tasklist /NH /FO CSV', { timeout: 1500 }, (err, stdout) => {
+      cachedGameStatus.checkedAt = Date.now();
+      if (!err && stdout) {
+        const lower = stdout.toLowerCase();
+        for (const exe of GAME_EXECUTABLES) {
+          if (lower.includes(exe)) {
+            const prettyName = exe.replace('.exe', '').toUpperCase();
+            cachedGameStatus = { isGameRunning: true, gameName: prettyName, checkedAt: Date.now() };
+            return resolve(cachedGameStatus);
+          }
+        }
+      }
+      cachedGameStatus = { isGameRunning: false, gameName: null, checkedAt: Date.now() };
+      resolve(cachedGameStatus);
+    });
+  });
 });
 
 // Map Phone WebDAV storage as a native Windows drive (e.g. Z:)
@@ -1209,16 +1294,105 @@ ipcMain.handle('read-file-buffer', async (_, filePath) => {
   }
 });
 
-ipcMain.handle('launch-pc-app', async (_, { command }) => {
+ipcMain.handle('launch-pc-app', async (_, { command, appName = '', windowMode = 'normal' }) => {
   if (!command || typeof command !== 'string') return { success: false, error: 'Command invalid' };
   try {
-    const sanitized = command.trim();
-    exec(`start "" ${sanitized}`, (err) => {
-      if (err) console.warn('[Electron] launch-pc-app error:', err);
-    });
+    const trimmed = command.trim();
+    const lower = trimmed.toLowerCase();
+    const isMin = windowMode === 'minimized';
+
+    if (
+      lower === 'win-search' ||
+      lower === 'start search-ms:' ||
+      lower === 'search-ms:' ||
+      lower === 'search-pc' ||
+      lower === 'cari' ||
+      lower === 'cari pc' ||
+      lower === 'search' ||
+      lower.startsWith('search:') ||
+      lower.startsWith('cari:')
+    ) {
+      sendInputCommand('combo win s');
+      const query = lower.startsWith('search:') ? trimmed.slice(7).trim()
+                  : lower.startsWith('cari:') ? trimmed.slice(5).trim()
+                  : '';
+      if (query) {
+        setTimeout(() => {
+          sendInputCommand('type:' + query);
+        }, 150);
+      }
+      return { success: true };
+    }
+
+    if (trimmed.toLowerCase().startsWith('start ')) {
+      const actual = trimmed.slice(6);
+      const finalCmd = isMin ? `cmd.exe /c start /min "" ${actual}` : `cmd.exe /c start "" ${actual}`;
+      exec(finalCmd);
+      return { success: true };
+    }
+
+    // Default fallback to Windows Search if direct app execution fails
+    sendInputCommand('combo win s');
+    setTimeout(() => {
+      sendInputCommand('type:' + (appName || trimmed));
+    }, 150);
     return { success: true };
   } catch (err) {
     return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('launch-phone-app-adb', async (_, { deviceId, packageName }) => {
+  if (!packageName || typeof packageName !== 'string') return { success: false, error: 'Package invalid' };
+  try {
+    const adbPath = getAdbPath();
+    const args = deviceId ? ['-s', deviceId] : [];
+    const target = packageName.trim();
+
+    if (target === 'camera' || target === 'kamera') {
+      execFile(adbPath, [...args, 'shell', 'am', 'start', '-a', 'android.media.action.STILL_IMAGE_CAMERA'], () => {});
+    } else if (target === 'settings' || target === 'pengaturan') {
+      execFile(adbPath, [...args, 'shell', 'am', 'start', '-a', 'android.settings.SETTINGS'], () => {});
+    } else if (target === 'gallery' || target === 'galeri' || target === 'photos') {
+      execFile(adbPath, [...args, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-t', 'image/*'], () => {});
+    } else {
+      // First try resolving launcher activity for clean direct launch
+      execFile(adbPath, [...args, 'shell', `cmd package resolve-activity --brief ${target}`], (err, stdout) => {
+        if (!err && stdout && stdout.includes('/')) {
+          const lines = stdout.trim().split(/\r?\n/);
+          const compLine = lines[lines.length - 1].trim();
+          if (compLine && compLine.includes('/') && !compLine.startsWith('priority=')) {
+            execFile(adbPath, [...args, 'shell', 'am', 'start', '-n', compLine], () => {});
+            return;
+          }
+        }
+        // Fallback to monkey launcher
+        execFile(adbPath, [...args, 'shell', 'monkey', '-p', target, '-c', 'android.intent.category.LAUNCHER', '1'], () => {});
+      });
+    }
+    return { success: true };
+  } catch (err) {
+    return { success: false, error: err.message };
+  }
+});
+
+ipcMain.handle('get-phone-installed-apps-adb', async (_, { deviceId } = {}) => {
+  try {
+    const adbPath = getAdbPath();
+    const args = deviceId ? ['-s', deviceId] : [];
+    return new Promise((resolve) => {
+      execFile(adbPath, [...args, 'shell', 'pm', 'list', 'packages', '-3'], { timeout: 3500 }, (err, stdout) => {
+        if (err || !stdout) return resolve({ success: false, apps: [] });
+        const packages = stdout
+          .trim()
+          .split(/\r?\n/)
+          .map((line) => line.trim().replace(/^package:/, ''))
+          .filter((pkg) => pkg && !pkg.includes(' ') && !pkg.startsWith('com.vancross.app'));
+        resolve({ success: true, packages });
+      });
+    });
+  } catch (err) {
+    return { success: false, apps: [], error: err.message };
   }
 });
 

@@ -152,7 +152,7 @@ export function ScreenViewModal({ stream, senderName, onClose, mode, onSwitchCam
     <div className="fixed inset-0 z-50 flex items-center justify-center p-0 sm:p-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-200">
       <div
         ref={containerRef}
-        className="bg-black border-0 sm:border border-black/10 dark:border-white/10 sm:rounded-3xl w-full h-full sm:h-[88vh] sm:max-w-5xl flex flex-col shadow-2xl overflow-hidden relative"
+        className="bg-black border-0 sm:border border-black/10 dark:border-white/10 sm:rounded-3xl w-full h-full sm:h-[88vh] sm:max-w-5xl flex flex-col shadow-2xl overflow-hidden relative animate-ios-sheet smooth-gpu"
       >
         {/* Top Control Bar */}
         <div

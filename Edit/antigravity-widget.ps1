@@ -1,4 +1,4 @@
-# Antigravity Pro Minimalist Live Desktop Widget (WPF / Native Windows)
+﻿# Antigravity Pro Minimalist Live Desktop Widget (WPF / Native Windows)
 Add-Type -AssemblyName PresentationFramework, PresentationCore, WindowsBase, System.Windows.Forms, System.Drawing
 
 # 1. Win32 API: Hide Console & DestroyIcon (Mencegah GDI Handle Memory Leak di System Tray)
@@ -119,7 +119,12 @@ if (-not (Test-Path $script:transparentIconPath)) {
         Topmost="False"
         WindowStartupLocation="Manual"
         ShowInTaskbar="False"
-        FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif">
+        SnapsToDevicePixels="True"
+        UseLayoutRounding="True"
+        TextOptions.TextFormattingMode="Display"
+        TextOptions.TextRenderingMode="ClearType"
+        RenderOptions.ClearTypeHint="Enabled"
+        FontFamily="Segoe UI">
     <Window.Resources>
         <!-- Style Tombol Utama (Content Stretch agar Card Mengisi Penuh) -->
         <Style TargetType="Button">
@@ -169,7 +174,11 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
     <!-- Outer Shadow Padding -->
     <Grid Margin="10">
-        <Border Name="FullViewPanel" CornerRadius="14" Background="#CC0B1220" BorderBrush="#384C66" BorderThickness="1">
+        <Border Name="FullViewPanel" CornerRadius="14" Background="#F509090B" BorderBrush="#27272A" BorderThickness="1"
+                SnapsToDevicePixels="True" UseLayoutRounding="True"
+                TextOptions.TextFormattingMode="Display"
+                TextOptions.TextRenderingMode="ClearType"
+                RenderOptions.ClearTypeHint="Enabled">
             <Border.Effect>
                 <DropShadowEffect BlurRadius="24" ShadowDepth="4" Direction="270" Color="#000000" Opacity="0.55"/>
             </Border.Effect>
@@ -186,7 +195,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
 
                     <!-- App Logo & Title -->
                     <StackPanel Grid.Column="0" Orientation="Horizontal" VerticalAlignment="Center">
-                        <Border Width="24" Height="24" CornerRadius="6" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" Margin="0,0,8,0">
+                        <Border Width="24" Height="24" CornerRadius="6" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1" Margin="0,0,8,0">
                             <Image Source="D:\ProjekAntigravity\antigravity_logo.png" Width="18" Height="18" RenderOptions.BitmapScalingMode="HighQuality" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Border>
                         <StackPanel VerticalAlignment="Center">
@@ -198,31 +207,31 @@ if (-not (Test-Path $script:transparentIconPath)) {
                         <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                             <Ellipse Width="5" Height="5" Fill="#10B981" Margin="0,0,5,0" VerticalAlignment="Center"/>
                             <TextBlock Text="ACTIVE: " FontSize="8.5" FontWeight="Bold" Foreground="#6EE7B7" VerticalAlignment="Center"/>
-                            <TextBlock Name="TxtActiveAccount" Text="edvanwlf" FontSize="9.5" FontWeight="Bold" Foreground="#34D399" VerticalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                            <TextBlock Name="TxtActiveAccount" Text="edvanwlf" FontSize="9.5" FontWeight="Bold" Foreground="#34D399" VerticalAlignment="Center" FontFamily="Segoe UI"/>
                         </StackPanel>
                     </Border>
 
                     <!-- Window Action Buttons (Presisi Ditengah Kotak) -->
                     <StackPanel Grid.Column="2" Orientation="Horizontal" VerticalAlignment="Center">
                         <!-- Tombol PIN (Default: Desktop Mode, Klik untuk Pinned Always On Top) -->
-                        <Button Name="BtnPin" Width="34" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0" ToolTip="Klik untuk menampilkan widget selalu di atas aplikasi lain (PIN)">
+                        <Button Name="BtnPin" Width="34" Height="22" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0" ToolTip="Klik untuk menampilkan widget selalu di atas aplikasi lain (PIN)">
                             <TextBlock Name="TxtBtnPin" Text="PIN" FontSize="8.5" FontWeight="Bold" Foreground="#94A3B8" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Tombol Minimize (-) Vector Presisi Center -->
-                        <Button Name="BtnMinimize" Width="22" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0">
+                        <Button Name="BtnMinimize" Width="22" Height="22" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center" Margin="0,0,4,0">
                             <Border Width="8" Height="2" Background="#94A3B8" CornerRadius="0.5" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
 
                         <!-- Tombol Close (X) Vector Presisi Center -->
-                        <Button Name="BtnClose" Width="22" Height="22" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
+                        <Button Name="BtnClose" Width="22" Height="22" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1" HorizontalContentAlignment="Center" VerticalContentAlignment="Center">
                             <Path Data="M 0 0 L 7 7 M 0 7 L 7 0" Stroke="#94A3B8" StrokeThickness="1.5" StrokeStartLineCap="Round" StrokeEndLineCap="Round" HorizontalAlignment="Center" VerticalAlignment="Center"/>
                         </Button>
                     </StackPanel>
                 </Grid>
 
                 <!-- 2. GLOBAL SUMMARY HERO CARD (Total + Global Input/Output/Cache + Est. Biaya) -->
-                <Border CornerRadius="10" Background="#59132036" BorderBrush="#293B52" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
+                <Border CornerRadius="10" Background="#66121214" BorderBrush="#27272A" BorderThickness="1" Padding="12,10" Margin="0,0,0,10">
                     <StackPanel>
                         <Grid>
                             <Grid.ColumnDefinitions>
@@ -233,10 +242,10 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                 <TextBlock Text="TOTAL TOKEN KESELURUHAN" FontSize="8.5" FontWeight="Bold" Foreground="#64748B"/>
                                 <StackPanel Orientation="Horizontal" Margin="0,2,0,0">
                                     <TextBlock Text="Est. Nilai API: " FontSize="8.0" Foreground="#64748B"/>
-                                    <TextBlock Name="TxtGrandTotalCost" Text="~$0.00 (Rp 0)" FontSize="8.0" FontWeight="SemiBold" Foreground="#34D399" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                                    <TextBlock Name="TxtGrandTotalCost" Text="~$0.00 (Rp 0)" FontSize="8.0" FontWeight="SemiBold" Foreground="#34D399" FontFamily="Segoe UI"/>
                                 </StackPanel>
                             </StackPanel>
-                            <TextBlock Grid.Column="1" Name="TxtGrandTotalTokens" Text="0 M" FontSize="19" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                            <TextBlock Grid.Column="1" Name="TxtGrandTotalTokens" Text="0 M" FontSize="19" FontWeight="Bold" Foreground="#38BDF8" VerticalAlignment="Center" FontFamily="Segoe UI"/>
                         </Grid>
 
                         <Border Height="1" Background="#263E56" Margin="0,8,0,8"/>
@@ -248,21 +257,21 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                     <Ellipse Width="4" Height="4" Fill="#818CF8" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                     <TextBlock Text="TOTAL INPUT" FontSize="8" FontWeight="SemiBold" Foreground="#64748B"/>
                                 </StackPanel>
-                                <TextBlock Name="TxtGlobalInput" Text="0 M" FontSize="11" FontWeight="Bold" Foreground="#E2E8F0" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" Margin="0,1,0,0"/>
+                                <TextBlock Name="TxtGlobalInput" Text="0 M" FontSize="11" FontWeight="Bold" Foreground="#E2E8F0" FontFamily="Segoe UI" Margin="0,1,0,0"/>
                             </StackPanel>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                     <Ellipse Width="4" Height="4" Fill="#34D399" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                     <TextBlock Text="TOTAL OUTPUT" FontSize="8" FontWeight="SemiBold" Foreground="#64748B"/>
                                 </StackPanel>
-                                <TextBlock Name="TxtGlobalOutput" Text="0 M" FontSize="11" FontWeight="Bold" Foreground="#A7F3D0" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" Margin="0,1,0,0"/>
+                                <TextBlock Name="TxtGlobalOutput" Text="0 M" FontSize="11" FontWeight="Bold" Foreground="#A7F3D0" FontFamily="Segoe UI" Margin="0,1,0,0"/>
                             </StackPanel>
                             <StackPanel>
                                 <StackPanel Orientation="Horizontal" Margin="0,0,0,2">
                                     <Ellipse Width="4" Height="4" Fill="#38BDF8" VerticalAlignment="Center" Margin="0,0,4,0"/>
                                     <TextBlock Text="TOTAL CACHE" FontSize="8" FontWeight="SemiBold" Foreground="#64748B"/>
                                 </StackPanel>
-                                <TextBlock Name="TxtGlobalCache" Text="0 B" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" Margin="0,1,0,0"/>
+                                <TextBlock Name="TxtGlobalCache" Text="0 B" FontSize="11" FontWeight="Bold" Foreground="#38BDF8" FontFamily="Segoe UI" Margin="0,1,0,0"/>
                             </StackPanel>
                         </UniformGrid>
                     </StackPanel>
@@ -278,10 +287,10 @@ if (-not (Test-Path $script:transparentIconPath)) {
                         </StackPanel>
 
                         <!-- Single Unified Account Selector Dropdown Button -->
-                        <Button Name="BtnAccountSelectorDropdown" HorizontalAlignment="Right" Padding="8,3.5" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1" VerticalAlignment="Center">
+                        <Button Name="BtnAccountSelectorDropdown" HorizontalAlignment="Right" Padding="8,3.5" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1" VerticalAlignment="Center">
                             <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                 <Ellipse Name="DotSelectedAccountBtn" Width="6" Height="6" Fill="#10B981" Margin="0,0,5,0" VerticalAlignment="Center"/>
-                                <TextBlock Name="TxtSelectedAccountBtnLabel" Text="edvanaha" FontSize="9.5" FontWeight="Bold" Foreground="#F8FAFC" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center" Margin="0,0,5,0"/>
+                                <TextBlock Name="TxtSelectedAccountBtnLabel" Text="edvanaha" FontSize="9.5" FontWeight="Bold" Foreground="#F8FAFC" FontFamily="Segoe UI" VerticalAlignment="Center" Margin="0,0,5,0"/>
                                 <Border Name="BadgeSelectedAccountBtn" CornerRadius="3" Padding="4,1" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" Margin="0,0,6,0" VerticalAlignment="Center">
                                     <TextBlock Name="TxtBadgeSelectedAccountBtn" Text="AKTIF" FontSize="7.0" FontWeight="Bold" Foreground="#34D399"/>
                                 </Border>
@@ -292,9 +301,9 @@ if (-not (Test-Path $script:transparentIconPath)) {
                     </Grid>
 
                     <!-- Expandable Dropdown List Panel untuk Semua Akun (2 Kolom Kesamping) -->
-                    <Border Name="PanelAccountsDropdown" ClipToBounds="True" Visibility="Collapsed" Background="#E60D1728" BorderBrush="#384C66" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,8">
+                    <Border Name="PanelAccountsDropdown" ClipToBounds="True" Visibility="Collapsed" Background="#F50C0C0E" BorderBrush="#27272A" BorderThickness="1" CornerRadius="8" Padding="6" Margin="0,0,0,8">
                         <StackPanel>
-                            <TextBlock Text="PILIH AKUN UNTUK MEMANTAU KUOTA:" FontSize="7.2" FontWeight="Bold" Foreground="#64748B" Margin="4,2,4,5"/>
+                            <TextBlock Text="PILIH AKUN UNTUK MEMANTAU KUOTA:" FontSize="8.5" FontWeight="Bold" Foreground="#64748B" Margin="4,2,4,5"/>
                             <UniformGrid Name="ListAccountsPanel" Columns="2"/>
                         </StackPanel>
                     </Border>
@@ -306,15 +315,15 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             <Grid Margin="0,0,0,8">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <Ellipse Name="DotFeaturedAccount" Width="7" Height="7" Fill="#10B981" Margin="0,0,6,0" VerticalAlignment="Center"/>
-                                    <TextBlock Name="TxtFeaturedAccountName" Text="edvanaha" FontSize="11" FontWeight="Bold" Foreground="#F8FAFC" VerticalAlignment="Center" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" Margin="0,0,7,0"/>
+                                    <TextBlock Name="TxtFeaturedAccountName" Text="edvanaha" FontSize="11" FontWeight="Bold" Foreground="#F8FAFC" VerticalAlignment="Center" FontFamily="Segoe UI" Margin="0,0,7,0"/>
                                     <Border Name="BadgeFeaturedAccountState" CornerRadius="3" Padding="5,1.5" Background="#4D0D211B" BorderBrush="#14533C" BorderThickness="1" VerticalAlignment="Center">
                                         <TextBlock Name="TxtFeaturedAccountState" Text="ACTIVE" FontSize="7.5" FontWeight="Bold" Foreground="#34D399"/>
                                     </Border>
                                 </StackPanel>
                                 <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" VerticalAlignment="Center">
                                     <TextBlock Text="Token: " FontSize="9" Foreground="#64748B" VerticalAlignment="Center"/>
-                                    <TextBlock Name="TxtFeaturedAccountToken" Text="0 M" FontSize="11.5" FontWeight="Bold" Foreground="#38BDF8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
-                                    <TextBlock Name="TxtFeaturedAccountCost" Text="" FontSize="8.5" Foreground="#34D399" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center" Margin="3,0,0,0"/>
+                                    <TextBlock Name="TxtFeaturedAccountToken" Text="0 M" FontSize="11.5" FontWeight="Bold" Foreground="#38BDF8" FontFamily="Segoe UI" VerticalAlignment="Center"/>
+                                    <TextBlock Name="TxtFeaturedAccountCost" Text="" FontSize="8.5" Foreground="#34D399" FontFamily="Segoe UI" VerticalAlignment="Center" Margin="3,0,0,0"/>
                                 </StackPanel>
                             </Grid>
 
@@ -336,20 +345,20 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                     <!-- Gemini 5-Hour Limit -->
                                     <Grid Margin="0,0,0,2">
                                         <TextBlock Text="5-Hour Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
-                                        <TextBlock Name="TxtFeaturedG5Val" Text="19%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#F59E0B" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
+                                        <TextBlock Name="TxtFeaturedG5Val" Text="19%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#F59E0B" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                                     </Grid>
                                     <ProgressBar Name="ProgFeaturedG5" Value="19" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#F59E0B" Background="#331E293B" BorderThickness="0"/>
-                                    <TextBlock Name="TxtFeaturedG5Reset" Text="Resets in 3h 04m 30s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                                    <TextBlock Name="TxtFeaturedG5Reset" Text="Resets in 3h 04m 30s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI"/>
 
                                     <Border Height="8"/>
 
                                     <!-- Gemini Weekly Limit -->
                                     <Grid Margin="0,0,0,2">
                                         <TextBlock Text="Weekly Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
-                                        <TextBlock Name="TxtFeaturedGWVal" Text="48%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
+                                        <TextBlock Name="TxtFeaturedGWVal" Text="48%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                                     </Grid>
                                     <ProgressBar Name="ProgFeaturedGW" Value="48" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
-                                    <TextBlock Name="TxtFeaturedGWReset" Text="Resets in 3d 21h 38m 06s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                                    <TextBlock Name="TxtFeaturedGWReset" Text="Resets in 3d 21h 38m 06s" FontSize="8" Foreground="#94A3B8" FontFamily="Segoe UI"/>
                                 </StackPanel>
 
                                 <!-- Column 2: CLAUDE AND GPT MODELS -->
@@ -359,20 +368,20 @@ if (-not (Test-Path $script:transparentIconPath)) {
                                     <!-- Claude/GPT 5-Hour Limit -->
                                     <Grid Margin="0,0,0,2">
                                         <TextBlock Text="5-Hour Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
-                                        <TextBlock Name="TxtFeaturedC5Val" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
+                                        <TextBlock Name="TxtFeaturedC5Val" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                                     </Grid>
                                     <ProgressBar Name="ProgFeaturedC5" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
-                                    <TextBlock Name="TxtFeaturedC5Reset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                                    <TextBlock Name="TxtFeaturedC5Reset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI"/>
 
                                     <Border Height="8"/>
 
                                     <!-- Claude/GPT Weekly Limit -->
                                     <Grid Margin="0,0,0,2">
                                         <TextBlock Text="Weekly Limit" FontSize="9" FontWeight="SemiBold" Foreground="#CBD5E1" VerticalAlignment="Center"/>
-                                        <TextBlock Name="TxtFeaturedCWVal" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif" VerticalAlignment="Center"/>
+                                        <TextBlock Name="TxtFeaturedCWVal" Text="100%" HorizontalAlignment="Right" FontSize="12.5" FontWeight="Bold" Foreground="#10B981" FontFamily="Segoe UI" VerticalAlignment="Center"/>
                                     </Grid>
                                     <ProgressBar Name="ProgFeaturedCW" Value="100" Maximum="100" Height="6" Margin="0,0,0,3" Foreground="#10B981" Background="#331E293B" BorderThickness="0"/>
-                                    <TextBlock Name="TxtFeaturedCWReset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI Variable Display, Segoe UI, sans-serif"/>
+                                    <TextBlock Name="TxtFeaturedCWReset" Text="Ready" FontSize="8" Foreground="#10B981" FontFamily="Segoe UI"/>
                                 </StackPanel>
                             </Grid>
 
@@ -414,7 +423,7 @@ if (-not (Test-Path $script:transparentIconPath)) {
                             </StackPanel>
 
                             <!-- Right: Tombol 3-Stack Diperbesar (Lihat Task Running) -->
-                            <Button Name="BtnToggleTaskDropdown" Grid.Column="2" Visibility="Collapsed" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="10,5" Background="#5916243A" BorderBrush="#2B3C54" BorderThickness="1">
+                            <Button Name="BtnToggleTaskDropdown" Grid.Column="2" Visibility="Collapsed" Margin="8,0,0,0" HorizontalAlignment="Right" VerticalAlignment="Center" Padding="10,5" Background="#5918181A" BorderBrush="#2E2E32" BorderThickness="1">
                                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                                     <!-- 3-Stack Bars Icon (Vector) -->
                                     <Path Name="IconTaskStack" Data="M 0 1.5 L 11 1.5 M 0 5.5 L 11 5.5 M 0 9.5 L 11 9.5" Stroke="#10B981" StrokeThickness="1.6" StrokeStartLineCap="Round" StrokeEndLineCap="Round" Margin="0,0,6,0" VerticalAlignment="Center"/>
@@ -670,9 +679,9 @@ if ($btnSwitchAccount) {
         if ($txtBtnSwitchAccount) { $txtBtnSwitchAccount.Text = "MEMPROSES PERALIHAN AKUN..." }
         $btnSwitchAccount.IsEnabled = $false
 
-        # 4. Jalankan script switcher secara terpisah via WMI (kebal dari penutupan Antigravity)
-        $wmiArg = "powershell.exe -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$switchScript`" $targetArg"
-        Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList $wmiArg | Out-Null
+        # 4. Jalankan script switcher secara terpisah (interaktif Session 1, kebal dari penutupan Antigravity)
+        $switchArgs = "-WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$switchScript`" $targetArg"
+        Start-Process -FilePath "powershell.exe" -ArgumentList $switchArgs -WindowStyle Hidden
 
         # 5. Tampilkan notifikasi balon tray
         if ($script:notifyIcon) {
@@ -851,6 +860,19 @@ if (Test-Path $script:appIconPath) {
 $script:notifyIcon.Visible = $true
 
 $trayMenu = [System.Windows.Forms.ContextMenuStrip]::new()
+
+# Header status info kuota di system tray (Aktif, 5-Hour, & Weekly)
+$script:trayItemUserHeader = $trayMenu.Items.Add("👤 Akun: -")
+$script:trayItemUserHeader.Enabled = $false
+$script:trayItemUserHeader.Font = [System.Drawing.Font]::new($trayMenu.Font, [System.Drawing.FontStyle]::Bold)
+
+$script:trayItem5hInfo = $trayMenu.Items.Add("⚡ 5-Hour: -")
+$script:trayItem5hInfo.Enabled = $false
+
+$script:trayItemWeeklyInfo = $trayMenu.Items.Add("📅 Weekly: -")
+$script:trayItemWeeklyInfo.Enabled = $false
+
+$trayMenu.Items.Add("-") | Out-Null
 $trayItemSummon = $trayMenu.Items.Add("Panggil Widget ke Depan")
 $trayItemSummon.Font = [System.Drawing.Font]::new($trayMenu.Font, [System.Drawing.FontStyle]::Bold)
 $trayItemSummon.Add_Click({ Show-FromTray })
@@ -961,31 +983,33 @@ function Reconcile-AccountQuotaExpiry($acc) {
     $now = [DateTime]::UtcNow
     $changed = $false
 
-    # 1. 5-Hour Countdown Check
+    # 1. Gemini 5-Hour Countdown Check (Independen)
     if (-not [string]::IsNullOrWhiteSpace($q.gemini5hResetIso)) {
         try {
             $t5 = [DateTime]::Parse($q.gemini5hResetIso).ToUniversalTime()
-            $diff5 = $t5 - $now
-            if ($diff5.TotalSeconds -le 0) {
-                $q.gemini5h = 100
-                $q.gemini5hReset = "Ready / Full"
-                $q.gemini5hResetIso = $null
-                $changed = $true
-            } else {
-                $q.gemini5hReset = Format-ResetTime $q.gemini5hResetIso
-            }
-        } catch { $q.gemini5hResetIso = $null }
-    } elseif (-not [string]::IsNullOrWhiteSpace($acc.lastSeen)) {
-        try {
-            $ls = [DateTime]::Parse($acc.lastSeen).ToUniversalTime()
-            $hoursPassed = ($now - $ls).TotalHours
-            if ($hoursPassed -ge 5.0) {
+            if (($t5 - $now).TotalSeconds -le 0) {
                 if ($q.gemini5h -lt 100 -or $q.gemini5hReset -ne "Ready / Full") {
                     $q.gemini5h = 100
                     $q.gemini5hReset = "Ready / Full"
                     $q.gemini5hResetIso = $null
                     $changed = $true
                 }
+            } else {
+                $new5Str = Format-ResetTime $q.gemini5hResetIso
+                if ($q.gemini5hReset -ne $new5Str) {
+                    $q.gemini5hReset = $new5Str
+                    $changed = $true
+                }
+            }
+        } catch { $q.gemini5hResetIso = $null }
+    } elseif ($q.gemini5h -lt 100 -and -not [string]::IsNullOrWhiteSpace($acc.lastSeen)) {
+        try {
+            $ls = [DateTime]::Parse($acc.lastSeen).ToUniversalTime()
+            if (($now - $ls).TotalHours -ge 5.0) {
+                $q.gemini5h = 100
+                $q.gemini5hReset = "Ready / Full"
+                $q.gemini5hResetIso = $null
+                $changed = $true
             } elseif ($q.gemini5hReset -match 'Resets in\s+(\d+)h\s*(\d*)m') {
                 $hrs = [int]$matches[1]
                 $mins = if ($matches[2]) { [int]$matches[2] } else { 0 }
@@ -1001,13 +1025,36 @@ function Reconcile-AccountQuotaExpiry($acc) {
                     $changed = $true
                 }
             }
-            if ($hoursPassed -ge 168.0) {
+        } catch {}
+    }
+
+    # 2. Gemini Weekly Countdown Check (Independen & Anti-Premature Reset)
+    if (-not [string]::IsNullOrWhiteSpace($q.geminiWeeklyResetIso)) {
+        try {
+            $tw = [DateTime]::Parse($q.geminiWeeklyResetIso).ToUniversalTime()
+            if (($tw - $now).TotalSeconds -le 0) {
                 if ($q.geminiWeekly -lt 100 -or $q.geminiWeeklyReset -ne "Ready / Full") {
                     $q.geminiWeekly = 100
                     $q.geminiWeeklyReset = "Ready / Full"
                     $q.geminiWeeklyResetIso = $null
                     $changed = $true
                 }
+            } else {
+                $newWStr = Format-ResetTime $q.geminiWeeklyResetIso
+                if ($q.geminiWeeklyReset -ne $newWStr) {
+                    $q.geminiWeeklyReset = $newWStr
+                    $changed = $true
+                }
+            }
+        } catch { $q.geminiWeeklyResetIso = $null }
+    } elseif ($q.geminiWeekly -lt 100 -and -not [string]::IsNullOrWhiteSpace($acc.lastSeen)) {
+        try {
+            $ls = [DateTime]::Parse($acc.lastSeen).ToUniversalTime()
+            if (($now - $ls).TotalHours -ge 168.0) {
+                $q.geminiWeekly = 100
+                $q.geminiWeeklyReset = "Ready / Full"
+                $q.geminiWeeklyResetIso = $null
+                $changed = $true
             } elseif ($q.geminiWeeklyReset -match 'Resets in\s+(\d+)d\s*(\d*)h') {
                 $days = [int]$matches[1]
                 $hrs = if ($matches[2]) { [int]$matches[2] } else { 0 }
@@ -1026,30 +1073,13 @@ function Reconcile-AccountQuotaExpiry($acc) {
         } catch {}
     }
 
-    # 2. Weekly Countdown Check
-    if (-not [string]::IsNullOrWhiteSpace($q.geminiWeeklyResetIso)) {
-        try {
-            $tw = [DateTime]::Parse($q.geminiWeeklyResetIso).ToUniversalTime()
-            $diffw = $tw - $now
-            if ($diffw.TotalSeconds -le 0) {
-                $q.geminiWeekly = 100
-                $q.geminiWeeklyReset = "Ready / Full"
-                $q.geminiWeeklyResetIso = $null
-                $changed = $true
-            } else {
-                $q.geminiWeeklyReset = Format-ResetTime $q.geminiWeeklyResetIso
-            }
-        } catch { $q.geminiWeeklyResetIso = $null }
-    }
-
-    # 3. Claude 5h & Weekly Expiry Checks
+    # 3. Claude 5h & Weekly Expiry Checks (Independen)
     if (-not [string]::IsNullOrWhiteSpace($q.claude5hResetIso)) {
         try {
             $tcf = [DateTime]::Parse($q.claude5hResetIso).ToUniversalTime()
             if (($tcf - $now).TotalSeconds -le 0) {
-                $q.claude5h = 100
+                if ($q.claude5h -lt 100) { $q.claude5h = 100; $changed = $true }
                 $q.claude5hResetIso = $null
-                $changed = $true
             }
         } catch { $q.claude5hResetIso = $null }
     }
@@ -1057,9 +1087,8 @@ function Reconcile-AccountQuotaExpiry($acc) {
         try {
             $tcw = [DateTime]::Parse($q.claudeWeeklyResetIso).ToUniversalTime()
             if (($tcw - $now).TotalSeconds -le 0) {
-                $q.claudeWeekly = 100
+                if ($q.claudeWeekly -lt 100) { $q.claudeWeekly = 100; $changed = $true }
                 $q.claudeWeeklyResetIso = $null
-                $changed = $true
             }
         } catch { $q.claudeWeeklyResetIso = $null }
     }
@@ -1455,16 +1484,9 @@ function Update-TrayVisual($pct5h, $activeUser, $activeQuota, $grandTotalStr, $i
         $g.InterpolationMode = [System.Drawing.Drawing2D.InterpolationMode]::HighQualityBicubic
         $g.Clear([System.Drawing.Color]::Transparent)
 
-        # Warna dinamis sesuai sisa kuota 5-jam
-        $ringColor = if ($pct5h -le 10) {
-            [System.Drawing.Color]::FromArgb(255, 239, 68, 68)   # Merah (#EF4444)
-        } elseif ($pct5h -le 25) {
-            [System.Drawing.Color]::FromArgb(255, 245, 158, 11)  # Oranye Amber (#F59E0B)
-        } else {
-            [System.Drawing.Color]::FromArgb(255, 16, 185, 129)  # Hijau Emerald (#10B981)
-        }
+        $pctWeekly = if ($activeQuota -and ($null -ne $activeQuota.geminiWeekly)) { [int]$activeQuota.geminiWeekly } else { 100 }
 
-        # Bentuk Kotak Rounded Corner (Ujung Melengkung Modern - Penuh & Tegas)
+        # Bentuk Kotak Rounded Corner (Presisi Canvas 48x48)
         $inset = 1.0
         $r = 7.0
         $d = $r * 2.0
@@ -1478,89 +1500,108 @@ function Update-TrayVisual($pct5h, $activeUser, $activeQuota, $grandTotalStr, $i
         $path.AddArc($inset, $inset + $h - $d, $d, $d, 90, 90)
         $path.CloseFigure()
 
-        # Background gelap solid
-        $bgBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(245, 9, 13, 20))
+        # Background gelap murni solid (Hitam)
+        $bgBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(250, 6, 6, 8))
         $g.FillPath($bgBrush, $path)
 
-        # Mode Tampilan Bergantian (Flip) Tiap 40 Ticks (tepat 2.0 detik @ 50ms) HANYA saat ada task running:
-        # Tick 0..39 (2.0 detik): menampilkan sisa kuota 5 Jam (misal: "80")
-        # Tick 40..79 (2.0 detik): menampilkan status task running (misal: "R1", "R2")
-        $isTaskFrame = ($isRunning -and $taskCount -gt 0 -and (($frame % 80) -ge 40))
-
-        # Warna track, bead neon, dan text disamakan mengikuti sisa kuota 5-jam (tanpa kuning terpisah)
-        $trackColor  = [System.Drawing.Color]::FromArgb(140, $ringColor.R, $ringColor.G, $ringColor.B)
-        $beadColor   = if ($pct5h -le 10) { [System.Drawing.Color]::FromArgb(255, 252, 165, 165) } elseif ($pct5h -le 25) { [System.Drawing.Color]::FromArgb(255, 253, 230, 138) } else { [System.Drawing.Color]::FromArgb(255, 110, 231, 183) }
-        $textColor   = [System.Drawing.Color]::FromArgb(255, 255, 255, 255) # Putih solid tajam
-
-        if ($isTaskFrame) {
-            # --- State B: Running Tasks Display (R1, R2, dst.) - 2 Detik ---
-            $textVal     = "R$taskCount"
-            $fontSize    = if ($textVal.Length -ge 3) { 18.0 } else { 23.0 }
-        } else {
-            # --- State A: 5-Hour Quota Display (80, 100, dst.) - Statis atau 2 Detik saat running ---
-            $textVal     = if ($pct5h -ge 100) { "100" } else { "$pct5h" }
-            $fontSize    = if ($textVal.Length -ge 3) { 17.5 } elseif ($textVal.Length -eq 2) { 25.0 } else { 27.0 }
-        }
-
-        # 1. Base track border
-        $trackPen = [System.Drawing.Pen]::new($trackColor, [float]2.6)
+        # 1. Warna Border: PUTIH SAJA (Sesuai Permintaan User)
+        $borderBrush = [System.Drawing.Color]::FromArgb(190, 255, 255, 255)
+        $trackPen = [System.Drawing.Pen]::new($borderBrush, [float]2.0)
         $g.DrawPath($trackPen, $path)
 
-        # 2. Animasi Garis Memutari Angka (HANYA AKTIF SAAT ADA TASK RUNNING BERJALAN)
-        if ($isRunning -and $taskCount -gt 0) {
-            # 48 titik halus mengitari perimeter luar kotak secara terus-menerus
-            $step = $frame % 48
-            $pt   = $script:trayOrbitCoords[$step]
-            $pr1  = $script:trayOrbitCoords[($step - 1 + 48) % 48]
-            $pr2  = $script:trayOrbitCoords[($step - 2 + 48) % 48]
-            $pr3  = $script:trayOrbitCoords[($step - 3 + 48) % 48]
-            $pr4  = $script:trayOrbitCoords[($step - 4 + 48) % 48]
-
-            # Tail 4 (Faint edge)
-            $t4Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(40, $beadColor.R, $beadColor.G, $beadColor.B))
-            $g.FillEllipse($t4Brush, [float]($pr4.x - 1.2), [float]($pr4.y - 1.2), [float]2.4, [float]2.4)
-            $t4Brush.Dispose()
-
-            # Tail 3 (Soft glow)
-            $t3Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(80, $beadColor.R, $beadColor.G, $beadColor.B))
-            $g.FillEllipse($t3Brush, [float]($pr3.x - 1.8), [float]($pr3.y - 1.8), [float]3.6, [float]3.6)
-            $t3Brush.Dispose()
-
-            # Tail 2 (Medium glow)
-            $t2Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(130, $beadColor.R, $beadColor.G, $beadColor.B))
-            $g.FillEllipse($t2Brush, [float]($pr2.x - 2.2), [float]($pr2.y - 2.2), [float]4.4, [float]4.4)
-            $t2Brush.Dispose()
-
-            # Tail 1 (Bright trail)
-            $t1Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(180, $beadColor.R, $beadColor.G, $beadColor.B))
-            $g.FillEllipse($t1Brush, [float]($pr1.x - 2.6), [float]($pr1.y - 2.6), [float]5.2, [float]5.2)
-            $t1Brush.Dispose()
-
-            # Comet Head Halo
-            $glowBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(210, $beadColor.R, $beadColor.G, $beadColor.B))
-            $g.FillEllipse($glowBrush, [float]($pt.x - 4.0), [float]($pt.y - 4.0), [float]8.0, [float]8.0)
-            $glowBrush.Dispose()
-
-            # Comet Head Core
-            $coreBrush = [System.Drawing.SolidBrush]::new($beadColor)
-            $g.FillEllipse($coreBrush, [float]($pt.x - 2.8), [float]($pt.y - 2.8), [float]5.6, [float]5.6)
-            $coreBrush.Dispose()
-
-            # White hot spark in center
-            $sparkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
-            $g.FillEllipse($sparkBrush, [float]($pt.x - 1.4), [float]($pt.y - 1.4), [float]2.8, [float]2.8)
-            $sparkBrush.Dispose()
+        # 2. Warna Komet: Ijo, Kuning, Merah (Sesuai Antigravity, Tidak Usah Biru!)
+        # Komet merefleksikan sisa kuota Weekly akun aktif
+        $beadColor = if ($pctWeekly -le 10) {
+            [System.Drawing.Color]::FromArgb(255, 255, 59, 74)   # Merah Cerah (#FF3B4A)
+        } elseif ($pctWeekly -le 35) {
+            [System.Drawing.Color]::FromArgb(255, 255, 179, 0)   # Kuning / Oranye Amber (#FFB300)
+        } else {
+            [System.Drawing.Color]::FromArgb(255, 0, 230, 118)   # Ijo Neon (#00E676)
         }
 
-        # 3. Render angka ukuran raksasa di tengah (23-25pt)
-        $font = [System.Drawing.Font]::new("Segoe UI", [float]$fontSize, [System.Drawing.FontStyle]::Bold)
-        $sf   = [System.Drawing.StringFormat]::new([System.Drawing.StringFormat]::GenericTypographic)
-        $sf.Alignment     = [System.Drawing.StringAlignment]::Center
-        $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+        # 3. Animasi Komet Memutari Kotak (Super Smooth 48 Titik)
+        $step = $frame % 48
+        $pt   = $script:trayOrbitCoords[$step]
+        $pr1  = $script:trayOrbitCoords[($step - 1 + 48) % 48]
+        $pr2  = $script:trayOrbitCoords[($step - 2 + 48) % 48]
+        $pr3  = $script:trayOrbitCoords[($step - 3 + 48) % 48]
+        $pr4  = $script:trayOrbitCoords[($step - 4 + 48) % 48]
 
-        $textBrush = [System.Drawing.SolidBrush]::new($textColor)
-        $rect      = [System.Drawing.RectangleF]::new(0, 0, $size, $size)
+        # Dark Masking di belakang komet agar komet menonjol dan memutus jalur putih secara bersih
+        $maskBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(255, 6, 6, 8))
+        $g.FillEllipse($maskBrush, [float]($pt.x - 5.5), [float]($pt.y - 5.5), [float]11.0, [float]11.0)
+        $g.FillEllipse($maskBrush, [float]($pr1.x - 4.5), [float]($pr1.y - 4.5), [float]9.0, [float]9.0)
+        $maskBrush.Dispose()
+
+        # Ekor komet progresif (Tampak nyata, panjang, dan memudar)
+        $t4Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(90, $beadColor.R, $beadColor.G, $beadColor.B))
+        $g.FillEllipse($t4Brush, [float]($pr4.x - 2.0), [float]($pr4.y - 2.0), [float]4.0, [float]4.0)
+        $t4Brush.Dispose()
+
+        $t3Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(140, $beadColor.R, $beadColor.G, $beadColor.B))
+        $g.FillEllipse($t3Brush, [float]($pr3.x - 2.8), [float]($pr3.y - 2.8), [float]5.6, [float]5.6)
+        $t3Brush.Dispose()
+
+        $t2Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(190, $beadColor.R, $beadColor.G, $beadColor.B))
+        $g.FillEllipse($t2Brush, [float]($pr2.x - 3.5), [float]($pr2.y - 3.5), [float]7.0, [float]7.0)
+        $t2Brush.Dispose()
+
+        $t1Brush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(235, $beadColor.R, $beadColor.G, $beadColor.B))
+        $g.FillEllipse($t1Brush, [float]($pr1.x - 4.2), [float]($pr1.y - 4.2), [float]8.4, [float]8.4)
+        $t1Brush.Dispose()
+
+        # Aura & Kepala Komet (Besar, menyala kuat, sangat terlihat di taskbar)
+        $glowBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(170, $beadColor.R, $beadColor.G, $beadColor.B))
+        $g.FillEllipse($glowBrush, [float]($pt.x - 6.2), [float]($pt.y - 6.2), [float]12.4, [float]12.4)
+        $glowBrush.Dispose()
+
+        $coreBrush = [System.Drawing.SolidBrush]::new($beadColor)
+        $g.FillEllipse($coreBrush, [float]($pt.x - 4.8), [float]($pt.y - 4.8), [float]9.6, [float]9.6)
+        $coreBrush.Dispose()
+
+        # Kilau specular kecil di pusat kepala
+        $sparkBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::FromArgb(210, 255, 255, 255))
+        $g.FillEllipse($sparkBrush, [float]($pt.x - 1.5), [float]($pt.y - 1.5), [float]3.0, [float]3.0)
+        $sparkBrush.Dispose()
+
+        # 4. Teks Bergantian: Weekly Usage & Running Progress (Warna PUTIH SAJA)
+        # 1 siklus = 70 frames (~4.5 detik):
+        #   Fase 1 (0..34, ~2.2s): Teks A
+        #   Fase 2 (35..69, ~2.2s): Teks B
+        $cycle = $frame % 70
+        $textVal = ""
+        if ($isRunning -and $taskCount -gt 0) {
+            # Bergantian antara: Running Progress (R1, R2) dan Weekly Usage (angka mingguan)
+            if ($cycle -lt 35) {
+                $textVal = "R$taskCount"
+            } else {
+                $textVal = if ($pctWeekly -ge 100) { "100" } else { "$pctWeekly" }
+            }
+        } else {
+            # Saat Idle: Bergantian antara Kuota 5-Jam dan Weekly Usage
+            if ($cycle -lt 35) {
+                $textVal = if ($pct5h -ge 100) { "100" } else { "$pct5h" }
+            } else {
+                $textVal = if ($pctWeekly -ge 100) { "100" } else { "$pctWeekly" }
+            }
+        }
+
+        # Render Teks (Warna Putih Saja, Dilarang Wrap / Single Line Centered)
+        $sf = [System.Drawing.StringFormat]::new()
+        $sf.Alignment = [System.Drawing.StringAlignment]::Center
+        $sf.LineAlignment = [System.Drawing.StringAlignment]::Center
+        $sf.FormatFlags = [System.Drawing.StringFormatFlags]::NoWrap
+
+        # Font Trebuchet MS Bold untuk 2 digit / R1 agar tebal dan tajam tanpa blur
+        # Segoe UI Bold untuk 3 digit (100) agar proporsional dan tidak terpotong
+        $fontFamily = if ($textVal.Length -ge 3) { "Segoe UI" } else { "Trebuchet MS" }
+        $fontSize   = if ($textVal.Length -ge 3) { 16.0 } else { 21.5 }
+        $font = [System.Drawing.Font]::new($fontFamily, [float]$fontSize, [System.Drawing.FontStyle]::Bold)
+        $textBrush = [System.Drawing.SolidBrush]::new([System.Drawing.Color]::White)
+        $rect = [System.Drawing.RectangleF]::new(0, 0, $size, $size)
         $g.DrawString($textVal, $font, $textBrush, $rect, $sf)
+
+        $font.Dispose(); $textBrush.Dispose(); $sf.Dispose()
 
         $hIcon = $bmp.GetHicon()
         $newIcon = [System.Drawing.Icon]::FromHandle($hIcon).Clone()
@@ -1571,12 +1612,11 @@ function Update-TrayVisual($pct5h, $activeUser, $activeQuota, $grandTotalStr, $i
         if ($oldIcon) { $oldIcon.Dispose() }
 
         $bgBrush.Dispose(); $trackPen.Dispose(); $path.Dispose()
-        $font.Dispose(); $textBrush.Dispose(); $sf.Dispose()
         $g.Dispose(); $bmp.Dispose()
     } catch {}
 }
 
-# Live Tray Animation Tick (Dipanggil tiap 50ms: animasi komet hanya aktif saat task RUNNING)
+# Live Tray Animation Tick (Dipanggil tiap 65ms: rotasi komet mulus tanpa stutter)
 function Update-TrayAnimationTick {
     try {
         if (-not $script:notifyIcon) { return }
@@ -1591,28 +1631,6 @@ function Update-TrayAnimationTick {
         }
         $isRunning = ($script:cachedTaskInfo -and $script:cachedTaskInfo.status -eq "RUNNING" -and $taskCount -gt 0)
 
-        # JIKA TIDAK ADA TASK RUNNING: Ikon STATIS saja, jangan ada animasi berputar!
-        if (-not $isRunning) {
-            if ($script:lastTrayWasRunning) {
-                $script:lastTrayWasRunning = $false
-                $script:trayAnimFrame = 0
-                $registry = $script:currentRegistry
-                $activeUser = $script:currentActiveUser
-                if ($registry -and $activeUser -and $registry.Contains($activeUser)) {
-                    $actQuota = $registry[$activeUser].quota
-                    $pct5h = if ($actQuota -and ($null -ne $actQuota.gemini5h)) { [int]$actQuota.gemini5h } else { 100 }
-                    $grandStr = if ($txtGrandTotalTokens) { $txtGrandTotalTokens.Text } else { "0" }
-                    Update-TrayVisual $pct5h $activeUser $actQuota $grandStr $false 0 0
-                }
-            }
-            return
-        }
-
-        # JIKA SEDANG RUNNING: Putar komet mulus 20 FPS dan bergantian setiap 2 detik (40 frame @ 50ms)
-        $script:lastTrayWasRunning = $true
-        if (-not $script:trayAnimFrame) { $script:trayAnimFrame = 0 }
-        $script:trayAnimFrame = ($script:trayAnimFrame + 1) % 80
-
         $registry = $script:currentRegistry
         if (-not $registry) { return }
         $activeUser = $script:currentActiveUser
@@ -1622,6 +1640,8 @@ function Update-TrayAnimationTick {
         $pct5h = if ($actQuota -and ($null -ne $actQuota.gemini5h)) { [int]$actQuota.gemini5h } else { 100 }
         $grandStr = if ($txtGrandTotalTokens) { $txtGrandTotalTokens.Text } else { "0" }
 
+        # Update Frame Animasi dengan kecepatan konsisten (Super Smooth)
+        $script:trayAnimFrame++
         Update-TrayVisual $pct5h $activeUser $actQuota $grandStr $isRunning $script:trayAnimFrame $taskCount
     } catch {}
 }
@@ -1914,28 +1934,42 @@ function Update-WidgetView {
                 $tokVal = if ($accData -and $accData.tokens -and $accData.tokens.Total) { [int64]$accData.tokens.Total } else { [int64]0 }
                 $tokStr = Format-CompactNumber $tokVal "0 M"
 
+                $accQ = if ($accData) { $accData.quota } else { $null }
+                $q5 = if ($accQ -and ($null -ne $accQ.gemini5h)) { [int]$accQ.gemini5h } else { 100 }
+                $qw = if ($accQ -and ($null -ne $accQ.geminiWeekly)) { [int]$accQ.geminiWeekly } else { 100 }
+
                 $itemBtn = New-Object System.Windows.Controls.Button
                 $itemBtn.Tag = $accKey
                 $itemBtn.Cursor = [System.Windows.Input.Cursors]::Hand
-                $itemBtn.Margin = [System.Windows.Thickness]::new(2, 2, 2, 2)
+                $itemBtn.Margin = [System.Windows.Thickness]::new(3, 3, 3, 3)
                 $itemBtn.HorizontalContentAlignment = [System.Windows.HorizontalAlignment]::Stretch
+                $itemBtn.Background = [System.Windows.Media.Brushes]::Transparent
+                $itemBtn.BorderThickness = [System.Windows.Thickness]::new(0)
 
                 $itemBorder = New-Object System.Windows.Controls.Border
-                $itemBorder.CornerRadius = [System.Windows.CornerRadius]::new(5)
-                $itemBorder.Padding = [System.Windows.Thickness]::new(7, 5, 7, 5)
-                $itemBorder.BorderThickness = [System.Windows.Thickness]::new(1)
+                $itemBorder.CornerRadius = [System.Windows.CornerRadius]::new(7)
+                $itemBorder.Padding = [System.Windows.Thickness]::new(8, 7, 8, 7)
+                $itemBorder.BorderThickness = [System.Windows.Thickness]::new(1.2)
+                $itemBorder.SnapsToDevicePixels = $true
+                $itemBorder.UseLayoutRounding = $true
+                [System.Windows.Media.RenderOptions]::SetClearTypeHint($itemBorder, [System.Windows.Media.ClearTypeHint]::Enabled)
+                [System.Windows.Media.TextOptions]::SetTextFormattingMode($itemBorder, [System.Windows.Media.TextFormattingMode]::Display)
+                [System.Windows.Media.TextOptions]::SetTextRenderingMode($itemBorder, [System.Windows.Media.TextRenderingMode]::ClearType)
 
                 if ($isThisSelected) {
-                    $itemBorder.Background = Get-Brush "#80132337"
-                    $itemBorder.BorderBrush = Get-Brush "#0284C7"
+                    $itemBorder.Background = Get-Brush "#730E2642"
+                    $itemBorder.BorderBrush = Get-Brush "#00B4D8"
+                } elseif ($isThisActive) {
+                    $itemBorder.Background = Get-Brush "#660D251C"
+                    $itemBorder.BorderBrush = Get-Brush "#10B981"
                 } else {
-                    $itemBorder.Background = Get-Brush "#590D1524"
-                    $itemBorder.BorderBrush = Get-Brush "#293B52"
+                    $itemBorder.Background = Get-Brush "#73141416"
+                    $itemBorder.BorderBrush = Get-Brush "#27272A"
                 }
 
                 $cardStack = New-Object System.Windows.Controls.StackPanel
 
-                # Baris Atas: Dot + Nama Akun (Kiri), Badge Status (Kanan)
+                # Baris 0: Dot + Nama Akun (Kiri), Badge Status (Kanan)
                 $row0 = New-Object System.Windows.Controls.Grid
                 $c0_0 = New-Object System.Windows.Controls.ColumnDefinition; $c0_0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
                 $c0_1 = New-Object System.Windows.Controls.ColumnDefinition; $c0_1.Width = [System.Windows.GridLength]::Auto
@@ -1947,38 +1981,35 @@ function Update-WidgetView {
                 $nameSp.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
 
                 $dot = New-Object System.Windows.Shapes.Ellipse
-                $dot.Width = 6; $dot.Height = 6
-                $dot.Fill = if ($isThisActive) { Get-Brush "#10B981" } else { Get-Brush "#64748B" }
+                $dot.Width = 6.5; $dot.Height = 6.5
+                $dot.Fill = if ($isThisActive) { Get-Brush "#10B981" } elseif ($isThisSelected) { Get-Brush "#38BDF8" } else { Get-Brush "#64748B" }
                 $dot.Margin = [System.Windows.Thickness]::new(0, 0, 5, 0)
-                $dot.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
                 $nameSp.Children.Add($dot) | Out-Null
 
                 $nameTb = New-Object System.Windows.Controls.TextBlock
                 $nameTb.Text = $accKey
-                $nameTb.FontSize = 9.0
-                $nameTb.FontWeight = if ($isThisSelected) { [System.Windows.FontWeights]::Bold } else { [System.Windows.FontWeights]::SemiBold }
-                $nameTb.Foreground = if ($isThisSelected) { Get-Brush "#F8FAFC" } elseif ($isThisActive) { Get-Brush "#34D399" } else { Get-Brush "#CBD5E1" }
-                $nameTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI Variable Display, Segoe UI, sans-serif")
+                $nameTb.FontSize = 10.5
+                $nameTb.FontWeight = [System.Windows.FontWeights]::Bold
+                $nameTb.Foreground = if ($isThisSelected) { Get-Brush "#F8FAFC" } elseif ($isThisActive) { Get-Brush "#34D399" } else { Get-Brush "#E2E8F0" }
+                $nameTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
                 $nameTb.TextTrimming = [System.Windows.TextTrimming]::CharacterEllipsis
-                $nameTb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
                 $nameSp.Children.Add($nameTb) | Out-Null
-
                 [System.Windows.Controls.Grid]::SetColumn($nameSp, 0)
                 $row0.Children.Add($nameSp) | Out-Null
 
-                # Badge (Kanan)
+                # Badge Status (Kanan)
                 $badge = New-Object System.Windows.Controls.Border
-                $badge.CornerRadius = [System.Windows.CornerRadius]::new(3)
-                $badge.Padding = [System.Windows.Thickness]::new(4, 1, 4, 1)
+                $badge.CornerRadius = [System.Windows.CornerRadius]::new(3.5)
+                $badge.Padding = [System.Windows.Thickness]::new(4.5, 1.5, 4.5, 1.5)
                 $badge.BorderThickness = [System.Windows.Thickness]::new(1)
                 $badge.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
 
                 $badgeTxt = New-Object System.Windows.Controls.TextBlock
-                $badgeTxt.FontSize = 6.5
+                $badgeTxt.FontSize = 7.8
                 $badgeTxt.FontWeight = [System.Windows.FontWeights]::Bold
-                $badgeTxt.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI Variable Display, Segoe UI, sans-serif")
+                $badgeTxt.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
 
-                if ($isThisActive -and $isThisSelected) {
+                if ($isThisActive) {
                     $badge.Background = Get-Brush "#0D211B"
                     $badge.BorderBrush = Get-Brush "#10B981"
                     $badgeTxt.Foreground = Get-Brush "#34D399"
@@ -1988,11 +2019,6 @@ function Update-WidgetView {
                     $badge.BorderBrush = Get-Brush "#0284C7"
                     $badgeTxt.Foreground = Get-Brush "#38BDF8"
                     $badgeTxt.Text = "TERPILIH"
-                } elseif ($isThisActive) {
-                    $badge.Background = Get-Brush "#0D211B"
-                    $badge.BorderBrush = Get-Brush "#14533C"
-                    $badgeTxt.Foreground = Get-Brush "#34D399"
-                    $badgeTxt.Text = "AKTIF"
                 } else {
                     $badge.Background = Get-Brush "#111827"
                     $badge.BorderBrush = Get-Brush "#1E293B"
@@ -2002,26 +2028,77 @@ function Update-WidgetView {
                 $badge.Child = $badgeTxt
                 [System.Windows.Controls.Grid]::SetColumn($badge, 1)
                 $row0.Children.Add($badge) | Out-Null
-
                 $cardStack.Children.Add($row0) | Out-Null
 
-                # Baris Bawah: Token Total + Estimasi Biaya
-                $row1 = New-Object System.Windows.Controls.Grid
-                $row1.Margin = [System.Windows.Thickness]::new(11, 3, 0, 0)
-                $c1_0 = New-Object System.Windows.Controls.ColumnDefinition; $c1_0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
-                $c1_1 = New-Object System.Windows.Controls.ColumnDefinition; $c1_1.Width = [System.Windows.GridLength]::Auto
-                $row1.ColumnDefinitions.Add($c1_0)
-                $row1.ColumnDefinitions.Add($c1_1)
+                # Baris 1: Quota Mini-Chips (5H & Weekly)
+                $rowQuota = New-Object System.Windows.Controls.Grid
+                $rowQuota.Margin = [System.Windows.Thickness]::new(0, 5, 0, 4)
+                $cq0 = New-Object System.Windows.Controls.ColumnDefinition; $cq0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+                $cq1 = New-Object System.Windows.Controls.ColumnDefinition; $cq1.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+                $rowQuota.ColumnDefinitions.Add($cq0)
+                $rowQuota.ColumnDefinitions.Add($cq1)
+
+                # 5H Chip
+                $q5Color = if ($q5 -le 10) { "#EF4444" } elseif ($q5 -le 25) { "#F59E0B" } else { "#10B981" }
+                $border5h = New-Object System.Windows.Controls.Border
+                $border5h.Background = Get-Brush "#20132036"
+                $border5h.BorderBrush = Get-Brush "$q5Color"
+                $border5h.BorderThickness = [System.Windows.Thickness]::new(0.8)
+                $border5h.CornerRadius = [System.Windows.CornerRadius]::new(3)
+                $border5h.Padding = [System.Windows.Thickness]::new(3.5, 1.5, 3.5, 1.5)
+                $border5h.Margin = [System.Windows.Thickness]::new(0, 0, 2, 0)
+
+                $sp5 = New-Object System.Windows.Controls.StackPanel
+                $sp5.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+                $sp5.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
+                $t5Icon = New-Object System.Windows.Controls.TextBlock; $t5Icon.Text = "5H: "; $t5Icon.FontSize = 8.5; $t5Icon.Foreground = Get-Brush "#94A3B8"
+                $t5Val = New-Object System.Windows.Controls.TextBlock; $t5Val.Text = "$q5%"; $t5Val.FontSize = 9.2; $t5Val.FontWeight = [System.Windows.FontWeights]::Bold; $t5Val.Foreground = Get-Brush "$q5Color"
+                $sp5.Children.Add($t5Icon) | Out-Null
+                $sp5.Children.Add($t5Val) | Out-Null
+                $border5h.Child = $sp5
+                [System.Windows.Controls.Grid]::SetColumn($border5h, 0)
+                $rowQuota.Children.Add($border5h) | Out-Null
+
+                # Weekly Chip
+                $qwColor = if ($qw -le 10) { "#EF4444" } elseif ($qw -le 25) { "#F59E0B" } else { "#38BDF8" }
+                $borderWk = New-Object System.Windows.Controls.Border
+                $borderWk.Background = Get-Brush "#20132036"
+                $borderWk.BorderBrush = Get-Brush "$qwColor"
+                $borderWk.BorderThickness = [System.Windows.Thickness]::new(0.8)
+                $borderWk.CornerRadius = [System.Windows.CornerRadius]::new(3)
+                $borderWk.Padding = [System.Windows.Thickness]::new(3.5, 1.5, 3.5, 1.5)
+                $borderWk.Margin = [System.Windows.Thickness]::new(2, 0, 0, 0)
+
+                $spW = New-Object System.Windows.Controls.StackPanel
+                $spW.Orientation = [System.Windows.Controls.Orientation]::Horizontal
+                $spW.HorizontalAlignment = [System.Windows.HorizontalAlignment]::Center
+                $tWIcon = New-Object System.Windows.Controls.TextBlock; $tWIcon.Text = "Wk: "; $tWIcon.FontSize = 8.5; $tWIcon.Foreground = Get-Brush "#94A3B8"
+                $wStr = if ($qw -le 0) { "0% (HABIS)" } else { "$qw%" }
+                $tWVal = New-Object System.Windows.Controls.TextBlock; $tWVal.Text = $wStr; $tWVal.FontSize = 9.2; $tWVal.FontWeight = [System.Windows.FontWeights]::Bold; $tWVal.Foreground = Get-Brush "$qwColor"
+                $spW.Children.Add($tWIcon) | Out-Null
+                $spW.Children.Add($tWVal) | Out-Null
+                $borderWk.Child = $spW
+                [System.Windows.Controls.Grid]::SetColumn($borderWk, 1)
+                $rowQuota.Children.Add($borderWk) | Out-Null
+
+                $cardStack.Children.Add($rowQuota) | Out-Null
+
+                # Baris 2: Total Token + Estimasi Nilai
+                $row2 = New-Object System.Windows.Controls.Grid
+                $c2_0 = New-Object System.Windows.Controls.ColumnDefinition; $c2_0.Width = [System.Windows.GridLength]::new(1, [System.Windows.GridUnitType]::Star)
+                $c2_1 = New-Object System.Windows.Controls.ColumnDefinition; $c2_1.Width = [System.Windows.GridLength]::Auto
+                $row2.ColumnDefinitions.Add($c2_0)
+                $row2.ColumnDefinitions.Add($c2_1)
 
                 $tokTb = New-Object System.Windows.Controls.TextBlock
                 $tokTb.Text = "$tokStr"
-                $tokTb.FontSize = 8.5
-                $tokTb.FontWeight = [System.Windows.FontWeights]::Bold
+                $tokTb.FontSize = 9.5
+                $tokTb.FontWeight = [System.Windows.FontWeights]::SemiBold
                 $tokTb.Foreground = Get-Brush "#38BDF8"
-                $tokTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI Variable Display, Segoe UI, sans-serif")
+                $tokTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
                 $tokTb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
                 [System.Windows.Controls.Grid]::SetColumn($tokTb, 0)
-                $row1.Children.Add($tokTb) | Out-Null
+                $row2.Children.Add($tokTb) | Out-Null
 
                 # Estimasi Nilai Akun
                 $accIn  = if ($accData -and $accData.tokens -and $accData.tokens.Input)  { [int64]$accData.tokens.Input }  else { [int64]0 }
@@ -2031,14 +2108,14 @@ function Update-WidgetView {
 
                 $costTb = New-Object System.Windows.Controls.TextBlock
                 $costTb.Text = "$($accCost.Short)"
-                $costTb.FontSize = 7.5
+                $costTb.FontSize = 8.5
                 $costTb.Foreground = Get-Brush "#34D399"
-                $costTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI Variable Display, Segoe UI, sans-serif")
+                $costTb.FontFamily = New-Object System.Windows.Media.FontFamily("Segoe UI")
                 $costTb.VerticalAlignment = [System.Windows.VerticalAlignment]::Center
                 [System.Windows.Controls.Grid]::SetColumn($costTb, 1)
-                $row1.Children.Add($costTb) | Out-Null
+                $row2.Children.Add($costTb) | Out-Null
 
-                $cardStack.Children.Add($row1) | Out-Null
+                $cardStack.Children.Add($row2) | Out-Null
 
                 $itemBorder.Child = $cardStack
                 $itemBtn.Content = $itemBorder
@@ -2300,17 +2377,32 @@ function Update-RealtimeCountdownTick {
             }
             $isRunning = ($script:cachedTaskInfo -and $script:cachedTaskInfo.status -eq "RUNNING" -and $taskCount -gt 0)
 
-            $statusText = if ($isRunning) { "⚡ RUNNING (R$taskCount) | " } else { "R0 (IDLE) | " }
-            $tip = "AG [$activeUser] | ${statusText}Total: $grandStr`n5-Hour: $pct5h% ($r5)`nWeekly: $pctWeekly% ($rw)"
+            if ($script:trayItemUserHeader) { $script:trayItemUserHeader.Text = "👤 Akun: $activeUser" }
+            if ($script:trayItem5hInfo) { $script:trayItem5hInfo.Text = "⚡ Kuota 5-Jam: $pct5h% ($r5)" }
+            if ($script:trayItemWeeklyInfo) { $script:trayItemWeeklyInfo.Text = "📅 Kuota Mingguan: $pctWeekly% ($rw)" }
+
+            $statusText = if ($isRunning) { "⚡ RUNNING (R$taskCount)" } else { "IDLE" }
+            $compactRst = {
+                param([string]$raw)
+                if ([string]::IsNullOrWhiteSpace($raw)) { return "Full" }
+                if ($raw -match 'Ready|Fresh') { return "Full" }
+                $s = $raw -replace 'Resets in\s*', ''
+                if ($s -match '(\d+d\s*\d+h)') { return $matches[1] }
+                if ($s -match '(\d+h\s*\d+m)') { return $matches[1] }
+                if ($s -match '(\d+m\s*\d+s)') { return $matches[1] }
+                return $s.Trim()
+            }
+            $cR5 = & $compactRst $r5
+            $cRw = & $compactRst $rw
+            $tip = "AG [$activeUser] | 5H: $pct5h% | Wk: $pctWeekly%`nStatus: $statusText | Tok: $grandStr`nReset: 5H in $cR5 | Wk in $cRw"
+            if ($tip.Length -gt 126) { $tip = $tip.Substring(0, 126) }
             Set-NotifyIconText $script:notifyIcon $tip
 
             $script:lastTrayPct = $pct5h
             $script:lastTrayRunning = $isRunning
             $script:lastTrayTaskCount = $taskCount
 
-            if (-not $isRunning) {
-                Update-TrayVisual $pct5h $activeUser $actQuota $grandStr $false 0 0
-            }
+# Tray animation handled smoothly by Update-TrayAnimationTick
 
             # Auto-Switch Guard: Jika quota akun aktif habis (0%), otomatis beralih ke cadangan berkuota
             if ($pct5h -le 0 -or $pctWeekly -le 0) {
@@ -2318,69 +2410,75 @@ function Update-RealtimeCountdownTick {
                 if (-not $script:firstExhaustedTime) { $script:firstExhaustedTime = $now }
                 $exhaustedSecs = ($now - $script:firstExhaustedTime).TotalSeconds
 
-                if (-not $script:lastAutoSwitchAttempt -or ($now - $script:lastAutoSwitchAttempt).TotalMinutes -ge 1) {
-                    # Beralih jika task IDLE, atau jika task stuck di RUNNING karena kuota 0% selama > 10 detik
-                    if (-not $isRunning -or $exhaustedSecs -ge 10) {
+                if (-not $script:lastAutoSwitchAttempt -or ($now - $script:lastAutoSwitchAttempt).TotalMinutes -ge 2) {
+                    # Cari kandidat akun cadangan berkuota
+                    $profilesDir = "$env:APPDATA\Antigravity\Profiles"
+                    $existingProfiles = if (Test-Path $profilesDir) { Get-ChildItem -Path $profilesDir -Directory -ErrorAction SilentlyContinue } else { @() }
+
+                    $candidates = @()
+                    foreach ($k in $registry.Keys) {
+                        if ($k -ne $activeUser) {
+                            $bq = $registry[$k].quota
+                            if ($bq -and $bq.gemini5h -gt 5 -and $bq.geminiWeekly -gt 5) {
+                                $hasProfile = $false
+                                foreach ($pd in $existingProfiles) {
+                                    if ($pd.Name -like "*$k*") { $hasProfile = $true; break }
+                                    $st = Join-Path $pd.FullName "app_storage.json"
+                                    if (Test-Path $st) {
+                                        try {
+                                            $u = (Get-Content $st -Raw | ConvertFrom-Json).'jetski.onboarding.lastLoginUsername'
+                                            if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
+                                        } catch {}
+                                    }
+                                    $cr = Join-Path $pd.FullName "credential.json"
+                                    if (Test-Path $cr) {
+                                        try {
+                                            $u = (Get-Content $cr -Raw | ConvertFrom-Json).email
+                                            if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
+                                        } catch {}
+                                    }
+                                }
+                                if ($hasProfile) {
+                                    $minQuota = [math]::Min([int]$bq.gemini5h, [int]$bq.geminiWeekly)
+                                    $candidates += [PSCustomObject]@{
+                                        Account = $k
+                                        MinQuota = $minQuota
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    $backupAcc = $null
+                    if ($candidates.Count -gt 0) {
+                        $backupAcc = ($candidates | Sort-Object -Property MinQuota -Descending)[0].Account
+                    }
+
+                    # 1. Jika Task sedang RUNNING dan terhenti karena kuota 0% (> 10 detik): Beralih otomatis & kirim resume prompt
+                    if ($isRunning -and $exhaustedSecs -ge 10 -and $backupAcc) {
                         $script:lastAutoSwitchAttempt = $now
-
-                        # Cari kandidat akun yang benar-benar memiliki folder profil di Antigravity\Profiles dan kuota > 0
-                        $profilesDir = "$env:APPDATA\Antigravity\Profiles"
-                        $existingProfiles = if (Test-Path $profilesDir) { Get-ChildItem -Path $profilesDir -Directory -ErrorAction SilentlyContinue } else { @() }
-
-                        $candidates = @()
-                        foreach ($k in $registry.Keys) {
-                            if ($k -ne $activeUser) {
-                                $bq = $registry[$k].quota
-                                if ($bq -and $bq.gemini5h -gt 5 -and $bq.geminiWeekly -gt 5) {
-                                    $hasProfile = $false
-                                    foreach ($pd in $existingProfiles) {
-                                        if ($pd.Name -like "*$k*") { $hasProfile = $true; break }
-                                        $st = Join-Path $pd.FullName "app_storage.json"
-                                        if (Test-Path $st) {
-                                            try {
-                                                $u = (Get-Content $st -Raw | ConvertFrom-Json).'jetski.onboarding.lastLoginUsername'
-                                                if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
-                                            } catch {}
-                                        }
-                                        $cr = Join-Path $pd.FullName "credential.json"
-                                        if (Test-Path $cr) {
-                                            try {
-                                                $u = (Get-Content $cr -Raw | ConvertFrom-Json).email
-                                                if ($u -and $u -like "*$k*") { $hasProfile = $true; break }
-                                            } catch {}
-                                        }
-                                    }
-                                    if ($hasProfile) {
-                                        $minQuota = [math]::Min([int]$bq.gemini5h, [int]$bq.geminiWeekly)
-                                        $candidates += [PSCustomObject]@{
-                                            Account = $k
-                                            MinQuota = $minQuota
-                                        }
-                                    }
-                                }
+                        $switchScript = "D:\ProjekAntigravity\Switch-AntigravityAccount.ps1"
+                        $instruction = "Lanjutkan pengerjaan task sebelumnya dari bagian yang belum selesai. Periksa kondisi file terakhir di proyek dan tuntaskan seluruh implementasinya."
+                        Set-Content -Path "D:\ProjekAntigravity\LAST_RESUME_PROMPT.txt" -Value $instruction -Force -Encoding UTF8
+                        try { [System.Windows.Clipboard]::SetText($instruction) } catch {
+                            try { Set-Clipboard -Value $instruction } catch {
+                                try { cmd.exe /c "type D:\ProjekAntigravity\LAST_RESUME_PROMPT.txt | clip" } catch {}
                             }
                         }
 
-                        $backupAcc = $null
-                        if ($candidates.Count -gt 0) {
-                            $backupAcc = ($candidates | Sort-Object -Property MinQuota -Descending)[0].Account
+                        if ($script:notifyIcon) {
+                            $script:notifyIcon.ShowBalloonTip(7000, "Quota Habis - Auto Switcher", "Quota $activeUser habis (0%). Membuka kembali Antigravity dengan akun cadangan $backupAcc...", [System.Windows.Forms.ToolTipIcon]::Warning)
                         }
 
-                        if ($backupAcc) {
-                            $switchScript = "D:\ProjekAntigravity\Switch-AntigravityAccount.ps1"
-                            $wmiArg = "powershell.exe -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -File `"$switchScript`" -TargetAccount `"$backupAcc`" -AutoMode"
-                            Invoke-WmiMethod -Class Win32_Process -Name Create -ArgumentList $wmiArg | Out-Null
-
-                            $instruction = "Lanjutkan pengerjaan task sebelumnya dari bagian yang belum selesai. Periksa kondisi file terakhir di proyek dan tuntaskan seluruh implementasinya."
-                            Set-Content -Path "D:\ProjekAntigravity\LAST_RESUME_PROMPT.txt" -Value $instruction -Force -Encoding UTF8
-                            try { [System.Windows.Clipboard]::SetText($instruction) } catch {
-                                try { Set-Clipboard -Value $instruction } catch {
-                                    try { cmd.exe /c "type D:\ProjekAntigravity\LAST_RESUME_PROMPT.txt | clip" } catch {}
-                                }
-                            }
-
+                        $switchArgs = "-NoProfile -ExecutionPolicy Bypass -File `"$switchScript`" -TargetAccount `"$backupAcc`" -AutoMode"
+                        Start-Process -FilePath "powershell.exe" -ArgumentList $switchArgs -WindowStyle Hidden
+                    }
+                    # 2. Jika Task sedang IDLE: JANGAN tutup paksa Antigravity di luar kendali user.
+                    elseif (-not $isRunning -and $backupAcc) {
+                        if (-not $script:lastExhaustedNotify -or ($now - $script:lastExhaustedNotify).TotalMinutes -ge 10) {
+                            $script:lastExhaustedNotify = $now
                             if ($script:notifyIcon) {
-                                $script:notifyIcon.ShowBalloonTip(7000, "Quota Habis - Auto Switcher", "Quota $activeUser habis (0%). Otomatis beralih ke $backupAcc!`nPrompt resume otomatis dikirimkan ke Antigravity.", [System.Windows.Forms.ToolTipIcon]::Warning)
+                                $script:notifyIcon.ShowBalloonTip(6000, "Quota $activeUser Habis (0%)", "Klik tombol 'QUOTA HABIS! GANTI KE $backupAcc' di widget untuk beralih akun.", [System.Windows.Forms.ToolTipIcon]::Warning)
                             }
                         }
                     }
@@ -2637,7 +2735,7 @@ $script:countdownTimer.Start()
 
 # Timer 50ms (20 FPS) untuk Gerakan Rotasi Garis System Tray yang Super Mulus Tanpa Patah-Patah
 $script:trayAnimTimer = New-Object System.Windows.Threading.DispatcherTimer
-$script:trayAnimTimer.Interval = [TimeSpan]::FromMilliseconds(50)
+$script:trayAnimTimer.Interval = [TimeSpan]::FromMilliseconds(65)
 $script:trayAnimTimer.Add_Tick({ Update-TrayAnimationTick })
 $script:trayAnimTimer.Start()
 

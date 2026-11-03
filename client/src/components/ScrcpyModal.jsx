@@ -177,7 +177,7 @@ export function ScrcpyModal({ isOpen, onClose, targetPeer, initialMode = 'displa
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-lg p-5 sm:p-6 shadow-2xl relative text-left max-h-[90vh] overflow-y-auto animate-ios-sheet smooth-gpu">
         {/* Close Button */}
         <button
           onClick={onClose}

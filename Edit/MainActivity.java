@@ -4,6 +4,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.ActivityInfo;
+import android.content.pm.PackageManager;
 import android.content.BroadcastReceiver;
 import android.media.AudioManager;
 import android.media.Ringtone;
@@ -36,6 +37,9 @@ import android.provider.Settings;
 import android.util.Base64;
 import android.util.DisplayMetrics;
 import android.webkit.JavascriptInterface;
+import android.content.ComponentName;
+import android.content.pm.ResolveInfo;
+import java.util.List;
 import android.widget.Toast;
 import androidx.core.content.ContextCompat;
 import androidx.core.app.ActivityCompat;
@@ -83,6 +87,9 @@ public class MainActivity extends BridgeActivity {
     private MediaPlayer alarmPlayer = null;
     private Vibrator phoneVibrator = null;
     private BroadcastReceiver batteryReceiver = null;
+    private android.database.ContentObserver screenshotObserver = null;
+    private String lastScreenshotPath = "";
+    private long lastScreenshotTime = 0;
 
     public void checkAndRequestStoragePermission() {
         runOnUiThread(() -> {
@@ -176,6 +183,21 @@ public class MainActivity extends BridgeActivity {
         // Start Foreground Service to keep app and network connections alive in background
         startBackgroundSyncService();
 
+        // Prompt battery optimization exemption so Android doesn't throttle network/socket when screen turns off
+        new Handler(Looper.getMainLooper()).postDelayed(this::checkAndRequestBatteryOptimization, 1200);
+
+        // Enable background media playback (for silent keepalive audio) & persistent web storage
+        try {
+            if (this.getBridge() != null && this.getBridge().getWebView() != null) {
+                android.webkit.WebSettings ws = this.getBridge().getWebView().getSettings();
+                ws.setMediaPlaybackRequiresUserGesture(false);
+                ws.setDomStorageEnabled(true);
+                ws.setDatabaseEnabled(true);
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+
         // Dark status bar and navigation bar matching dark theme
         getWindow().setStatusBarColor(Color.parseColor("#09090b"));
         getWindow().setNavigationBarColor(Color.parseColor("#09090b"));
@@ -183,6 +205,9 @@ public class MainActivity extends BridgeActivity {
 
         // Prompt storage permission on launch
         new Handler(Looper.getMainLooper()).postDelayed(this::checkAndRequestStoragePermission, 600);
+
+        // Realtime Cross-Platform Screenshot Detector
+        initScreenshotDetector();
 
         // Start embedded HTTP media range stream server on port 8088
         try {
@@ -351,6 +376,103 @@ public class MainActivity extends BridgeActivity {
                         e.printStackTrace();
                     }
                 });
+            }
+
+            @JavascriptInterface
+            public boolean launchApp(String packageNameOrIntent) {
+                if (packageNameOrIntent == null || packageNameOrIntent.trim().isEmpty()) return false;
+                final String target = packageNameOrIntent.trim();
+                try {
+                    PackageManager pm = getPackageManager();
+                    Intent launchIntent = pm.getLaunchIntentForPackage(target);
+
+                    // If not resolved directly, search all matching launcher activities
+                    if (launchIntent == null) {
+                        Intent queryIntent = new Intent(Intent.ACTION_MAIN, null);
+                        queryIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                        queryIntent.setPackage(target);
+                        List<ResolveInfo> list = pm.queryIntentActivities(queryIntent, 0);
+                        if (list != null && !list.isEmpty()) {
+                            ResolveInfo info = list.get(0);
+                            launchIntent = new Intent(Intent.ACTION_MAIN);
+                            launchIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                            launchIntent.setComponent(new ComponentName(info.activityInfo.packageName, info.activityInfo.name));
+                        }
+                    }
+
+                    // Handle common shortcuts and system aliases
+                    if (launchIntent == null) {
+                        if ("camera".equalsIgnoreCase(target) || "kamera".equalsIgnoreCase(target)) {
+                            launchIntent = new Intent(android.provider.MediaStore.INTENT_ACTION_STILL_IMAGE_CAMERA);
+                        } else if ("settings".equalsIgnoreCase(target) || "pengaturan".equalsIgnoreCase(target)) {
+                            launchIntent = new Intent(android.provider.Settings.ACTION_SETTINGS);
+                        } else if ("gallery".equalsIgnoreCase(target) || "galeri".equalsIgnoreCase(target) || "photos".equalsIgnoreCase(target)) {
+                            String[] galleryPkgs = {"com.google.android.apps.photos", "com.vivo.gallery", "com.android.gallery3d", "com.sec.android.gallery3d"};
+                            for (String gPkg : galleryPkgs) {
+                                launchIntent = pm.getLaunchIntentForPackage(gPkg);
+                                if (launchIntent != null) break;
+                            }
+                            if (launchIntent == null) {
+                                launchIntent = new Intent(Intent.ACTION_VIEW);
+                                launchIntent.setType("image/*");
+                            }
+                        } else if ("youtube".equalsIgnoreCase(target)) {
+                            launchIntent = pm.getLaunchIntentForPackage("app.revanced.android.youtube");
+                            if (launchIntent == null) {
+                                launchIntent = pm.getLaunchIntentForPackage("com.google.android.youtube");
+                            }
+                        } else if ("chrome".equalsIgnoreCase(target)) {
+                            launchIntent = pm.getLaunchIntentForPackage("com.android.chrome");
+                        } else if ("whatsapp".equalsIgnoreCase(target)) {
+                            launchIntent = pm.getLaunchIntentForPackage("com.whatsapp");
+                            if (launchIntent == null) {
+                                launchIntent = pm.getLaunchIntentForPackage("com.whatsapp.w4b");
+                            }
+                        } else if (target.startsWith("http://") || target.startsWith("https://")) {
+                            launchIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(target));
+                        }
+                    }
+
+                    if (launchIntent != null) {
+                        launchIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK | Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
+                        startActivity(launchIntent);
+                        return true;
+                    }
+
+                    // Return false if app is not found / installed (never open App Store / market:// automatically)
+                    return false;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+
+            @JavascriptInterface
+            public String getInstalledApps() {
+                try {
+                    PackageManager pm = getPackageManager();
+                    Intent mainIntent = new Intent(Intent.ACTION_MAIN, null);
+                    mainIntent.addCategory(Intent.CATEGORY_LAUNCHER);
+                    List<ResolveInfo> apps = pm.queryIntentActivities(mainIntent, 0);
+                    JSONArray jsonArray = new JSONArray();
+                    java.util.HashSet<String> seen = new java.util.HashSet<>();
+
+                    for (ResolveInfo ri : apps) {
+                        if (ri.activityInfo == null || ri.activityInfo.packageName == null) continue;
+                        String pkg = ri.activityInfo.packageName;
+                        if (pkg.equals(getPackageName()) || seen.contains(pkg)) continue;
+                        seen.add(pkg);
+
+                        JSONObject obj = new JSONObject();
+                        obj.put("packageName", pkg);
+                        obj.put("appName", ri.loadLabel(pm).toString());
+                        jsonArray.put(obj);
+                    }
+                    return jsonArray.toString();
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return "[]";
+                }
             }
         }, "AndroidDownloader");
 
@@ -541,17 +663,30 @@ public class MainActivity extends BridgeActivity {
                     e.printStackTrace();
                 }
             }
+
+            @JavascriptInterface
+            public boolean sendQuickReply(String key, String replyText) {
+                try {
+                    return NotificationMirrorService.replyToNotification(MainActivity.this, key, replyText);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
         }, "AndroidNotifications");
 
         // Notification Mirror Service Callback
-        NotificationMirrorService.setCallback((appName, title, text, packageName) -> {
+        NotificationMirrorService.setCallback((key, appName, title, text, packageName, canReply) -> {
             runOnUiThread(() -> {
                 try {
                     JSONObject notif = new JSONObject();
+                    notif.put("key", key);
                     notif.put("appName", appName);
                     notif.put("title", title);
                     notif.put("text", text);
                     notif.put("packageName", packageName);
+                    notif.put("canReply", canReply);
+                    notif.put("timestamp", System.currentTimeMillis());
                     getBridge().getWebView().evaluateJavascript("window.onAndroidNotificationReceived && window.onAndroidNotificationReceived(" + JSONObject.quote(notif.toString()) + ");", null);
                 } catch (Exception ignored) {}
             });
@@ -607,6 +742,32 @@ public class MainActivity extends BridgeActivity {
             }
         }, "AndroidClipboard");
 
+        // Native Image Saver Bridge (Save PC Screenshot / Image to Phone Gallery)
+        this.getBridge().getWebView().addJavascriptInterface(new Object() {
+            @JavascriptInterface
+            public boolean saveImageToGallery(String base64Data, String fileName) {
+                if (base64Data == null || base64Data.isEmpty()) return false;
+                try {
+                    String cleanB64 = base64Data.contains(",") ? base64Data.split(",")[1] : base64Data;
+                    byte[] decoded = Base64.decode(cleanB64, Base64.DEFAULT);
+                    File picturesDir = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_PICTURES);
+                    File encrossDir = new File(picturesDir, "ENCross");
+                    if (!encrossDir.exists()) encrossDir.mkdirs();
+                    String safeName = (fileName != null && !fileName.isEmpty()) ? fileName : ("IMG_" + System.currentTimeMillis() + ".jpg");
+                    File targetFile = new File(encrossDir, safeName);
+                    FileOutputStream fos = new FileOutputStream(targetFile);
+                    fos.write(decoded);
+                    fos.flush();
+                    fos.close();
+                    MediaScannerConnection.scanFile(MainActivity.this, new String[]{targetFile.getAbsolutePath()}, new String[]{"image/jpeg"}, null);
+                    return true;
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    return false;
+                }
+            }
+        }, "AndroidImageSaver");
+
         // Native Wake-on-LAN (Magic Packet UDP Broadcast) Bridge
         this.getBridge().getWebView().addJavascriptInterface(new Object() {
             @JavascriptInterface
@@ -659,6 +820,36 @@ public class MainActivity extends BridgeActivity {
                                     String text = item.getText().toString();
                                     String escaped = org.json.JSONObject.quote(text);
                                     getBridge().getWebView().evaluateJavascript("window.onAndroidClipboardChanged && window.onAndroidClipboardChanged(" + escaped + ");", null);
+                                } else if (item != null && item.getUri() != null) {
+                                    Uri uri = item.getUri();
+                                    new Thread(() -> {
+                                        try {
+                                            String mime = getContentResolver().getType(uri);
+                                            if (mime != null && mime.startsWith("image/")) {
+                                                InputStream is = getContentResolver().openInputStream(uri);
+                                                Bitmap bm = android.graphics.BitmapFactory.decodeStream(is);
+                                                if (is != null) is.close();
+                                                if (bm != null) {
+                                                    ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                                                    bm.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                                                    String b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
+                                                    JSONObject obj = new JSONObject();
+                                                    obj.put("type", "image");
+                                                    obj.put("dataUrl", "data:image/jpeg;base64," + b64);
+                                                    obj.put("fileName", "Clipboard_Image_" + System.currentTimeMillis() + ".jpg");
+                                                    obj.put("timestamp", System.currentTimeMillis());
+                                                    runOnUiThread(() -> {
+                                                        if (getBridge() != null && getBridge().getWebView() != null) {
+                                                            getBridge().getWebView().evaluateJavascript(
+                                                                "window.onAndroidScreenshotCaptured && window.onAndroidScreenshotCaptured(" + obj.toString() + ");",
+                                                                null
+                                                            );
+                                                        }
+                                                    });
+                                                }
+                                            }
+                                        } catch (Exception ignored) {}
+                                    }).start();
                                 }
                             }
                         } catch (Exception ignored) {}
@@ -870,6 +1061,9 @@ public class MainActivity extends BridgeActivity {
     }
 
     private void notifyScreenError(String errorMsg) {
+        if (screenshotObserver != null) {
+            try { getContentResolver().unregisterContentObserver(screenshotObserver); } catch (Exception ignored) {}
+        }
         stopScreenCaptureInternal();
         runOnUiThread(() -> {
             if (getBridge() != null && getBridge().getWebView() != null) {
@@ -1048,6 +1242,101 @@ public class MainActivity extends BridgeActivity {
         return "{\"level\":-1,\"isCharging\":false,\"temperature\":0}";
     }
 
+    private void initScreenshotDetector() {
+        try {
+            screenshotObserver = new android.database.ContentObserver(new Handler(Looper.getMainLooper())) {
+                @Override
+                public void onChange(boolean selfChange, Uri uri) {
+                    super.onChange(selfChange, uri);
+                    processLatestScreenshot();
+                }
+            };
+            getContentResolver().registerContentObserver(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                true,
+                screenshotObserver
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private void processLatestScreenshot() {
+        try {
+            String[] projection = new String[]{
+                android.provider.MediaStore.Images.Media._ID,
+                android.provider.MediaStore.Images.Media.DATA,
+                android.provider.MediaStore.Images.Media.DISPLAY_NAME,
+                android.provider.MediaStore.Images.Media.DATE_ADDED
+            };
+            android.database.Cursor cursor = getContentResolver().query(
+                android.provider.MediaStore.Images.Media.EXTERNAL_CONTENT_URI,
+                projection,
+                null,
+                null,
+                android.provider.MediaStore.Images.Media.DATE_ADDED + " DESC"
+            );
+            if (cursor != null && cursor.moveToFirst()) {
+                int dataCol = cursor.getColumnIndex(android.provider.MediaStore.Images.Media.DATA);
+                int nameCol = cursor.getColumnIndex(android.provider.MediaStore.Images.Media.DISPLAY_NAME);
+                int dateCol = cursor.getColumnIndex(android.provider.MediaStore.Images.Media.DATE_ADDED);
+
+                String path = dataCol != -1 ? cursor.getString(dataCol) : "";
+                String name = nameCol != -1 ? cursor.getString(nameCol) : "";
+                long dateAdded = dateCol != -1 ? cursor.getLong(dateCol) : 0;
+                cursor.close();
+
+                long nowSec = System.currentTimeMillis() / 1000;
+                if (nowSec - dateAdded <= 20) {
+                    String lPath = path != null ? path.toLowerCase() : "";
+                    String lName = name != null ? name.toLowerCase() : "";
+                    boolean isSS = lPath.contains("screenshot") || lName.contains("screenshot") || lPath.contains("tangkapan") || lName.contains("screencap") || lPath.contains("screen_shot");
+                    if (isSS && !path.equals(lastScreenshotPath) && (System.currentTimeMillis() - lastScreenshotTime > 1500)) {
+                        lastScreenshotPath = path;
+                        lastScreenshotTime = System.currentTimeMillis();
+                        sendScreenshotToWebView(path, name);
+                    }
+                }
+            }
+        } catch (Exception ignored) {}
+    }
+
+    private void sendScreenshotToWebView(String path, String name) {
+        new Thread(() -> {
+            try {
+                File f = new File(path);
+                if (!f.exists()) return;
+                android.graphics.Bitmap bm = android.graphics.BitmapFactory.decodeFile(path);
+                if (bm == null) return;
+                int maxDim = 1920;
+                if (bm.getWidth() > maxDim || bm.getHeight() > maxDim) {
+                    float scale = Math.min((float) maxDim / bm.getWidth(), (float) maxDim / bm.getHeight());
+                    bm = Bitmap.createScaledBitmap(bm, Math.round(bm.getWidth() * scale), Math.round(bm.getHeight() * scale), true);
+                }
+                ByteArrayOutputStream baos = new ByteArrayOutputStream();
+                bm.compress(Bitmap.CompressFormat.JPEG, 85, baos);
+                String b64 = Base64.encodeToString(baos.toByteArray(), Base64.NO_WRAP);
+                String dataUrl = "data:image/jpeg;base64," + b64;
+
+                JSONObject obj = new JSONObject();
+                obj.put("type", "screenshot");
+                obj.put("dataUrl", dataUrl);
+                obj.put("fileName", name != null ? name : "Screenshot.jpg");
+                obj.put("fileSize", f.length());
+                obj.put("timestamp", System.currentTimeMillis());
+
+                runOnUiThread(() -> {
+                    if (getBridge() != null && getBridge().getWebView() != null) {
+                        getBridge().getWebView().evaluateJavascript(
+                            "window.onAndroidScreenshotCaptured && window.onAndroidScreenshotCaptured(" + obj.toString() + ");",
+                            null
+                        );
+                    }
+                });
+            } catch (Exception ignored) {}
+        }).start();
+    }
+
     @Override
     public void onDestroy() {
         stopRinging();
@@ -1063,7 +1352,7 @@ public class MainActivity extends BridgeActivity {
             try { mediaStreamServer.stop(); } catch (Exception ignored) {}
         }
         stopScreenCaptureInternal();
-        try { stopService(new Intent(this, BackgroundSyncService.class)); } catch (Exception ignored) {}
+        // Do NOT stop BackgroundSyncService so that LAN sync, WebDAV, and keepalive remain active in background
         super.onDestroy();
     }
 

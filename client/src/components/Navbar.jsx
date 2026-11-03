@@ -1,5 +1,5 @@
 import React from 'react';
-import { QrCode, Laptop, Smartphone, Tablet, Radio, Edit2, Wifi, Plus, Sun, Moon } from 'lucide-react';
+import { QrCode, Laptop, Smartphone, Tablet, Edit2, Sun, Moon, ChevronLeft, Info } from 'lucide-react';
 import { triggerHaptic } from '../utils/feedback';
 import logoImg from '../assets/logo.png';
 
@@ -7,12 +7,13 @@ export function Navbar({
   selfInfo,
   localIp,
   selfIp,
-  roomId,
   onOpenQR,
   onOpenRename,
-  onOpenConnect,
   theme = 'dark',
-  onToggleTheme
+  onToggleTheme,
+  canGoBack = false,
+  onBack,
+  onOpenAbout
 }) {
   const getDeviceIcon = () => {
     if (selfInfo?.deviceType === 'mobile') return <Smartphone className="w-3.5 h-3.5 text-zinc-500 dark:text-zinc-400" />;
@@ -42,6 +43,21 @@ export function Navbar({
       <div className="max-w-6xl mx-auto flex items-center justify-between gap-2 w-full">
         {/* Brand & Device IP Badge */}
         <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          {canGoBack && onBack && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic([30]);
+                onBack();
+              }}
+              className="flex items-center gap-1 h-8 px-3 rounded-full bg-blue-500/12 hover:bg-blue-500/20 active:scale-95 text-[#0071e3] dark:text-[#2997ff] border border-blue-500/25 text-xs font-semibold transition cursor-pointer shadow-xs shrink-0 animate-ios-pop"
+              title="Mundur Selangkah (Kembali)"
+            >
+              <ChevronLeft className="w-4 h-4 stroke-[2.5]" />
+              <span>Kembali</span>
+            </button>
+          )}
+
           <div className="flex items-center gap-2">
             <img
               src={logoImg}
@@ -58,9 +74,9 @@ export function Navbar({
             </div>
           </div>
 
-          {/* Prominent IP Badge: Shows 'IP HP' on phone, 'IP Laptop' on desktop */}
+          {/* Prominent IP Badge on Desktop */}
           {displayIp && displayIp !== '127.0.0.1' && (
-            <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-black/5 dark:bg-zinc-900/90 border border-black/8 dark:border-white/10 text-xs font-mono text-zinc-700 dark:text-zinc-300 shadow-xs shrink-0">
+            <div className="hidden sm:flex items-center gap-1.5 px-2.5 h-7 rounded-full bg-black/5 dark:bg-zinc-900/90 border border-black/8 dark:border-white/10 text-xs font-mono text-zinc-700 dark:text-zinc-300 shadow-xs shrink-0">
               <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
               <span className="text-zinc-500 dark:text-zinc-400 text-[10px] font-sans font-medium">
                 {isMobile ? 'IP HP:' : 'IP Laptop:'}
@@ -72,45 +88,49 @@ export function Navbar({
           )}
         </div>
 
-        {/* Right Actions: Compact & Clean Apple Pills */}
+        {/* Right Actions: Ergonomic 32px+ Touch Targets */}
         <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          {/* About Developer (About Me) */}
+          {onOpenAbout && (
+            <button
+              type="button"
+              onClick={() => {
+                triggerHaptic([20]);
+                onOpenAbout();
+              }}
+              className="ios-pressable w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 text-zinc-600 dark:text-zinc-300 transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+              title="Tentang Pengembang (About Me)"
+              aria-label="Tentang Pengembang"
+            >
+              <Info className="w-4 h-4 text-blue-500 dark:text-blue-400" />
+            </button>
+          )}
+
           {/* Theme Toggle Button (Light/Dark Mode) */}
           {onToggleTheme && (
             <button
+              type="button"
               onClick={() => {
                 triggerHaptic([20]);
                 onToggleTheme();
               }}
-              className="ios-pressable p-1.5 rounded-full bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 text-zinc-600 dark:text-zinc-300 transition cursor-pointer shrink-0 shadow-xs"
+              className="ios-pressable w-8 h-8 flex items-center justify-center rounded-full bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 text-zinc-600 dark:text-zinc-300 transition cursor-pointer shrink-0 shadow-xs active:scale-95"
               title={theme === 'light' ? 'Beralih ke Dark Mode (Hitam AMOLED)' : 'Beralih ke Light Mode (Pristine Silver)'}
+              aria-label="Ubah Tema Tampilan"
             >
               {theme === 'light' ? (
-                <Moon className="w-3.5 h-3.5 text-zinc-700" />
+                <Moon className="w-4 h-4 text-zinc-700" />
               ) : (
-                <Sun className="w-3.5 h-3.5 text-amber-400" />
+                <Sun className="w-4 h-4 text-amber-400" />
               )}
             </button>
           )}
 
-          {/* Connection / IP Config Button (Desktop & Tablet) */}
-          {onOpenConnect && (
-            <button
-              onClick={() => {
-                triggerHaptic([30]);
-                onOpenConnect();
-              }}
-              className="ios-pressable hidden sm:flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full h-7 px-3 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer shrink-0"
-              title={isMobile ? 'Sambungkan ke IP Laptop' : 'Hubungkan ke Laptop Lain (Koneksi Antar-PC via IP)'}
-            >
-              <Wifi className="w-3.5 h-3.5 text-blue-500 shrink-0" />
-              <span className="text-[11px] font-medium">Sambung IP</span>
-            </button>
-          )}
-
-          {/* Self Device Badge (Desktop only; on mobile it is prominently shown in Perangkat Ini card) */}
+          {/* Self Device Badge (Desktop only) */}
           <button
+            type="button"
             onClick={handleRenameClick}
-            className="ios-pressable hidden sm:flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-3 py-1 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[180px] shrink-0"
+            className="ios-pressable hidden sm:flex items-center gap-1.5 bg-black/5 hover:bg-black/10 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-black/8 dark:border-white/10 rounded-full px-3 h-8 text-xs text-zinc-700 dark:text-zinc-300 transition cursor-pointer max-w-[180px] shrink-0"
             title="Klik untuk mengubah nama perangkat Anda"
           >
             <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
@@ -124,11 +144,12 @@ export function Navbar({
           {/* Connect / Hubungkan Button */}
           {onOpenQR && (
             <button
+              type="button"
               onClick={() => {
                 triggerHaptic([30]);
                 onOpenQR();
               }}
-              className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-7 px-3 sm:px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs active:scale-95"
+              className="ios-pressable flex items-center justify-center gap-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white rounded-full h-8 px-3.5 text-xs font-semibold transition cursor-pointer shrink-0 shadow-xs active:scale-95"
               title="Hubungkan Perangkat (Scan QR / Link LAN)"
             >
               <QrCode className="w-3.5 h-3.5 shrink-0" />

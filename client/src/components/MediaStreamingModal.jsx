@@ -91,7 +91,7 @@ export function MediaStreamingModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md animate-in fade-in duration-200">
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden text-left">
+      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl w-full max-w-3xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden text-left animate-ios-sheet smooth-gpu">
         {/* Header */}
         <div className="p-3.5 sm:p-4 border-b border-zinc-800 flex items-center justify-between gap-3 bg-zinc-950/70">
           <div className="flex items-center gap-3 min-w-0">

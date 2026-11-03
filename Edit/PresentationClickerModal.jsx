@@ -91,7 +91,7 @@ export function PresentationClickerModal({
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="apple-card border border-black/10 dark:border-white/10 w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[92vh]"
+        className="apple-card border border-black/10 dark:border-white/10 w-full max-w-lg rounded-3xl flex flex-col shadow-2xl overflow-hidden max-h-[92vh] animate-ios-sheet smooth-gpu"
       >
         {/* Header */}
         <div className="px-5 py-3.5 border-b border-black/8 dark:border-white/10 flex items-center justify-between bg-black/3 dark:bg-white/3">

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import { Navbar } from './components/Navbar';
 import { QRCodeModal } from './components/QRCodeModal';
@@ -24,9 +24,12 @@ import { WakeOnLanModal } from './components/WakeOnLanModal';
 import { SecondDisplaySourceModal } from './components/SecondDisplaySourceModal';
 import { SecondDisplayViewerModal } from './components/SecondDisplayViewerModal';
 import { PcAppLauncherModal } from './components/PcAppLauncherModal';
+import { PhoneAppLauncherModal } from './components/PhoneAppLauncherModal';
 import { ScreenMirroringOverlay } from './components/ScreenMirroringOverlay';
 import { PairingModal } from './components/PairingModal';
-import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff } from 'lucide-react';
+import { QuickReplyToast } from './components/QuickReplyToast';
+import { AboutModal } from './components/AboutModal';
+import { MessageSquare, X, SwitchCamera, ShieldAlert, Monitor, Camera, Shield, Check, BellRing, Mic, MicOff, ChevronLeft, ClipboardList } from 'lucide-react';
 import { getDeviceInfo, setCustomDeviceName } from './utils/deviceInfo';
 import { WebRTCManager } from './utils/webrtcManager';
 import { playSound, triggerHaptic } from './utils/feedback';
@@ -105,6 +108,7 @@ export function App() {
   const [activePeerConnection, setActivePeerConnection] = useState(null);
 
   // Modals & Drawers
+  const [isAboutModalOpen, setIsAboutModalOpen] = useState(false);
   const [isQrOpen, setIsQrOpen] = useState(!isMobileDevice);
   const [isRenameOpen, setIsRenameOpen] = useState(false);
   const [isSourceModalOpen, setIsSourceModalOpen] = useState(false);
@@ -236,6 +240,34 @@ export function App() {
   const isMacroPadModalOpenRef = useRef(isMacroPadModalOpen);
   const lastSyncedClipboardRef = useRef('');
 
+  // Persistent Cross-Platform Clipboard History Helper (Text, Images & Screenshots)
+  const addClipboardHistoryItem = (item) => {
+    if (!item) return;
+    try {
+      const stored = localStorage.getItem('encross_clipboard_history');
+      const list = stored ? JSON.parse(stored) : [];
+      const filtered = list.filter((x) => {
+        if (item.type === 'image' || item.type === 'screenshot') {
+          return x.dataUrl !== item.dataUrl;
+        }
+        return x.text !== item.text;
+      });
+      const updated = [
+        {
+          id: item.id || ('clip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6)),
+          type: item.type || 'text',
+          text: item.text || '',
+          dataUrl: item.dataUrl || null,
+          fileName: item.fileName || (item.type === 'screenshot' ? 'Screenshot.jpg' : null),
+          senderName: item.senderName || 'Perangkat',
+          timestamp: item.timestamp || Date.now()
+        },
+        ...filtered
+      ].slice(0, 30);
+      localStorage.setItem('encross_clipboard_history', JSON.stringify(updated));
+    } catch (_) {}
+  };
+
   // Remote Keyboard & Voice Typing States
   const [isRemoteKeyboardOpen, setIsRemoteKeyboardOpen] = useState(false);
   const [selectedPeerForKeyboard, setSelectedPeerForKeyboard] = useState(null);
@@ -275,10 +307,17 @@ export function App() {
   const [screenSenderName, setScreenSenderName] = useState('');
   const [isFullScreenMirrorOpen, setIsFullScreenMirrorOpen] = useState(false);
   const [isPcAppLauncherOpen, setIsPcAppLauncherOpen] = useState(false);
+  const [pcAppLauncherInitialTab, setPcAppLauncherInitialTab] = useState('launch');
+  const [isPhoneAppLauncherOpen, setIsPhoneAppLauncherOpen] = useState(false);
+  const [selectedPeerForPhoneApp, setSelectedPeerForPhoneApp] = useState(null);
   const [activeSharingPeerId, setActiveSharingPeerId] = useState(null);
   const [activeSharingMode, setActiveSharingMode] = useState(null);
   const [cameraFacingMode, setCameraFacingMode] = useState('environment');
   const [localBroadcastStream, setLocalBroadcastStream] = useState(null);
+
+  // Phone Notification Mirroring & Quick Reply States
+  const [mirroredNotifications, setMirroredNotifications] = useState([]);
+  const [activeQuickReplyNotif, setActiveQuickReplyNotif] = useState(null);
 
   const webrtcManagerRef = useRef(null);
   const activeSharingPeerIdRef = useRef(activeSharingPeerId);
@@ -292,6 +331,16 @@ export function App() {
   const isScrcpyModalOpenRef = useRef(isScrcpyModalOpen);
   const isFileExplorerOpenRef = useRef(isFileExplorerOpen);
   const pendingRemoteRequestRef = useRef(pendingRemoteRequest);
+  const selectedPeerRef = useRef(selectedPeer);
+  const isFullScreenMirrorOpenRef = useRef(isFullScreenMirrorOpen);
+  const isPcAppLauncherOpenRef = useRef(isPcAppLauncherOpen);
+  const isPhoneAppLauncherOpenRef = useRef(isPhoneAppLauncherOpen);
+  const isRemoteKeyboardOpenRef = useRef(isRemoteKeyboardOpen);
+  const isPresentationClickerOpenRef = useRef(isPresentationClickerOpen);
+  const isWakeOnLanOpenRef = useRef(isWakeOnLanOpen);
+  const isSecondDisplaySourceOpenRef = useRef(isSecondDisplaySourceOpen);
+  const pairingModalStateRef = useRef(pairingModalState);
+  const scanLanRef = useRef(null);
 
   useEffect(() => { incomingStreamRef.current = incomingStream; }, [incomingStream]);
   useEffect(() => { activeSharingPeerIdRef.current = activeSharingPeerId; }, [activeSharingPeerId]);
@@ -306,6 +355,56 @@ export function App() {
   useEffect(() => { isTouchpadModalOpenRef.current = isTouchpadModalOpen; }, [isTouchpadModalOpen]);
   useEffect(() => { isMacroPadModalOpenRef.current = isMacroPadModalOpen; }, [isMacroPadModalOpen]);
   useEffect(() => { pendingRemoteRequestRef.current = pendingRemoteRequest; }, [pendingRemoteRequest]);
+  useEffect(() => { selectedPeerRef.current = selectedPeer; }, [selectedPeer]);
+  useEffect(() => { isFullScreenMirrorOpenRef.current = isFullScreenMirrorOpen; }, [isFullScreenMirrorOpen]);
+  useEffect(() => { isPcAppLauncherOpenRef.current = isPcAppLauncherOpen; }, [isPcAppLauncherOpen]);
+  useEffect(() => { isPhoneAppLauncherOpenRef.current = isPhoneAppLauncherOpen; }, [isPhoneAppLauncherOpen]);
+  useEffect(() => { isRemoteKeyboardOpenRef.current = isRemoteKeyboardOpen; }, [isRemoteKeyboardOpen]);
+  useEffect(() => { isPresentationClickerOpenRef.current = isPresentationClickerOpen; }, [isPresentationClickerOpen]);
+  useEffect(() => { isWakeOnLanOpenRef.current = isWakeOnLanOpen; }, [isWakeOnLanOpen]);
+  useEffect(() => { isSecondDisplaySourceOpenRef.current = isSecondDisplaySourceOpen; }, [isSecondDisplaySourceOpen]);
+  useEffect(() => { pairingModalStateRef.current = pairingModalState; }, [pairingModalState]);
+
+  // Lock body scroll and prevent background viewport shift when any modal is active
+  const isAnyModalActive = Boolean(
+    isAboutModalOpen ||
+    isTouchpadModalOpen ||
+    isMacroPadModalOpen ||
+    isRemoteKeyboardOpen ||
+    isPresentationClickerOpen ||
+    isWakeOnLanOpen ||
+    isSecondDisplaySourceOpen ||
+    isFileExplorerOpen ||
+    isFullScreenMirrorOpen ||
+    isPcAppLauncherOpen ||
+    isPhoneAppLauncherOpen ||
+    isScrcpyModalOpen ||
+    isSourceModalOpen ||
+    isServerIpModalOpen ||
+    isRenameOpen ||
+    isQrOpen ||
+    isTextSyncOpen ||
+    streamingMediaItem ||
+    activeTransfer ||
+    pendingRemoteRequest ||
+    pairingModalState?.isOpen ||
+    isRingingActive
+  );
+
+  useEffect(() => {
+    if (typeof document !== 'undefined') {
+      if (isAnyModalActive) {
+        document.body.style.overflow = 'hidden';
+      } else {
+        document.body.style.overflow = '';
+      }
+    }
+    return () => {
+      if (typeof document !== 'undefined') {
+        document.body.style.overflow = '';
+      }
+    };
+  }, [isAnyModalActive]);
 
   // Otomatis kontrol modal QR:
   // Jika ada perangkat terhubung (peers.length > 0) -> otomatis tutup modal QR
@@ -366,6 +465,7 @@ export function App() {
     const scanLanForServer = async (hintIp) => {
       if (isScanningLan) return;
       isScanningLan = true;
+      try {
       let candidateIp = hintIp;
       if (!candidateIp && typeof window !== 'undefined' && window.AndroidDownloader?.getDeviceIp) {
         try { candidateIp = window.AndroidDownloader.getDeviceIp(); } catch (_) {}
@@ -437,11 +537,14 @@ export function App() {
         );
       }
 
-      isScanningLan = false;
       if (!found && isMobileDevice && !savedServerIp) {
         setIsServerIpModalOpen(true);
       }
+      } finally {
+        isScanningLan = false;
+      }
     };
+    scanLanRef.current = scanLanForServer;
 
     const applyDiscoveredServer = (host, info) => {
       console.log(`[LAN Discovery] Automatically paired with ENCross Host: ${host}`);
@@ -517,6 +620,14 @@ export function App() {
         osc.start();
       }
     } catch (_) {}
+
+    const unlockAudio = () => {
+      if (keepAliveAudioCtx && keepAliveAudioCtx.state === 'suspended') {
+        keepAliveAudioCtx.resume().catch(() => {});
+      }
+    };
+    window.addEventListener('click', unlockAudio, { passive: true });
+    window.addEventListener('touchstart', unlockAudio, { passive: true });
 
     setSocket(newSocket);
 
@@ -754,6 +865,23 @@ export function App() {
       }
     });
 
+    // Socket Event: Remote peer requested to launch an Android app on this phone
+    newSocket.on('remote-launch-phone-app', ({ requesterId, packageName, appName }) => {
+      if (!packageName) return;
+      try {
+        if (window.AndroidDownloader?.launchApp) {
+          const ok = window.AndroidDownloader.launchApp(packageName);
+          setIncomingToast({
+            senderName: 'Laptop',
+            text: ok ? `Membuka ${appName || packageName} di ponsel...` : `Mencoba membuka ${appName || packageName}...`,
+            senderId: null
+          });
+        }
+      } catch (e) {
+        console.error('[App] Failed to launch phone app via AndroidDownloader:', e);
+      }
+    });
+
     // Socket Event: Remote camera request with privacy check & user gesture modal
     newSocket.on('remote-camera-requested', ({ requesterId }) => {
       if (!requesterId) return;
@@ -874,23 +1002,80 @@ export function App() {
       }
     });
 
-    // Auto Clipboard Sync Listener
-    newSocket.on('sync-clipboard', ({ senderName, text }) => {
-      if (!FEATURE_TOGGLES.enableAutoClipboardSync || !text) return;
-      if (text === lastSyncedClipboardRef.current) return;
-      lastSyncedClipboardRef.current = text;
+    // Auto Clipboard & Cross-Platform Screenshot Sync Listener
+    newSocket.on('sync-clipboard', async (payload) => {
+      if (!FEATURE_TOGGLES.enableAutoClipboardSync || !payload) return;
 
-      if (window.electronAPI?.setClipboardText) {
-        window.electronAPI.setClipboardText(text);
-      } else if (window.AndroidClipboard?.setClipboardText) {
-        window.AndroidClipboard.setClipboardText(text);
+      const isImage = payload.type === 'image' || payload.type === 'screenshot' || Boolean(payload.dataUrl);
+
+      // 1. Write to OS Clipboard & Save File
+      if (isImage) {
+        if (window.electronAPI?.setClipboardImage) {
+          window.electronAPI.setClipboardImage(payload.dataUrl);
+          window.electronAPI.saveScreenshotFile?.({ dataUrl: payload.dataUrl, fileName: payload.fileName });
+        } else if (window.AndroidImageSaver?.saveImageToGallery) {
+          window.AndroidImageSaver.saveImageToGallery(payload.dataUrl, payload.fileName);
+        }
+      } else {
+        if (!payload.text || payload.text === lastSyncedClipboardRef.current) return;
+        lastSyncedClipboardRef.current = payload.text;
+        if (window.electronAPI?.setClipboardText) {
+          window.electronAPI.setClipboardText(payload.text);
+        } else if (window.AndroidClipboard?.setClipboardText) {
+          window.AndroidClipboard.setClipboardText(payload.text);
+        }
       }
 
-      setIncomingToast({
-        senderName: senderName || 'Perangkat',
-        text: 'Clipboard: ' + (text.length > 50 ? text.substring(0, 50) + '...' : text),
-        senderId: null
+      // 2. Add to persistent clipboard history
+      addClipboardHistoryItem({
+        id: 'clip_' + Date.now() + '_' + Math.random().toString(36).substring(2, 6),
+        type: isImage ? 'image' : 'text',
+        text: payload.text || '',
+        dataUrl: payload.dataUrl || null,
+        fileName: payload.fileName || null,
+        senderName: payload.senderName || 'Perangkat Lawan',
+        timestamp: payload.timestamp || Date.now()
       });
+
+      // 3. Check User Pop-up & Valorant / Game DND Settings
+      const isPopupEnabled = localStorage.getItem('encross_clipboard_popup') !== 'false';
+      const isGameDndEnabled = localStorage.getItem('encross_clipboard_game_dnd') !== 'false';
+
+      if (!isPopupEnabled) {
+        // Pop-up explicitly disabled by user: silent background sync
+        return;
+      }
+
+      if (isGameDndEnabled && window.electronAPI?.checkGameRunning) {
+        try {
+          const gameInfo = await window.electronAPI.checkGameRunning();
+          if (gameInfo?.isGameRunning) {
+            // Competitive Game (Valorant, CS2, etc.) is active: SILENCE POP-UP to protect gameplay!
+            console.log(`[ENCross] Clipboard synced silently in background (Gaming DND: ${gameInfo.gameName})`);
+            return;
+          }
+        } catch (_) {}
+      }
+
+      // 4. Show non-intrusive floating toast
+      if (isImage) {
+        setIncomingToast({
+          type: 'clipboard-image',
+          senderName: payload.senderName || 'Ponsel',
+          text: 'Tangkapan layar tersalin ke clipboard PC (Siap Ctrl+V)',
+          dataUrl: payload.dataUrl,
+          fileName: payload.fileName,
+          senderId: null
+        });
+      } else {
+        setIncomingToast({
+          type: 'clipboard-text',
+          senderName: payload.senderName || 'Ponsel',
+          text: payload.text.length > 70 ? payload.text.substring(0, 70) + '...' : payload.text,
+          fullText: payload.text,
+          senderId: null
+        });
+      }
     });
 
     // Remote Input Event (for desktop executing phone touchpad commands)
@@ -920,10 +1105,22 @@ export function App() {
     });
 
     // Notification Mirroring (PC receives phone notifications)
-    newSocket.on('incoming-notification', ({ senderName, notif }) => {
+    newSocket.on('incoming-notification', ({ senderId, senderName, senderDeviceId, notif }) => {
       if (!FEATURE_TOGGLES.enableNotificationMirror || !notif) return;
       playSound('message');
       triggerHaptic([30, 40]);
+
+      const notifItem = {
+        ...notif,
+        id: notif.key || `${Date.now()}_${Math.random()}`,
+        senderId,
+        senderName: notif.appName || senderName || 'HP',
+        senderDeviceId,
+        receivedAt: Date.now()
+      };
+
+      setMirroredNotifications((prev) => [notifItem, ...prev.slice(0, 49)]);
+      setActiveQuickReplyNotif(notifItem);
 
       if (window.electronAPI?.showNotification) {
         window.electronAPI.showNotification(
@@ -931,12 +1128,18 @@ export function App() {
           notif.text || ''
         );
       }
+    });
 
-      setIncomingToast({
-        senderName: notif.appName || senderName || 'HP',
-        text: (notif.title ? notif.title + ': ' : '') + (notif.text || ''),
-        senderId: null
-      });
+    // Handle Quick Reply from PC on Android phone
+    newSocket.on('quick-reply-notification', ({ key, text, packageName }) => {
+      if (window.AndroidNotifications?.sendQuickReply) {
+        try {
+          const success = window.AndroidNotifications.sendQuickReply(key, text);
+          console.log('[AndroidNotifications] sendQuickReply executed:', success);
+        } catch (err) {
+          console.warn('[AndroidNotifications] sendQuickReply error:', err);
+        }
+      }
     });
 
     // Real-Time Peer Status & Battery updates
@@ -977,6 +1180,19 @@ export function App() {
       console.warn('[Socket] Connect error:', err?.message || err);
       if (isMobileDevice) {
         scanLanForServer();
+      }
+    });
+
+    // Socket Event: Disconnected
+    newSocket.on('disconnect', (reason) => {
+      console.warn('[Socket] Disconnected:', reason);
+      if (isMobileDevice) {
+        setTimeout(() => {
+          if (newSocket && !newSocket.connected) {
+            newSocket.connect();
+            scanLanForServer();
+          }
+        }, 1500);
       }
     });
 
@@ -1178,16 +1394,30 @@ export function App() {
 
     const handleVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
-        if (newSocket && !newSocket.connected) {
+        if (!newSocket.connected) {
           console.log('[App] App returned to foreground, reconnecting socket...');
           newSocket.connect();
-        } else if (newSocket && newSocket.connected) {
-          // Re-announce presence just in case server lost peer state while asleep
-          newSocket.emit('join-room', {
-            roomId: roomParam,
-            device
+          if (isMobileDevice) scanLanForServer();
+        } else {
+          // Active probe: check if current socket is an unresponsive zombie
+          let responded = false;
+          const probeTimer = setTimeout(() => {
+            if (!responded) {
+              console.warn('[App] Zombie socket detected on foreground resume, forcing reconnect...');
+              newSocket.disconnect().connect();
+              if (isMobileDevice) scanLanForServer();
+            }
+          }, 1200);
+
+          newSocket.emit('ping-check', () => {
+            responded = true;
+            clearTimeout(probeTimer);
+            newSocket.emit('join-room', {
+              roomId: roomParam,
+              device
+            });
+            newSocket.emit('get-peers');
           });
-          newSocket.emit('get-peers');
         }
       }
     };
@@ -1201,6 +1431,8 @@ export function App() {
     const peerHeartbeat = setInterval(() => {
       if (newSocket && newSocket.connected) {
         newSocket.emit('get-peers');
+      } else if (newSocket && !newSocket.connected && isMobileDevice) {
+        newSocket.connect();
       }
     }, 3500);
 
@@ -1213,6 +1445,8 @@ export function App() {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('focus', handleVisibilityChange);
+      window.removeEventListener('click', unlockAudio);
+      window.removeEventListener('touchstart', unlockAudio);
       try {
         if (keepAliveAudioCtx) keepAliveAudioCtx.close();
       } catch (_) {}
@@ -1220,6 +1454,37 @@ export function App() {
       rtcManager.cleanup();
     };
   }, []);
+
+  // Auto-sync selectedPeer whenever peers array updates (replaces dead socket IDs with fresh ones)
+  useEffect(() => {
+    if (!selectedPeer) return;
+    const livePeer = peers.find(
+      (p) => (selectedPeer.deviceId && p.deviceId === selectedPeer.deviceId) || p.id === selectedPeer.id
+    );
+    if (livePeer) {
+      if (livePeer.id !== selectedPeer.id || livePeer.name !== selectedPeer.name || livePeer.ip !== selectedPeer.ip) {
+        console.log('[App] Auto-synced selectedPeer to updated socket info:', livePeer);
+        setSelectedPeer(livePeer);
+      }
+    }
+  }, [peers, selectedPeer]);
+
+  const handleRefreshScan = useCallback(() => {
+    if (socket) {
+      if (!socket.connected) {
+        socket.connect();
+      } else {
+        socket.emit('join-room', {
+          roomId,
+          device: selfInfo || getDeviceInfo()
+        });
+        socket.emit('get-peers');
+      }
+    }
+    if (scanLanRef.current) {
+      scanLanRef.current();
+    }
+  }, [socket, roomId, selfInfo]);
 
   // Periodic latency measurement (Ping check)
   useEffect(() => {
@@ -1281,19 +1546,44 @@ export function App() {
     }
   }, [socket]);
 
-  // Auto Clipboard Monitoring for Android APK
+  // Auto Clipboard & Screenshot Monitoring for Android APK
   useEffect(() => {
     if (!FEATURE_TOGGLES.enableAutoClipboardSync) return;
+
     window.onAndroidClipboardChanged = (text) => {
       if (text && text !== lastSyncedClipboardRef.current && socket) {
         lastSyncedClipboardRef.current = text;
-        socket.emit('sync-clipboard', { text });
+        socket.emit('sync-clipboard', { type: 'text', text });
+        addClipboardHistoryItem({
+          type: 'text',
+          text,
+          senderName: selfInfo?.name || 'Perangkat Ini'
+        });
       }
     };
+
+    window.onAndroidScreenshotCaptured = (data) => {
+      if (data && data.dataUrl && socket) {
+        socket.emit('sync-clipboard', {
+          type: data.type || 'screenshot',
+          dataUrl: data.dataUrl,
+          fileName: data.fileName || 'Screenshot.jpg',
+          senderName: selfInfo?.name || 'Vivo Phone'
+        });
+        addClipboardHistoryItem({
+          type: data.type || 'screenshot',
+          dataUrl: data.dataUrl,
+          fileName: data.fileName || 'Screenshot.jpg',
+          senderName: selfInfo?.name || 'Perangkat Ini'
+        });
+      }
+    };
+
     return () => {
       window.onAndroidClipboardChanged = null;
+      window.onAndroidScreenshotCaptured = null;
     };
-  }, [socket]);
+  }, [socket, selfInfo]);
 
   // Floating Dropzone State & Drop Receiver
   useEffect(() => {
@@ -1404,6 +1694,115 @@ export function App() {
       window.onAndroidNotificationReceived = null;
     };
   }, [socket]);
+
+  // Send Quick Reply from PC back to Android phone
+  const handleSendQuickReply = (notifItem, replyText) => {
+    if (!socket || !notifItem || !replyText) return;
+    socket.emit('quick-reply-notification', {
+      targetId: notifItem.senderId,
+      targetDeviceId: notifItem.senderDeviceId,
+      key: notifItem.key || notifItem.id,
+      text: replyText,
+      packageName: notifItem.packageName
+    });
+  };
+
+  // Shortcut: Buka Aplikasi HP dari Laptop (via ADB atau Socket WebRTC/WebSocket)
+  const handleLaunchPhoneApp = (peer, packageName, appName) => {
+    const target = peer || selectedPeer;
+    if (!target || !packageName) return;
+    triggerHaptic([35]);
+    
+    // Jika di Electron PC, coba juga lewat ADB langsung untuk eksekusi handal
+    if (window.electronAPI?.launchPhoneAppAdb) {
+      window.electronAPI.launchPhoneAppAdb({
+        deviceId: target.deviceId || target.adbSerial || null,
+        packageName
+      });
+    }
+
+    // Kirim via Socket signalling agar HP yang menerima membuka aplikasinya via AndroidDownloader
+    if (socket) {
+      socket.emit('launch-phone-app', {
+        targetId: target.id,
+        targetDeviceId: target.deviceId,
+        packageName,
+        appName
+      });
+    }
+
+    setIncomingToast({
+      senderName: target.name || 'Ponsel',
+      text: `Membuka ${appName || packageName} di ponsel...`,
+      senderId: null
+    });
+  };
+
+  // Shortcut: Buka Aplikasi Laptop dari HP
+  const handleLaunchPcApp = (peer, command, appName, windowMode = 'normal') => {
+    const target = peer || secondDisplayTargetPeer || selectedPeer;
+    if (!command) return;
+    triggerHaptic([35]);
+
+    const isSearchCmd =
+      command === 'win-search' ||
+      command === 'start search-ms:' ||
+      command === 'search-ms:' ||
+      command === 'search-pc' ||
+      command === 'cari' ||
+      command === 'cari pc' ||
+      command.startsWith('search:') ||
+      command.startsWith('cari:');
+
+    // Fast-path: Send native Win+S hotkey through input simulator for instantaneous search menu popup
+    if (isSearchCmd && socket && socket.connected) {
+      socket.emit('remote-input-event', {
+        targetId: target?.id,
+        targetDeviceId: target?.deviceId,
+        event: 'combo win s'
+      });
+      const query = command.startsWith('search:') ? command.slice(7).trim()
+                  : command.startsWith('cari:') ? command.slice(5).trim()
+                  : '';
+      if (query) {
+        setTimeout(() => {
+          socket.emit('remote-input-event', {
+            targetId: target?.id,
+            targetDeviceId: target?.deviceId,
+            event: 'type:' + query
+          });
+        }, 150);
+      }
+    }
+
+    // 1. Direct HTTP execution to PC server (dual-channel guarantee)
+    const host = target?.ip || target?.clientIp || (target?.ips && target.ips[0]) || window.location.hostname || '127.0.0.1';
+    try {
+      fetch(`http://${host}:3001/api/launch-pc-app`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command, appName, windowMode })
+      }).catch((e) => console.warn('[App] Direct HTTP launch fallback:', e));
+    } catch (_) {}
+
+    // 2. Realtime Socket.IO event for synced peer routing
+    if (socket) {
+      socket.emit('launch-pc-app', {
+        targetId: target?.id,
+        targetDeviceId: target?.deviceId,
+        command,
+        appName,
+        windowMode
+      });
+    }
+
+    const modeText = windowMode === 'minimized' ? ' (Minimize)' : '';
+    setIncomingToast({
+      senderName: target?.name || 'Laptop',
+      text: `Membuka ${appName || 'aplikasi'} di PC${modeText}...`,
+      senderId: null
+    });
+  };
 
   // Device Pairing & Synchronized Connection Handlers
   const handlePairDevice = (peer) => {
@@ -1605,6 +2004,51 @@ export function App() {
 
   // Stepped back navigation for mobile (Android hardware/gesture back & browser popstate)
   const handleBackStep = () => {
+    triggerHaptic([25]);
+
+    // Priority 1: Full-screen mirroring receiver (restore orientation)
+    if (isFullScreenMirrorOpenRef.current) {
+      setIsFullScreenMirrorOpen(false);
+      try {
+        if (window.AndroidDownloader?.setScreenOrientation) {
+          window.AndroidDownloader.setScreenOrientation('portrait');
+        }
+      } catch (_) {}
+      return true;
+    }
+
+    // Priority 2: Modals, Sheets & App Launchers
+    if (isPhoneAppLauncherOpenRef.current) {
+      setIsPhoneAppLauncherOpen(false);
+      return true;
+    }
+    if (isPcAppLauncherOpenRef.current) {
+      setIsPcAppLauncherOpen(false);
+      return true;
+    }
+    if (isSecondDisplaySourceOpenRef.current) {
+      setIsSecondDisplaySourceOpen(false);
+      return true;
+    }
+    if (isRemoteKeyboardOpenRef.current) {
+      setIsRemoteKeyboardOpen(false);
+      setSelectedPeerForKeyboard(null);
+      return true;
+    }
+    if (isPresentationClickerOpenRef.current) {
+      setIsPresentationClickerOpen(false);
+      setSelectedPeerForPresentation(null);
+      return true;
+    }
+    if (isWakeOnLanOpenRef.current) {
+      setIsWakeOnLanOpen(false);
+      setSelectedPeerForWol(null);
+      return true;
+    }
+    if (pairingModalStateRef.current?.isOpen) {
+      setPairingModalState((prev) => ({ ...prev, isOpen: false }));
+      return true;
+    }
     if (isMacroPadModalOpenRef.current) {
       setIsMacroPadModalOpen(false);
       setSelectedPeerForMacroPad(null);
@@ -1665,6 +2109,14 @@ export function App() {
       setIsRenameOpen(false);
       return true;
     }
+
+    // Priority 3: Mundur dari Workspace Perangkat ke Layar Discovery
+    if (selectedPeerRef.current) {
+      setSelectedPeer(null);
+      setAutoStartMirror(false);
+      return true;
+    }
+
     return false;
   };
 
@@ -1753,16 +2205,7 @@ export function App() {
     }
   };
 
-  // Manual refresh scan for nearby LAN peers
-  const handleRefreshScan = () => {
-    if (socket && socket.connected) {
-      socket.emit('join-room', {
-        roomId,
-        device: selfInfo || getDeviceInfo()
-      });
-      socket.emit('get-peers');
-    }
-  };
+// Manual refresh scan uses useCallback handleRefreshScan above
 
   // Save Server IP
   const handleSaveServerIp = (newIp) => {
@@ -2106,6 +2549,9 @@ export function App() {
         onOpenConnect={() => setIsServerIpModalOpen(true)}
         theme={theme}
         onToggleTheme={toggleTheme}
+        canGoBack={Boolean(selectedPeer)}
+        onBack={handleBackFromWorkspace}
+        onOpenAbout={() => setIsAboutModalOpen(true)}
       />
 
       {/* Floating Incoming Notification Pop-up (Always centered across all screen sizes) */}
@@ -2163,6 +2609,98 @@ export function App() {
                 <button
                   onClick={() => setIncomingToast(null)}
                   title="Tutup notifikasi"
+                  className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : incomingToast.type === 'clipboard-image' ? (
+            /* Non-Intrusive Screenshot / Image Pop-up */
+            <>
+              {incomingToast.dataUrl && (
+                <div
+                  onClick={() => {
+                    setIsTextSyncOpen(true);
+                    setIncomingToast(null);
+                  }}
+                  className="w-11 h-11 rounded-xl overflow-hidden bg-black/20 border border-black/10 dark:border-white/15 shrink-0 cursor-pointer shadow-xs"
+                >
+                  <img
+                    src={incomingToast.dataUrl}
+                    alt="Screenshot Thumbnail"
+                    className="w-full h-full object-cover"
+                  />
+                </div>
+              )}
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-semibold text-zinc-900 dark:text-white truncate">
+                    Tangkapan Layar dari {incomingToast.senderName}
+                  </span>
+                  <span className="text-[9px] bg-blue-500/15 text-blue-600 dark:text-blue-400 border border-blue-500/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                    Ctrl+V
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate mt-0.5">
+                  Tersalin ke Clipboard PC • Siap ditempel
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => {
+                    triggerHaptic([20]);
+                    setIsTextSyncOpen(true);
+                    setIncomingToast(null);
+                  }}
+                  className="px-2.5 py-1.5 bg-[#0071e3] hover:bg-[#0077ed] text-white font-semibold rounded-lg text-xs transition cursor-pointer active:scale-95 shadow-xs"
+                  title="Buka Riwayat Clipboard"
+                >
+                  Riwayat
+                </button>
+                <button
+                  onClick={() => setIncomingToast(null)}
+                  title="Tutup"
+                  className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition cursor-pointer"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            </>
+          ) : incomingToast.type === 'clipboard-text' ? (
+            /* Non-Intrusive Text Clipboard Pop-up */
+            <>
+              <div className="p-2 rounded-xl bg-blue-500/10 text-blue-500 shrink-0 border border-blue-500/20">
+                <ClipboardList className="w-4 h-4" />
+              </div>
+              <div className="flex-1 min-w-0 pr-1">
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <span className="text-[11px] font-semibold text-zinc-900 dark:text-white truncate">
+                    Clipboard dari {incomingToast.senderName}
+                  </span>
+                  <span className="text-[9px] bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/30 px-1.5 py-0.2 rounded font-mono font-bold">
+                    Tersalin
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-700 dark:text-zinc-300 font-mono truncate mt-0.5">
+                  {incomingToast.text}
+                </p>
+              </div>
+              <div className="flex items-center gap-1 shrink-0">
+                <button
+                  onClick={() => {
+                    triggerHaptic([20]);
+                    setIsTextSyncOpen(true);
+                    setIncomingToast(null);
+                  }}
+                  className="px-2.5 py-1.5 bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 text-zinc-800 dark:text-zinc-200 font-semibold rounded-lg text-xs transition cursor-pointer active:scale-95"
+                  title="Buka Riwayat Clipboard"
+                >
+                  Riwayat
+                </button>
+                <button
+                  onClick={() => setIncomingToast(null)}
+                  title="Tutup"
                   className="p-1 text-zinc-400 hover:text-zinc-900 dark:hover:text-white rounded-lg transition cursor-pointer"
                 >
                   <X className="w-3.5 h-3.5" />
@@ -2276,14 +2814,16 @@ export function App() {
       )}
 
       {/* Main Workspace */}
-      <main className="flex-1 flex flex-col justify-center py-2">
+      <main className="flex-1 flex flex-col justify-start min-h-0">
         <PwaInstallBanner selfInfo={selfInfo} />
 
         {selectedPeer ? (
-          <div key="workspace" className="animate-ios-push flex-1 flex flex-col">
+          <div key="workspace" className="animate-ios-push flex-1 flex flex-col min-h-0">
             <ErrorBoundary onReset={() => setSelectedPeer(null)}>
               <DeviceWorkspace
                 peer={peers.find((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)) || selectedPeer}
+                isOnline={Boolean(peers.some((p) => p.id === selectedPeer.id || (p.deviceId && p.deviceId === selectedPeer.deviceId)))}
+                onRefreshScan={handleRefreshScan}
                 selfInfo={selfInfo}
                 isMobile={isMobileDevice}
                 pingMs={pingMs}
@@ -2297,6 +2837,7 @@ export function App() {
                   }
                 }}
                 onOpenFileExplorer={handleOpenFileExplorer}
+                onSendInput={(cmd) => handleSendInput(cmd, selectedPeer)}
                 onOpenTouchpad={(peer) => { setSelectedPeerForTouchpad(peer); setIsTouchpadModalOpen(true); }}
                 onOpenMacroPad={(peer) => { setSelectedPeerForMacroPad(peer); setIsMacroPadModalOpen(true); }}
                 onOpenRemoteKeyboard={(peer) => { setSelectedPeerForKeyboard(peer); setIsRemoteKeyboardOpen(true); }}
@@ -2328,11 +2869,23 @@ export function App() {
                   setIncomingStreamPeerId(null);
                   setIsFullScreenMirrorOpen(false);
                 }}
-                onOpenPcAppLauncher={(target) => {
+                onOpenPcAppLauncher={(target, tab = 'launch') => {
                   const p = target || selectedPeer;
                   if (p) setSecondDisplayTargetPeer(p);
+                  setPcAppLauncherInitialTab(tab);
                   setIsPcAppLauncherOpen(true);
                 }}
+                onLaunchPcApp={handleLaunchPcApp}
+                onOpenPhoneAppLauncher={(target) => {
+                  const p = target || selectedPeer;
+                  if (p) setSelectedPeerForPhoneApp(p);
+                  setIsPhoneAppLauncherOpen(true);
+                }}
+                onLaunchPhoneApp={handleLaunchPhoneApp}
+                socket={socket}
+                notifications={mirroredNotifications}
+                onSendQuickReply={handleSendQuickReply}
+                onClearNotifications={() => setMirroredNotifications([])}
               />
             </ErrorBoundary>
           </div>
@@ -2701,6 +3254,7 @@ export function App() {
       {isPcAppLauncherOpen && (
         <PcAppLauncherModal
           isOpen={isPcAppLauncherOpen}
+          initialTab={pcAppLauncherInitialTab}
           onClose={() => setIsPcAppLauncherOpen(false)}
           targetPeer={secondDisplayTargetPeer || selectedPeer}
           remoteSources={remoteDisplaySources}
@@ -2738,29 +3292,20 @@ export function App() {
               });
             }
           }}
-          onLaunchApp={(command, appName) => {
+          onLaunchApp={(command, appName, windowMode) => {
             const target = secondDisplayTargetPeer || selectedPeer;
-            if (!target) return;
-            try {
-              if (window.AndroidDownloader?.setScreenOrientation) {
-                window.AndroidDownloader.setScreenOrientation('landscape');
-              }
-            } catch (_) {}
-            if (socket) {
-              socket.emit('launch-pc-app', {
-                targetId: target.id,
-                targetDeviceId: target.deviceId,
-                command,
-                appName
-              });
-              setIsFullScreenMirrorOpen(true);
-              setIncomingToast({
-                senderName: target.name || 'Laptop',
-                text: `Meluncurkan ${appName || 'aplikasi'} di PC...`,
-                senderId: null
-              });
-            }
+            handleLaunchPcApp(target, command, appName, windowMode);
           }}
+        />
+      )}
+
+      {/* Phone App Launcher Modal: Buka Aplikasi HP dari Laptop */}
+      {isPhoneAppLauncherOpen && (
+        <PhoneAppLauncherModal
+          isOpen={isPhoneAppLauncherOpen}
+          onClose={() => setIsPhoneAppLauncherOpen(false)}
+          targetPeer={selectedPeerForPhoneApp || selectedPeer}
+          onLaunchPhoneApp={handleLaunchPhoneApp}
         />
       )}
 
@@ -2870,13 +3415,18 @@ export function App() {
         onClose={() => setPairingModalState((prev) => ({ ...prev, isOpen: false }))}
       />
 
-      {/* Footer Info */}
-      <footer className="py-3 text-center text-[11px] text-zinc-500 border-t border-zinc-900/80 px-4 space-y-0.5">
-        <p>ENCross • Direct WebRTC P2P Transfer & Screen Hub • Zero Cloud Storage</p>
-        <p className="text-[10px] text-zinc-400">
-          Dibuat & Dikembangkan oleh <span className="text-emerald-400 font-semibold">Edvan</span> (<a href="https://github.com/EdvanVPRoject/ENCross" target="_blank" rel="noreferrer" className="hover:text-emerald-300 underline underline-offset-2">EdvanVPRoject</a>)
-        </p>
-      </footer>
+      {/* Floating Quick Reply Toast Banner for Mirrored Notifications */}
+      <QuickReplyToast
+        notification={activeQuickReplyNotif}
+        onReply={handleSendQuickReply}
+        onClose={() => setActiveQuickReplyNotif(null)}
+      />
+
+      {/* About Developer (About Me) Modal */}
+      <AboutModal
+        isOpen={isAboutModalOpen}
+        onClose={() => setIsAboutModalOpen(false)}
+      />
     </div>
   );
 }

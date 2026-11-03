@@ -34,6 +34,31 @@ export function SecondDisplaySourceModal({
   const [qualityPreset, setQualityPreset] = useState('60fps'); // '60fps' | 'balanced'
   const [showDriverGuide, setShowDriverGuide] = useState(false);
 
+  // Swipe gesture detection
+  const swipeStartX = React.useRef(0);
+  const swipeStartY = React.useRef(0);
+
+  const handleSwipeStart = (e) => {
+    if (!e.touches || e.touches.length === 0) return;
+    swipeStartX.current = e.touches[0].clientX;
+    swipeStartY.current = e.touches[0].clientY;
+  };
+
+  const handleSwipeEnd = (e) => {
+    if (!e.changedTouches || e.changedTouches.length === 0) return;
+    const dx = e.changedTouches[0].clientX - swipeStartX.current;
+    const dy = e.changedTouches[0].clientY - swipeStartY.current;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0 && activeTab === 'window') {
+        triggerHaptic([20]);
+        setActiveTab('screen');
+      } else if (dx > 0 && activeTab === 'screen') {
+        triggerHaptic([20]);
+        setActiveTab('window');
+      }
+    }
+  };
+
   // Sync sources from remote or local Electron API
   const fetchSources = async () => {
     if (isRemote) {
@@ -112,14 +137,126 @@ export function SecondDisplaySourceModal({
     onClose();
   };
 
+  const renderSourceItems = (items, type) => {
+    if (loadingActive && sources.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
+          <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20">
+            <Loader2 className="w-6 h-6 animate-spin" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-zinc-200">
+              {isRemote ? `Mengambil daftar layar & jendela dari ${targetPeer?.name || 'PC'}...` : 'Memuat sumber layar...'}
+            </p>
+            <p className="text-xs text-zinc-400 mt-1 max-w-sm">
+              Sedang membaca jendela aktif dan monitor yang tersedia secara langsung.
+            </p>
+          </div>
+          {isRemote && (
+            <button
+              onClick={handleQuickDefaultStart}
+              className="mt-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 text-xs font-semibold transition active:scale-95 cursor-pointer shadow-sm"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              <span>Alirkan Layar Utama Langsung (Cepat)</span>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    if (items.length === 0) {
+      return (
+        <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
+          <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-zinc-500">
+            <AppWindow className="w-6 h-6" />
+          </div>
+          <p className="text-sm font-semibold text-zinc-300">
+            {type === 'window' ? 'Tidak ada jendela aplikasi terbuka' : 'Tidak ada layar tambahan'}
+          </p>
+          <p className="text-xs text-zinc-500 max-w-xs">
+            {type === 'window'
+              ? 'Buka aplikasi di PC laptop atau pilih tab Layar Penuh di atas.'
+              : 'Gunakan layar utama atau sambungkan monitor tambahan.'}
+          </p>
+          {isRemote && (
+            <button
+              onClick={handleQuickDefaultStart}
+              className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 text-xs font-semibold transition active:scale-95 cursor-pointer"
+            >
+              <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
+              <span>Alirkan Layar Utama (Otomatis)</span>
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pb-2">
+        {items.map((item) => {
+          const isSelected = item.id === selectedSourceId;
+          return (
+            <div
+              key={item.id}
+              onClick={() => {
+                triggerHaptic([15]);
+                setSelectedSourceId(item.id);
+              }}
+              className={`group relative p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 overflow-hidden ${
+                isSelected
+                  ? 'bg-sky-500/15 border-sky-500/70 shadow-lg shadow-sky-950/40 ring-1 ring-sky-500/50'
+                  : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/8 hover:border-white/16'
+              }`}
+            >
+              {/* Thumbnail Box */}
+              <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/6 flex items-center justify-center">
+                {item.thumbnail ? (
+                  <img
+                    src={item.thumbnail}
+                    alt={item.name}
+                    className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
+                  />
+                ) : (
+                  <Monitor className="w-8 h-8 text-zinc-600" />
+                )}
+
+                {/* Selected Checkmark Badge */}
+                {isSelected && (
+                  <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#0071e3] text-white flex items-center justify-center shadow-md animate-in zoom-in-75 duration-150">
+                    <Check className="w-3.5 h-3.5 stroke-[3]" />
+                  </div>
+                )}
+              </div>
+
+              {/* Meta Info */}
+              <div className="flex items-center gap-2 px-0.5">
+                {item.appIcon ? (
+                  <img src={item.appIcon} alt="" className="w-4 h-4 shrink-0 rounded" />
+                ) : (
+                  <div className="w-4 h-4 rounded bg-white/10 flex items-center justify-center shrink-0">
+                    <Monitor className="w-2.5 h-2.5 text-zinc-400" />
+                  </div>
+                )}
+                <span className="text-xs font-semibold text-zinc-200 truncate flex-1 group-hover:text-white transition">
+                  {item.name || 'Layar / Jendela PC'}
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    );
+  };
+
   return (
     <div
       onClick={onClose}
-      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md animate-in fade-in duration-200"
+      className="fixed inset-0 z-[70] flex items-center justify-center p-3 sm:p-5 bg-black/75 backdrop-blur-md overflow-hidden animate-in fade-in duration-200"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full max-w-2xl bg-[#121214]/95 dark:bg-black/95 text-white rounded-3xl border border-white/12 shadow-2xl flex flex-col max-h-[90vh] overflow-hidden backdrop-blur-2xl"
+        className="w-full max-w-2xl bg-[#121214]/95 dark:bg-black/95 text-white rounded-3xl border border-white/12 shadow-2xl flex flex-col h-full sm:h-[85vh] max-h-[720px] overflow-hidden backdrop-blur-2xl animate-ios-sheet smooth-gpu"
       >
         {/* Header */}
         <div className="flex items-center justify-between px-5 sm:px-6 py-4 border-b border-white/8 shrink-0 bg-white/[0.02]">
@@ -154,16 +291,22 @@ export function SecondDisplaySourceModal({
 
         {/* Tab Selection & Controls */}
         <div className="flex items-center justify-between px-5 sm:px-6 pt-3.5 pb-2 shrink-0 gap-2 flex-wrap">
-          <div className="flex bg-white/6 p-1 rounded-2xl border border-white/8">
+          <div className="relative flex bg-white/6 p-1 rounded-2xl border border-white/8 min-w-[260px]">
+            {/* Smooth sliding pill indicator */}
+            <div
+              className="absolute top-1 bottom-1 rounded-xl bg-[#0071e3] shadow-md transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] pointer-events-none"
+              style={{
+                left: activeTab === 'window' ? '4px' : 'calc(50% + 2px)',
+                width: 'calc(50% - 6px)',
+              }}
+            />
             <button
               onClick={() => {
                 triggerHaptic([20]);
                 setActiveTab('window');
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                activeTab === 'window'
-                  ? 'bg-[#0071e3] text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-zinc-200'
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer ${
+                activeTab === 'window' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <AppWindow className="w-3.5 h-3.5" />
@@ -175,10 +318,8 @@ export function SecondDisplaySourceModal({
                 triggerHaptic([20]);
                 setActiveTab('screen');
               }}
-              className={`flex items-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition cursor-pointer ${
-                activeTab === 'screen'
-                  ? 'bg-[#0071e3] text-white shadow-xs'
-                  : 'text-zinc-400 hover:text-zinc-200'
+              className={`relative z-10 flex-1 flex items-center justify-center gap-2 px-3 py-1.5 rounded-xl text-xs font-semibold transition-colors duration-200 cursor-pointer ${
+                activeTab === 'screen' ? 'text-white' : 'text-zinc-400 hover:text-zinc-200'
               }`}
             >
               <Monitor className="w-3.5 h-3.5" />
@@ -240,110 +381,28 @@ export function SecondDisplaySourceModal({
           </div>
         )}
 
-        {/* Source Items Grid / Loading / Empty States */}
-        <div className="flex-1 overflow-y-auto px-5 sm:px-6 py-3 space-y-4 min-h-[200px]">
-          {loadingActive && sources.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-12 text-center space-y-3">
-              <div className="w-12 h-12 rounded-2xl bg-sky-500/10 text-sky-400 flex items-center justify-center border border-sky-500/20">
-                <Loader2 className="w-6 h-6 animate-spin" />
-              </div>
-              <div>
-                <p className="text-sm font-semibold text-zinc-200">
-                  {isRemote ? `Mengambil daftar layar & jendela dari ${targetPeer?.name || 'PC'}...` : 'Memuat sumber layar...'}
-                </p>
-                <p className="text-xs text-zinc-400 mt-1 max-w-sm">
-                  Sedang membaca jendela aktif dan monitor yang tersedia secara langsung.
-                </p>
-              </div>
-
-              {isRemote && (
-                <button
-                  onClick={handleQuickDefaultStart}
-                  className="mt-2 flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 text-xs font-semibold transition active:scale-95 cursor-pointer shadow-sm"
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span>Alirkan Layar Utama Langsung (Cepat)</span>
-                </button>
-              )}
+        {/* Slideable Viewport for Tab Content with Touch Swipe */}
+        <div
+          className="flex-1 overflow-hidden relative"
+          onTouchStart={handleSwipeStart}
+          onTouchEnd={handleSwipeEnd}
+        >
+          <div
+            className="flex h-full w-[200%] transition-transform duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]"
+            style={{
+              transform: activeTab === 'window' ? 'translateX(0%)' : 'translateX(-50%)',
+            }}
+          >
+            {/* Page 1: Jendela (Windows) */}
+            <div className="w-1/2 h-full overflow-y-auto px-5 sm:px-6 py-3">
+              {renderSourceItems(windows, 'window')}
             </div>
-          ) : displayedItems.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-10 text-center space-y-2">
-              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center text-zinc-500">
-                <AppWindow className="w-6 h-6" />
-              </div>
-              <p className="text-sm font-semibold text-zinc-300">
-                {activeTab === 'window' ? 'Tidak ada jendela aplikasi terbuka' : 'Tidak ada layar tambahan'}
-              </p>
-              <p className="text-xs text-zinc-500 max-w-xs">
-                {activeTab === 'window'
-                  ? 'Buka aplikasi di PC laptop atau pilih tab Layar Penuh di atas.'
-                  : 'Gunakan layar utama atau sambungkan monitor tambahan.'}
-              </p>
-              {isRemote && (
-                <button
-                  onClick={handleQuickDefaultStart}
-                  className="mt-3 flex items-center gap-2 px-4 py-2 rounded-xl bg-sky-600/30 hover:bg-sky-600/50 text-sky-200 border border-sky-500/40 text-xs font-semibold transition active:scale-95 cursor-pointer"
-                >
-                  <Zap className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
-                  <span>Alirkan Layar Utama (Otomatis)</span>
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {displayedItems.map((item) => {
-                const isSelected = item.id === selectedSourceId;
-                return (
-                  <div
-                    key={item.id}
-                    onClick={() => {
-                      triggerHaptic([15]);
-                      setSelectedSourceId(item.id);
-                    }}
-                    className={`group relative p-2.5 sm:p-3 rounded-2xl border transition-all cursor-pointer flex flex-col gap-2 overflow-hidden ${
-                      isSelected
-                        ? 'bg-sky-500/15 border-sky-500/70 shadow-lg shadow-sky-950/40 ring-1 ring-sky-500/50'
-                        : 'bg-white/[0.03] hover:bg-white/[0.06] border-white/8 hover:border-white/16'
-                    }`}
-                  >
-                    {/* Thumbnail Box */}
-                    <div className="relative aspect-video w-full rounded-xl overflow-hidden bg-black/60 border border-white/6 flex items-center justify-center">
-                      {item.thumbnail ? (
-                        <img
-                          src={item.thumbnail}
-                          alt={item.name}
-                          className="w-full h-full object-cover group-hover:scale-102 transition-transform duration-300"
-                        />
-                      ) : (
-                        <Monitor className="w-8 h-8 text-zinc-600" />
-                      )}
 
-                      {/* Selected Checkmark Badge */}
-                      {isSelected && (
-                        <div className="absolute top-2 right-2 w-6 h-6 rounded-full bg-[#0071e3] text-white flex items-center justify-center shadow-md animate-in zoom-in-75 duration-150">
-                          <Check className="w-3.5 h-3.5 stroke-[3]" />
-                        </div>
-                      )}
-                    </div>
-
-                    {/* Meta Info */}
-                    <div className="flex items-center gap-2 px-0.5">
-                      {item.appIcon ? (
-                        <img src={item.appIcon} alt="" className="w-4 h-4 shrink-0 rounded" />
-                      ) : (
-                        <div className="w-4 h-4 rounded bg-white/10 flex items-center justify-center shrink-0">
-                          <Monitor className="w-2.5 h-2.5 text-zinc-400" />
-                        </div>
-                      )}
-                      <span className="text-xs font-semibold text-zinc-200 truncate flex-1 group-hover:text-white transition">
-                        {item.name || 'Layar / Jendela PC'}
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+            {/* Page 2: Layar Penuh (Screens) */}
+            <div className="w-1/2 h-full overflow-y-auto px-5 sm:px-6 py-3">
+              {renderSourceItems(screens, 'screen')}
             </div>
-          )}
+          </div>
         </div>
 
         {/* Footer Actions */}
